@@ -76,11 +76,22 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
 
   const availableCount = availability?.filter(a => a.status === 'in').length || 0;
 
+  // Map of user_id → availability status — passed to DraggableFoursomes to flag mismatches
+  const availabilityMap: Record<string, string> = Object.fromEntries(
+    (availability || []).map((a) => [a.user_id, a.status])
+  );
+
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <Link href="/admin/rounds" className="text-green-600 hover:text-green-700 text-sm">
           ← Back to Rounds
+        </Link>
+        <Link
+          href={`/admin/rounds/${roundId}/scores`}
+          className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+        >
+          🏌️ Enter Scores
         </Link>
       </div>
 
@@ -117,6 +128,7 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
             foursomes={foursomes}
             roundId={roundId}
             teeTime={round.tee_time}
+            availabilityMap={availabilityMap}
           />
         </div>
       ) : (

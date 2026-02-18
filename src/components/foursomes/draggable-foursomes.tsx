@@ -22,6 +22,8 @@ interface DraggableFoursomesProps {
   foursomes: Foursome[]
   roundId: string
   teeTime?: string | null
+  /** Map of user_id → availability status for this round */
+  availabilityMap?: Record<string, string>
 }
 
 type SlotKey = 'slot1-cart1' | 'slot1-cart2' | 'slot2-cart1' | 'slot2-cart2'
@@ -85,13 +87,14 @@ interface CartDropZoneProps {
   cartNum: 1 | 2
   golfers: GolferCard[]
   isOver: boolean
+  availabilityMap: Record<string, string>
   onDragStart: (e: React.DragEvent, userId: string, fromSlot: SlotKey) => void
   onDragOver: (e: React.DragEvent, slotKey: SlotKey) => void
   onDragLeave: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent, slotKey: SlotKey) => void
 }
 
-function CartDropZone({ slotKey, cartNum, golfers, isOver, onDragStart, onDragOver, onDragLeave, onDrop }: CartDropZoneProps) {
+function CartDropZone({ slotKey, cartNum, golfers, isOver, availabilityMap, onDragStart, onDragOver, onDragLeave, onDrop }: CartDropZoneProps) {
   const c = cartStyle[cartNum]
   return (
     <div
@@ -104,22 +107,41 @@ function CartDropZone({ slotKey, cartNum, golfers, isOver, onDragStart, onDragOv
     >
       <h4 className={`font-semibold mb-2 text-sm ${c.header}`}>🛒 Cart {cartNum}</h4>
       <div className="space-y-1.5 min-h-[3rem]">
-        {golfers.map((g) => (
-          <div
-            key={g.user_id}
-            draggable
-            onDragStart={(e) => onDragStart(e, g.user_id, slotKey)}
-            className="flex items-center justify-between bg-white rounded px-2 py-1.5 shadow-sm cursor-grab active:cursor-grabbing select-none border border-gray-200 hover:border-gray-300"
-          >
-            <div>
-              <div className="font-medium text-sm">{g.fullName}</div>
-              <div className="text-xs text-gray-500">{g.teamName}</div>
+        {golfers.map((g) => {
+          const status = availabilityMap[g.user_id]
+          const isOut = status === 'out'
+          const isUndeclared = status === 'undeclared' || status === undefined
+          return (
+            <div
+              key={g.user_id}
+              draggable
+              onDragStart={(e) => onDragStart(e, g.user_id, slotKey)}
+              className={`flex items-center justify-between bg-white rounded px-2 py-1.5 shadow-sm cursor-grab active:cursor-grabbing select-none border hover:border-gray-300 ${
+                isOut ? 'border-red-300 bg-red-50' : isUndeclared ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200'
+              }`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm flex items-center gap-1.5">
+                  {g.fullName}
+                  {isOut && (
+                    <span className="text-xs font-semibold text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
+                      OUT
+                    </span>
+                  )}
+                  {isUndeclared && (
+                    <span className="text-xs font-semibold text-yellow-700 bg-yellow-100 px-1.5 py-0.5 rounded">
+                      ?
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500">{g.teamName}</div>
+              </div>
+              <span className={`text-xs px-1.5 py-0.5 rounded ml-2 shrink-0 ${c.badge}`}>
+                #{g.teamNumber}
+              </span>
             </div>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${c.badge}`}>
-              #{g.teamNumber}
-            </span>
-          </div>
-        ))}
+          )
+        })}
         {golfers.length === 0 && (
           <div className="text-xs text-gray-400 italic text-center py-2">Drop here</div>
         )}
@@ -128,7 +150,7 @@ function CartDropZone({ slotKey, cartNum, golfers, isOver, onDragStart, onDragOv
   )
 }
 
-export function DraggableFoursomes({ foursomes, roundId, teeTime }: DraggableFoursomesProps) {
+export function DraggableFoursomes({ foursomes, roundId, teeTime, availabilityMap = {} }: DraggableFoursomesProps) {
   const router = useRouter()
   const [slots, setSlots] = useState<Record<SlotKey, GolferCard[]>>(() => buildInitialSlots(foursomes))
   const [saving, setSaving] = useState(false)
@@ -220,6 +242,13 @@ export function DraggableFoursomes({ foursomes, roundId, teeTime }: DraggableFou
     onDrop: handleDrop,
   }
 
+  // Find any assigned golfers who are not 'in'
+  const allAssigned = Object.values(slots).flat()
+  const outGolfers = allAssigned.filter((g) => availabilityMap[g.user_id] === 'out')
+  const undeclaredGolfers = allAssigned.filter(
+    (g) => availabilityMap[g.user_id] === 'undeclared' || availabilityMap[g.user_id] === undefined
+  )
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -240,6 +269,29 @@ export function DraggableFoursomes({ foursomes, roundId, teeTime }: DraggableFou
 
       <p className="text-sm text-gray-500 mb-4">Drag golfers between tee time slots and carts to rearrange.</p>
 
+      {/* Availability mismatch warnings */}
+      {outGolfers.length > 0 && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          <p className="text-sm font-semibold text-red-700 mb-1">⚠️ Availability mismatch — the following golfers are marked <strong>Out</strong> but are still assigned to a cart:</p>
+          <ul className="text-sm text-red-600 list-disc list-inside">
+            {outGolfers.map((g) => (
+              <li key={g.user_id}>{g.fullName} ({g.teamName})</li>
+            ))}
+          </ul>
+          <p className="text-xs text-red-500 mt-1">Drag them out or re-generate foursomes to fix.</p>
+        </div>
+      )}
+      {undeclaredGolfers.length > 0 && (
+        <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
+          <p className="text-sm font-semibold text-yellow-800 mb-1">⚠️ The following golfers have not declared availability:</p>
+          <ul className="text-sm text-yellow-700 list-disc list-inside">
+            {undeclaredGolfers.map((g) => (
+              <li key={g.user_id}>{g.fullName} ({g.teamName})</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="bg-green-600 text-white p-4">
@@ -247,8 +299,8 @@ export function DraggableFoursomes({ foursomes, roundId, teeTime }: DraggableFou
             {slot1Time && <p className="text-green-100">{slot1Time}</p>}
           </div>
           <div className="p-4 space-y-3">
-            <CartDropZone slotKey="slot1-cart1" cartNum={1} golfers={slots['slot1-cart1']} isOver={dragOver === 'slot1-cart1'} {...dropProps} />
-            <CartDropZone slotKey="slot1-cart2" cartNum={2} golfers={slots['slot1-cart2']} isOver={dragOver === 'slot1-cart2'} {...dropProps} />
+            <CartDropZone slotKey="slot1-cart1" cartNum={1} golfers={slots['slot1-cart1']} isOver={dragOver === 'slot1-cart1'} availabilityMap={availabilityMap} {...dropProps} />
+            <CartDropZone slotKey="slot1-cart2" cartNum={2} golfers={slots['slot1-cart2']} isOver={dragOver === 'slot1-cart2'} availabilityMap={availabilityMap} {...dropProps} />
           </div>
         </div>
 
@@ -258,8 +310,8 @@ export function DraggableFoursomes({ foursomes, roundId, teeTime }: DraggableFou
             {slot2Time && <p className="text-green-100">{slot2Time}</p>}
           </div>
           <div className="p-4 space-y-3">
-            <CartDropZone slotKey="slot2-cart1" cartNum={1} golfers={slots['slot2-cart1']} isOver={dragOver === 'slot2-cart1'} {...dropProps} />
-            <CartDropZone slotKey="slot2-cart2" cartNum={2} golfers={slots['slot2-cart2']} isOver={dragOver === 'slot2-cart2'} {...dropProps} />
+            <CartDropZone slotKey="slot2-cart1" cartNum={1} golfers={slots['slot2-cart1']} isOver={dragOver === 'slot2-cart1'} availabilityMap={availabilityMap} {...dropProps} />
+            <CartDropZone slotKey="slot2-cart2" cartNum={2} golfers={slots['slot2-cart2']} isOver={dragOver === 'slot2-cart2'} availabilityMap={availabilityMap} {...dropProps} />
           </div>
         </div>
       </div>

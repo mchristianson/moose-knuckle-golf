@@ -20,6 +20,39 @@ export default async function DashboardPage() {
     .order('round_date', { ascending: true })
     .limit(3);
 
+  // Get rounds where scoring is open (in_progress or scoring status)
+  const { data: activeRounds } = await supabase
+    .from('rounds')
+    .select('id, round_number, round_date, status')
+    .in('status', ['in_progress', 'scoring'])
+    .order('round_date', { ascending: false });
+
+  // For active rounds, check if user is in a foursome
+  const scoringRoundIds = new Set<string>()
+  if (activeRounds && activeRounds.length > 0 && user) {
+    const { data: foursomeRows } = await supabase
+      .from('foursomes')
+      .select('id, round_id')
+      .in('round_id', activeRounds.map((r) => r.id))
+
+    if (foursomeRows && foursomeRows.length > 0) {
+      const { data: memberships } = await supabase
+        .from('foursome_members')
+        .select('foursome_id')
+        .in('foursome_id', foursomeRows.map((f) => f.id))
+        .eq('user_id', user.id)
+
+      if (memberships && memberships.length > 0) {
+        const memberFoursomeIds = new Set(memberships.map((m) => m.foursome_id))
+        for (const f of foursomeRows) {
+          if (memberFoursomeIds.has(f.id)) {
+            scoringRoundIds.add(f.round_id)
+          }
+        }
+      }
+    }
+  }
+
   // Get my availability for upcoming rounds
   const { data: myAvailability } = await supabase
     .from('round_availability')
@@ -33,6 +66,12 @@ export default async function DashboardPage() {
     `)
     .eq('user_id', user?.id)
     .in('round_id', upcomingRounds?.map(r => r.id) || []);
+
+  // Scoring-open rounds that are NOT already in upcomingRounds (they may be today or past)
+  const upcomingIds = new Set(upcomingRounds?.map((r) => r.id) ?? [])
+  const extraActiveRounds = (activeRounds ?? []).filter(
+    (r) => !upcomingIds.has(r.id) && scoringRoundIds.has(r.id)
+  )
 
   return (
     <div>
@@ -50,6 +89,41 @@ export default async function DashboardPage() {
         )}
       </div>
 
+      {/* Scoring-open rounds not in the upcoming list (e.g. today's round already in progress) */}
+      {extraActiveRounds.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-4">Score Entry Open</h2>
+          <div className="space-y-4">
+            {extraActiveRounds.map((round: any) => {
+              const roundDate = new Date(round.round_date).toLocaleDateString('en-US', {
+                weekday: 'long', month: 'long', day: 'numeric',
+              })
+              return (
+                <div key={round.id} className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-semibold">Round {round.round_number}</h3>
+                      <p className="text-gray-600">{roundDate}</p>
+                    </div>
+                    <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                      {round.status === 'in_progress' ? '⛳ In Progress' : '📋 Scoring'}
+                    </span>
+                  </div>
+                  <div className="mt-4">
+                    <Link
+                      href={`/scores/${round.id}`}
+                      className="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium"
+                    >
+                      Enter My Score
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {upcomingRounds && upcomingRounds.length > 0 ? (
         <div>
           <h2 className="text-2xl font-bold mb-4">Upcoming Rounds</h2>
@@ -61,6 +135,8 @@ export default async function DashboardPage() {
                 month: 'long',
                 day: 'numeric',
               });
+              const scoringOpen = ['in_progress', 'scoring'].includes(round.status)
+              const canEnterScore = scoringOpen && scoringRoundIds.has(round.id)
 
               return (
                 <div key={round.id} className="bg-white p-6 rounded-lg shadow">
@@ -69,7 +145,12 @@ export default async function DashboardPage() {
                       <h3 className="text-lg font-semibold">Round {round.round_number}</h3>
                       <p className="text-gray-600">{roundDate}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex flex-col gap-1 items-end">
+                      {scoringOpen && (
+                        <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                          {round.status === 'in_progress' ? '⛳ In Progress' : '📋 Scoring'}
+                        </span>
+                      )}
                       {availability ? (
                         <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
                           availability.status === 'in'
@@ -92,6 +173,14 @@ export default async function DashboardPage() {
                         className="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
                       >
                         Declare Availability
+                      </Link>
+                    )}
+                    {canEnterScore && (
+                      <Link
+                        href={`/scores/${round.id}`}
+                        className="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium"
+                      >
+                        Enter My Score
                       </Link>
                     )}
                     <Link
