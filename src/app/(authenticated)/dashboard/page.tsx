@@ -85,14 +85,22 @@ export default async function DashboardPage() {
                       ) : null}
                     </div>
                   </div>
-                  {availability && availability.status === 'undeclared' && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {availability && availability.status === 'undeclared' && (
+                      <Link
+                        href={`/availability/${round.id}`}
+                        className="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+                      >
+                        Declare Availability
+                      </Link>
+                    )}
                     <Link
-                      href={`/availability/${round.id}`}
-                      className="mt-4 inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+                      href={`/rounds/${round.id}`}
+                      className="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
                     >
-                      Declare Availability
+                      Declare Golfers
                     </Link>
-                  )}
+                  </div>
                 </div>
               );
             })}

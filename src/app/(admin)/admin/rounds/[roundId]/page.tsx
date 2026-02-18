@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AvailabilitySummary } from "@/components/availability/availability-summary";
 import { TeeTimeEditor } from "@/components/rounds/tee-time-editor";
 import { GenerateFoursomesButton } from "@/components/foursomes/generate-foursomes-button";
-import { FoursomesList } from "@/components/foursomes/foursomes-list";
+import { DraggableFoursomes } from "@/components/foursomes/draggable-foursomes";
 
 export default async function RoundDetailPage({ params }: { params: Promise<{ roundId: string }> }) {
   const supabase = await createClient();
@@ -57,12 +57,15 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
     .eq('round_id', roundId)
     .order('tee_time_slot');
 
-  // Get tee times if they exist
-  const { data: teeTimesData } = await supabase
-    .from('rounds')
-    .select('tee_time')
-    .eq('id', roundId)
-    .single();
+  // Get declared golfers for this round
+  const { data: declarationsRaw } = await supabase
+    .from('round_team_declarations')
+    .select('team_id, declared_golfer_id')
+    .eq('round_id', roundId);
+
+  const declarations: Record<string, string> = Object.fromEntries(
+    (declarationsRaw || []).map((d) => [d.team_id, d.declared_golfer_id])
+  );
 
   const roundDate = new Date(round.round_date).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -108,29 +111,34 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
         <TeeTimeEditor roundId={roundId} currentTeeTime={round.tee_time} />
       </div>
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold mb-4">Foursome Assignment</h2>
-        <GenerateFoursomesButton roundId={roundId} availableCount={availableCount} />
-      </div>
-
-      {foursomes && foursomes.length > 0 && (
+      {foursomes && foursomes.length > 0 ? (
         <div className="mb-6">
-          <FoursomesList foursomes={foursomes} teeTime={teeTimesData?.tee_time} />
+          <DraggableFoursomes
+            foursomes={foursomes}
+            roundId={roundId}
+            teeTime={round.tee_time}
+          />
+        </div>
+      ) : (
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold mb-4">Foursome Assignment</h2>
+          <GenerateFoursomesButton roundId={roundId} availableCount={availableCount} />
         </div>
       )}
 
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold mb-4">Availability</h2>
-        <AvailabilitySummary availability={availability || []} />
+        {foursomes && foursomes.length > 0 && (
+          <div className="mb-4">
+            <GenerateFoursomesButton roundId={roundId} availableCount={availableCount} />
+          </div>
+        )}
+        <AvailabilitySummary
+          availability={availability || []}
+          roundId={roundId}
+          declarations={declarations}
+          isAdmin={true}
+        />
       </div>
     </div>
   );
-}
-
-function addMinutesToTime(timeStr: string, minutes: number): string {
-  const [hours, mins] = timeStr.split(':').map(Number);
-  const totalMinutes = hours * 60 + mins + minutes;
-  const newHours = Math.floor(totalMinutes / 60) % 24;
-  const newMins = totalMinutes % 60;
-  return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
 }

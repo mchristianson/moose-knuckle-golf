@@ -1,13 +1,24 @@
+import { DeclaredGolferSelector } from './declared-golfer-selector'
+
 interface AvailabilitySummaryProps {
   availability: any[]
+  roundId?: string
+  declarations?: Record<string, string> // teamId -> declared golfer userId
+  isAdmin?: boolean
 }
 
-export function AvailabilitySummary({ availability }: AvailabilitySummaryProps) {
-  // Group by team
+export function AvailabilitySummary({
+  availability,
+  roundId,
+  declarations,
+  isAdmin = false,
+}: AvailabilitySummaryProps) {
+  // Group by team_id (the FK on the availability row — team.id is not selected in the join)
   const teamData = availability.reduce((acc: any, avail: any) => {
     const teamId = avail.team_id
     if (!acc[teamId]) {
       acc[teamId] = {
+        teamId,
         team: avail.team,
         members: [],
       }
@@ -24,17 +35,22 @@ export function AvailabilitySummary({ availability }: AvailabilitySummaryProps) 
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {teams.map((teamData: any) => {
-          const { team, members } = teamData
+          const { teamId, team, members } = teamData
           const inCount = members.filter((m: any) => m.status === 'in').length
           const outCount = members.filter((m: any) => m.status === 'out').length
-          const undeclaredCount = members.filter((m: any) => m.status === 'undeclared').length
 
           let teamStatus = 'undeclared'
           if (inCount > 0) teamStatus = 'in'
           else if (outCount === members.length) teamStatus = 'out'
 
+          const currentDeclaredGolferId = declarations?.[teamId] ?? null
+          const memberOptions = members.map((m: any) => ({
+            userId: m.user_id,
+            fullName: m.user.full_name,
+          }))
+
           return (
-            <div key={team.id} className="bg-white p-4 rounded-lg shadow border">
+            <div key={teamId} className="bg-white p-4 rounded-lg shadow border">
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h3 className="font-semibold">Team {team.team_number}</h3>
@@ -53,7 +69,7 @@ export function AvailabilitySummary({ availability }: AvailabilitySummaryProps) 
                 </span>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 mb-3">
                 {members.map((member: any) => (
                   <div key={member.id} className="flex justify-between items-center text-sm">
                     <span className="text-gray-700">{member.user.full_name}</span>
@@ -71,6 +87,18 @@ export function AvailabilitySummary({ availability }: AvailabilitySummaryProps) 
                   </div>
                 ))}
               </div>
+
+              {isAdmin && roundId && memberOptions.length > 0 && (
+                <div className="border-t pt-3">
+                  <p className="text-xs text-gray-500 mb-2">Declared golfer</p>
+                  <DeclaredGolferSelector
+                    roundId={roundId}
+                    teamId={teamId}
+                    members={memberOptions}
+                    currentDeclaredGolferId={currentDeclaredGolferId}
+                  />
+                </div>
+              )}
             </div>
           )
         })}
