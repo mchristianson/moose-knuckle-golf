@@ -55,6 +55,14 @@ export function RoundCard({ round }: RoundCardProps) {
     })
   }
 
+  const addMinutesToTime = (timeStr: string, minutes: number): string => {
+    const [hours, mins] = timeStr.split(':').map(Number)
+    const totalMinutes = hours * 60 + mins + minutes
+    const newHours = Math.floor(totalMinutes / 60) % 24
+    const newMins = totalMinutes % 60
+    return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`
+  }
+
   return (
     <div className="bg-white p-6 rounded-lg shadow border">
       <div className="flex justify-between items-start mb-4">
@@ -70,9 +78,14 @@ export function RoundCard({ round }: RoundCardProps) {
               </span>
             )}
           </div>
-          <p className="text-gray-600">{formatDate(round.round_date)}</p>
+          <p className="text-gray-600 mb-2">{formatDate(round.round_date)}</p>
+          {round.tee_time && (
+            <p className="text-sm text-gray-600 mb-2">
+              🕐 Tee times: <strong>{round.tee_time}</strong> & <strong>{addMinutesToTime(round.tee_time, 10)}</strong>
+            </p>
+          )}
           {round.notes && (
-            <p className="text-sm text-gray-500 mt-2">{round.notes}</p>
+            <p className="text-sm text-gray-500">{round.notes}</p>
           )}
         </div>
         <button

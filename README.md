@@ -55,6 +55,8 @@ In the Supabase dashboard, go to **SQL Editor** and run each migration file in o
 11. `20260301000010_create_functions.sql` - Database functions
 12. `20260301000011_create_auth_trigger.sql` - **IMPORTANT** Auto-create user profiles on signup
 13. `20260301000012_fix_rls_policies.sql` - **IMPORTANT** Allow authenticated users to write data
+14. `20260301000013_seed_users.sql` - Optional: Add users manually (template provided)
+15. `20260301000014_add_tee_time_to_rounds.sql` - Add tee time tracking to rounds
 
 **Or** use the Supabase CLI for faster migration:
 ```bash

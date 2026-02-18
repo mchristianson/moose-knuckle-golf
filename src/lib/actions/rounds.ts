@@ -132,6 +132,44 @@ export async function updateRoundStatus(roundId: string, newStatus: string) {
   return { success: true }
 }
 
+export async function updateTeeTime(roundId: string, teeTime: string) {
+  const { supabase, user } = await getAdminUser()
+
+  // Validate time format (HH:MM or HH:MM:SS)
+  if (!teeTime.match(/^\d{2}:\d{2}(:\d{2})?$/)) {
+    return { error: 'Invalid time format. Use HH:MM or HH:MM:SS' }
+  }
+
+  const { data: oldRound } = await supabase
+    .from('rounds')
+    .select('*')
+    .eq('id', roundId)
+    .single()
+
+  const { error } = await supabase
+    .from('rounds')
+    .update({ tee_time: teeTime })
+    .eq('id', roundId)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  // Log action
+  await supabase.from('audit_log').insert({
+    user_id: user.id,
+    action: 'round_tee_time_updated',
+    entity_type: 'round',
+    entity_id: roundId,
+    old_value: { tee_time: oldRound?.tee_time },
+    new_value: { tee_time: teeTime },
+  })
+
+  revalidatePath('/admin/rounds')
+  revalidatePath(`/admin/rounds/${roundId}`)
+  return { success: true }
+}
+
 export async function deleteRound(roundId: string) {
   const { supabase, user } = await getAdminUser()
 
