@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 // Legend's front nine par values (holes 1–9)
 const HOLE_PARS = [4, 4, 4, 5, 3, 4, 3, 4, 5] // total par = 36
@@ -133,7 +134,7 @@ export function LeaderboardTabs({
   currentRoundScores,
   currentYear,
 }: LeaderboardTabsProps) {
-  const [activeTab, setActiveTab] = useState<'season' | 'current'>('season')
+  const [activeTab, setActiveTab] = useState<'season' | 'current'>(currentRound ? 'current' : 'season')
 
   const tabClass = (tab: 'season' | 'current') =>
     `px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
@@ -160,12 +161,12 @@ export function LeaderboardTabs({
   })
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-1">Leaderboard</h1>
-      <p className="text-gray-500 mb-6">{currentYear} Season</p>
+    <div className="max-w-4xl mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-1 px-4">Leaderboard</h1>
+      <p className="text-gray-500 mb-6 px-4">{currentYear} Season</p>
 
       {/* Tab bar */}
-      <div className="flex border-b border-gray-200 mb-6">
+      <div className="flex border-b border-gray-200 mb-6 px-4">
         <button className={tabClass('season')} onClick={() => setActiveTab('season')}>
           Season Standings
         </button>
@@ -184,7 +185,7 @@ export function LeaderboardTabs({
       {/* ── Season tab ── */}
       {activeTab === 'season' && (
         <div className="space-y-8">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white sm:rounded-lg shadow overflow-hidden">
             <div className="bg-green-600 text-white px-6 py-4">
               <h2 className="text-xl font-semibold">Season Standings</h2>
             </div>
@@ -216,14 +217,14 @@ export function LeaderboardTabs({
 
           {recentRounds && recentRounds.length > 0 && (
             <div>
-              <h2 className="text-xl font-bold mb-4">Recent Results</h2>
+              <h2 className="text-xl font-bold mb-4 px-4 sm:px-0">Recent Results</h2>
               <div className="space-y-4">
                 {recentRounds.map((round) => {
                   const sorted = [...(round.round_points ?? [])].sort(
                     (a, b) => a.finish_position - b.finish_position
                   )
                   return (
-                    <div key={round.id} className="bg-white rounded-lg shadow overflow-hidden">
+                    <div key={round.id} className="bg-white sm:rounded-lg shadow overflow-hidden">
                       <div className="bg-gray-700 text-white px-4 py-3">
                         <h3 className="font-semibold">Round {round.round_number}</h3>
                         <p className="text-gray-300 text-sm">{formatDate(round.round_date)}</p>
@@ -266,24 +267,33 @@ export function LeaderboardTabs({
       {activeTab === 'current' && (
         <div>
           {!currentRound ? (
-            <div className="bg-white rounded-lg shadow px-6 py-12 text-center text-gray-500">
+            <div className="bg-white sm:rounded-lg shadow px-6 py-12 text-center text-gray-500">
               <p className="text-lg">No round is currently in progress.</p>
               <p className="text-sm mt-1">Check back once a round has started.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white sm:rounded-lg shadow overflow-hidden">
               {/* Round header */}
               <div className="bg-green-700 text-white px-4 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-green-300 text-xs font-medium uppercase tracking-widest">Round {currentRound.round_number}</p>
                   <p className="font-semibold">{formatDate(currentRound.round_date)}</p>
                 </div>
-                <span className="text-xs bg-green-600 border border-green-500 px-3 py-1 rounded-full font-medium capitalize flex items-center gap-1.5">
-                  {currentRound.status === 'in_progress' && (
-                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  )}
-                  {currentRound.status.replace('_', ' ')}
-                </span>
+                {currentRound.status === 'scoring' ? (
+                  <Link
+                    href={`/scores/${currentRound.id}`}
+                    className="text-xs bg-green-600 border border-green-500 px-3 py-1 rounded-full font-medium capitalize flex items-center gap-1.5 hover:bg-green-500 transition-colors"
+                  >
+                    📋 Scoring
+                  </Link>
+                ) : (
+                  <span className="text-xs bg-green-600 border border-green-500 px-3 py-1 rounded-full font-medium capitalize flex items-center gap-1.5">
+                    {currentRound.status === 'in_progress' && (
+                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                    )}
+                    {currentRound.status.replace('_', ' ')}
+                  </span>
+                )}
               </div>
 
               {/* Par row */}

@@ -83,7 +83,7 @@ export default async function DashboardPage() {
         </h2>
         <p className="text-gray-600 mb-4">{profile?.email}</p>
         {profile?.is_admin && (
-          <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+          <span className="inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">
             Admin
           </span>
         )}
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
                       <h3 className="text-lg font-semibold">Round {round.round_number}</h3>
                       <p className="text-gray-600">{roundDate}</p>
                     </div>
-                    <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                    <span className="inline-block bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">
                       {round.status === 'in_progress' ? '⛳ In Progress' : '📋 Scoring'}
                     </span>
                   </div>
@@ -145,14 +145,14 @@ export default async function DashboardPage() {
                       <h3 className="text-lg font-semibold">Round {round.round_number}</h3>
                       <p className="text-gray-600">{roundDate}</p>
                     </div>
-                    <div className="text-right flex flex-col gap-1 items-end">
+                    <div className="flex flex-wrap gap-1.5 justify-end">
                       {scoringOpen && (
-                        <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                        <span className="inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">
                           {round.status === 'in_progress' ? '⛳ In Progress' : '📋 Scoring'}
                         </span>
                       )}
-                      {availability ? (
-                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                      {availability && (
+                        <span className={`inline-flex items-center text-xs font-medium px-3 py-1 rounded-full ${
                           availability.status === 'in'
                             ? 'bg-green-100 text-green-800'
                             : availability.status === 'out'
@@ -161,9 +161,9 @@ export default async function DashboardPage() {
                         }`}>
                           {availability.status === 'in' ? '✓ Playing' :
                            availability.status === 'out' ? '✗ Not Playing' :
-                           '⚠ Need to Declare'}
+                           '⚠ Undeclared'}
                         </span>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">

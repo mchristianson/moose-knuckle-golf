@@ -77,9 +77,17 @@ export default async function MyScorePage({
       </div>
 
       {/* Round header */}
-      <div className="px-4 sm:px-0 mb-4">
-        <h1 className="text-2xl font-bold">Round {round.round_number}</h1>
-        <p className="text-gray-500 text-sm">{roundDate}</p>
+      <div className="px-4 sm:px-0 mb-4 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Round {round.round_number}</h1>
+          <p className="text-gray-500 text-sm">{roundDate}</p>
+        </div>
+        <Link
+          href="/leaderboard"
+          className="text-xs font-medium text-green-700 border border-green-300 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-full transition-colors shrink-0 mt-1"
+        >
+          🏆 Leaderboard
+        </Link>
       </div>
 
       {/* Status banners */}

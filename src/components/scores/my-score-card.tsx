@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { submitMyScore } from '@/lib/actions/scores'
 
+// Legend's front nine par values
+const HOLE_PARS = [4, 4, 4, 5, 3, 4, 3, 4, 5]
+
 interface MyScoreCardProps {
   roundId: string
   userId: string
@@ -26,26 +29,46 @@ export function MyScoreCard({
   isLocked,
   scoringOpen,
 }: MyScoreCardProps) {
-  const [holes, setHoles] = useState<number[]>(
-    initialHoleScores.length === 9 ? [...initialHoleScores] : Array(9).fill(0)
+  // holes: the score for each hole (starts at par)
+  // touched: whether the user has adjusted this hole away from the default
+  const hasExisting = initialHoleScores.some(s => s > 0)
+
+  const [holes, setHoles] = useState<number[]>(() =>
+    HOLE_PARS.map((par, i) => (initialHoleScores[i] > 0 ? initialHoleScores[i] : par))
   )
+  const [touched, setTouched] = useState<boolean[]>(() =>
+    HOLE_PARS.map((_, i) => initialHoleScores[i] > 0)
+  )
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
   const readOnly = isLocked || !scoringOpen
 
-  const filledHoles = holes.filter((h) => h > 0)
-  const gross = filledHoles.reduce((a, b) => a + b, 0)
-  const allFilled = filledHoles.length === 9
-  const net = allFilled ? Math.round((gross - handicap) * 10) / 10 : null
-  const isDirty = holes.some((h, i) => h !== (initialHoleScores[i] ?? 0))
+  const touchedCount = touched.filter(Boolean).length
+  const allTouched = touchedCount === 9
+
+  // Only include touched holes in gross/net calculations
+  const gross = holes.reduce((sum, val, i) => sum + (touched[i] ? val : 0), 0)
+  const net = allTouched ? Math.round((gross - handicap) * 10) / 10 : null
+
+  // isDirty: any touched hole differs from initial, or newly touched holes
+  const isDirty = holes.some((val, i) => {
+    if (!touched[i]) return false
+    return val !== (initialHoleScores[i] > 0 ? initialHoleScores[i] : 0)
+  }) || touched.some((t, i) => t && !(initialHoleScores[i] > 0))
 
   const adjust = (index: number, delta: number) => {
     if (readOnly) return
     setHoles((prev) => {
       const next = [...prev]
-      next[index] = Math.max(0, Math.min(20, (next[index] || 0) + delta))
+      next[index] = Math.max(1, Math.min(20, next[index] + delta))
+      return next
+    })
+    setTouched((prev) => {
+      const next = [...prev]
+      next[index] = true
       return next
     })
     setSaved(false)
@@ -56,7 +79,9 @@ export function MyScoreCard({
     setSaving(true)
     setError(null)
     setSaved(false)
-    const result = await submitMyScore(roundId, holes) as any
+    // Send 0 for untouched holes so the server knows they're not entered
+    const payload = holes.map((val, i) => (touched[i] ? val : 0))
+    const result = await submitMyScore(roundId, payload) as any
     setSaving(false)
     if (result?.error) {
       setError(result.error)
@@ -66,7 +91,7 @@ export function MyScoreCard({
   }
 
   return (
-    <div className="flex flex-col gap-0 rounded-xl shadow-lg overflow-hidden bg-white">
+    <div className="flex flex-col rounded-xl shadow-lg overflow-hidden bg-white">
 
       {/* ── Score summary bar ── */}
       <div className="bg-green-700 text-white px-5 py-5">
@@ -75,23 +100,24 @@ export function MyScoreCard({
             <p className="text-green-300 text-xs font-medium uppercase tracking-widest">Team {teamNumber}</p>
             <p className="text-lg font-bold leading-tight">{teamName || `Team ${teamNumber}`}</p>
           </div>
-          {isLocked && (
+          {isLocked ? (
             <span className="text-xs bg-green-600 border border-green-400 px-2 py-1 rounded-full font-medium">
               🔒 Locked
             </span>
-          )}
-          {!isLocked && scoringOpen && (
+          ) : scoringOpen ? (
             <span className="text-xs bg-green-600 border border-green-400 px-2 py-1 rounded-full font-medium">
               ⛳ Open
             </span>
-          )}
+          ) : null}
         </div>
 
-        {/* Big stats row */}
+        {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-green-800/50 rounded-lg py-3 px-2">
             <p className="text-green-300 text-xs uppercase tracking-wide mb-1">Gross</p>
-            <p className="text-4xl font-black tabular-nums">{gross > 0 ? gross : '–'}</p>
+            <p className="text-4xl font-black tabular-nums">
+              {touchedCount > 0 ? gross : <span className="text-2xl text-green-400">—</span>}
+            </p>
           </div>
           <div className="bg-green-800/50 rounded-lg py-3 px-2">
             <p className="text-green-300 text-xs uppercase tracking-wide mb-1">Handicap</p>
@@ -108,13 +134,13 @@ export function MyScoreCard({
         {/* Progress bar */}
         <div className="mt-4">
           <div className="flex justify-between text-xs text-green-300 mb-1">
-            <span>{filledHoles.length} of 9 holes entered</span>
-            {allFilled && <span className="text-green-200 font-medium">✓ Complete</span>}
+            <span>{touchedCount} of 9 holes entered</span>
+            {allTouched && <span className="text-green-200 font-medium">✓ Complete</span>}
           </div>
           <div className="h-1.5 bg-green-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-green-300 rounded-full transition-all duration-300"
-              style={{ width: `${(filledHoles.length / 9) * 100}%` }}
+              style={{ width: `${(touchedCount / 9) * 100}%` }}
             />
           </div>
         </div>
@@ -122,12 +148,19 @@ export function MyScoreCard({
 
       {/* ── Hole grid ── */}
       <div className="p-4">
+        {!readOnly && (
+          <p className="text-xs text-gray-400 text-center mb-3">
+            Each hole starts at par — tap + or − to enter your score
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-3">
           {holes.map((val, i) => (
             <HoleCell
               key={i}
               hole={i + 1}
+              par={HOLE_PARS[i]}
               value={val}
+              touched={touched[i]}
               readOnly={readOnly}
               onAdjust={(delta) => adjust(i, delta)}
             />
@@ -150,14 +183,14 @@ export function MyScoreCard({
           )}
           <button
             onClick={handleSave}
-            disabled={saving || !isDirty || filledHoles.length === 0}
+            disabled={saving || !isDirty || touchedCount === 0}
             className="w-full py-4 rounded-xl text-lg font-bold bg-green-600 text-white
                        hover:bg-green-700 active:scale-[0.98] transition-all
                        disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving…' : 'Save Score'}
           </button>
-          {!allFilled && filledHoles.length > 0 && (
+          {!allTouched && touchedCount > 0 && (
             <p className="text-center text-xs text-gray-400 mt-2">
               You can save now and finish the remaining holes later.
             </p>
@@ -180,38 +213,83 @@ export function MyScoreCard({
 
 interface HoleCellProps {
   hole: number
+  par: number
   value: number
+  touched: boolean
   readOnly: boolean
   onAdjust: (delta: number) => void
 }
 
-function HoleCell({ hole, value, readOnly, onAdjust }: HoleCellProps) {
+/** Label relative to par */
+function relLabel(diff: number): { text: string; color: string } {
+  if (diff <= -2) return { text: 'Eagle', color: 'text-yellow-500' }
+  if (diff === -1) return { text: 'Birdie', color: 'text-red-500' }
+  if (diff === 0)  return { text: 'Par',    color: 'text-green-600' }
+  if (diff === 1)  return { text: 'Bogey',  color: 'text-gray-500' }
+  if (diff === 2)  return { text: 'Double', color: 'text-orange-500' }
+  return { text: `+${diff}`, color: 'text-red-700' }
+}
+
+function HoleCell({ hole, par, value, touched, readOnly, onAdjust }: HoleCellProps) {
+  const diff = value - par
+  const rel = relLabel(diff)
+
+  // Colour the header based on state
+  const headerBg = !touched
+    ? 'bg-gray-200 text-gray-500'
+    : diff < 0
+    ? 'bg-red-400 text-white'
+    : diff === 0
+    ? 'bg-green-500 text-white'
+    : diff === 1
+    ? 'bg-gray-400 text-white'
+    : 'bg-orange-400 text-white'
+
+  const borderColor = !touched
+    ? 'border-gray-200'
+    : diff < 0
+    ? 'border-red-300'
+    : diff === 0
+    ? 'border-green-400'
+    : diff === 1
+    ? 'border-gray-300'
+    : 'border-orange-300'
+
   return (
-    <div className={`rounded-xl border-2 overflow-hidden transition-colors ${
-      value > 0 ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'
+    <div className={`rounded-xl border-2 overflow-hidden transition-all ${borderColor} ${
+      !touched ? 'bg-gray-50' : 'bg-white'
     }`}>
-      {/* Hole label */}
-      <div className={`text-center py-1 text-xs font-semibold uppercase tracking-wider ${
-        value > 0 ? 'bg-green-400 text-white' : 'bg-gray-200 text-gray-500'
-      }`}>
-        Hole {hole}
+      {/* Hole label + par */}
+      <div className={`flex items-center justify-between px-2 py-1 text-xs font-semibold ${headerBg}`}>
+        <span>Hole {hole}</span>
+        <span className="opacity-80">Par {par}</span>
       </div>
 
       {/* Score display */}
-      <div className="text-center py-3">
-        <span className={`text-4xl font-black tabular-nums ${
-          value > 0 ? 'text-gray-900' : 'text-gray-300'
+      <div className="text-center py-3 relative">
+        {/* Score — ghost when untouched */}
+        <span className={`text-4xl font-black tabular-nums transition-all ${
+          touched ? 'text-gray-900 opacity-100' : 'text-gray-300 opacity-40'
         }`}>
-          {value > 0 ? value : '–'}
+          {value}
         </span>
+
+        {/* Relative label — only show when touched */}
+        <div className="h-4 mt-0.5">
+          {touched && (
+            <span className={`text-xs font-semibold ${rel.color}`}>
+              {rel.text}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* +/- controls */}
+      {/* +/− controls */}
       {!readOnly && (
         <div className="flex border-t border-gray-200">
           <button
             onClick={() => onAdjust(-1)}
-            disabled={value <= 1}
+            disabled={touched && value <= 1}
             aria-label={`Decrease hole ${hole}`}
             className="flex-1 py-3 text-xl font-bold text-gray-600
                        hover:bg-red-50 hover:text-red-600 active:bg-red-100
@@ -222,7 +300,7 @@ function HoleCell({ hole, value, readOnly, onAdjust }: HoleCellProps) {
           </button>
           <button
             onClick={() => onAdjust(1)}
-            disabled={value >= 20}
+            disabled={touched && value >= 20}
             aria-label={`Increase hole ${hole}`}
             className="flex-1 py-3 text-xl font-bold text-gray-600
                        hover:bg-green-50 hover:text-green-600 active:bg-green-100
