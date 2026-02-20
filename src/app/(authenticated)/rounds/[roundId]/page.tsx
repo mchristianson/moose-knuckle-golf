@@ -38,7 +38,8 @@ export default async function RoundDeclarationsPage({
         user_id,
         user:user_id (
           id,
-          full_name
+          full_name,
+          display_name
         )
       )
     `)
@@ -89,7 +90,7 @@ export default async function RoundDeclarationsPage({
         {(teams || []).map((team: any) => {
           const members = (team.team_members || []).map((tm: any) => ({
             userId: tm.user_id,
-            fullName: tm.user?.full_name || "Unknown",
+            fullName: tm.user?.display_name ?? tm.user?.full_name || "Unknown",
           }));
           const currentDeclaredGolferId = declarationMap[team.id] || null;
           const canEdit = isAdmin || team.id === myTeamId;

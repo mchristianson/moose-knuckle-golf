@@ -217,10 +217,8 @@ export async function unlockScore(scoreId: string, roundId: string) {
   return { success: true }
 }
 
-// Calculate and save round points for all teams, then mark round completed
-export async function finalizeRound(roundId: string) {
-  const { supabase, user } = await getAdminUser()
-
+// Helper function to calculate points from locked scores
+async function calculateRoundPoints(supabase: any, roundId: string) {
   // Get all locked scores for this round
   const { data: scores, error: scoresError } = await supabase
     .from('scores')
@@ -228,8 +226,8 @@ export async function finalizeRound(roundId: string) {
     .eq('round_id', roundId)
     .eq('is_locked', true)
 
-  if (scoresError) return { error: scoresError.message }
-  if (!scores || scores.length === 0) return { error: 'No locked scores found' }
+  if (scoresError) return { error: scoresError.message, points: null }
+  if (!scores || scores.length === 0) return { error: 'No locked scores found', points: null }
 
   // One net score per team — use the declared golfer's score (is_sub=false preferred)
   const teamScores: Record<string, number> = {}
@@ -246,7 +244,7 @@ export async function finalizeRound(roundId: string) {
   }
 
   const teamIds = Object.keys(teamScores)
-  if (teamIds.length === 0) return { error: 'No team scores to finalize' }
+  if (teamIds.length === 0) return { error: 'No team scores to finalize', points: null }
 
   // Sort teams by net score ascending (lower = better)
   const sorted = teamIds
@@ -277,10 +275,14 @@ export async function finalizeRound(roundId: string) {
 
     // Average the points for the tied positions
     const pointsForPositions = tiedGroup.map((_, idx) => BASE_POINTS[i + idx] ?? 0)
-    const avgPoints =
-      Math.round(
-        (pointsForPositions.reduce((a, b) => a + b, 0) / tiedGroup.length) * 10
-      ) / 10
+    let totalPoints = pointsForPositions.reduce((a, b) => a + b, 0)
+
+    // Add 3 bonus points if any of the tied teams are in first place
+    if (position === 1) {
+      totalPoints += 3
+    }
+
+    const avgPoints = Math.round((totalPoints / tiedGroup.length) * 10) / 10
     const isTied = tiedGroup.length > 1
 
     for (const team of tiedGroup) {
@@ -296,6 +298,16 @@ export async function finalizeRound(roundId: string) {
     }
     i += tiedGroup.length
   }
+
+  return { error: null, points: pointsRecords }
+}
+
+// Calculate and save round points for all teams, then mark round completed
+export async function finalizeRound(roundId: string) {
+  const { supabase, user } = await getAdminUser()
+
+  const { error, points: pointsRecords } = await calculateRoundPoints(supabase, roundId)
+  if (error || !pointsRecords) return { error: error || 'Failed to calculate points' }
 
   // Upsert round_points
   const { error: pointsError } = await supabase
@@ -319,6 +331,36 @@ export async function finalizeRound(roundId: string) {
   await supabase.from('audit_log').insert({
     user_id: user.id,
     action: 'round_finalized',
+    entity_type: 'round',
+    entity_id: roundId,
+    new_value: { points: pointsRecords },
+  })
+
+  revalidatePath(`/admin/rounds/${roundId}/scores`)
+  revalidatePath(`/admin/rounds/${roundId}`)
+  revalidatePath('/admin/rounds')
+  revalidatePath('/leaderboard')
+  return { success: true }
+}
+
+// Recalculate points for a completed round after score corrections
+export async function recalculateRoundPoints(roundId: string) {
+  const { supabase, user } = await getAdminUser()
+
+  const { error, points: pointsRecords } = await calculateRoundPoints(supabase, roundId)
+  if (error || !pointsRecords) return { error: error || 'Failed to calculate points' }
+
+  // Upsert round_points (this will update existing records)
+  const { error: pointsError } = await supabase
+    .from('round_points')
+    .upsert(pointsRecords, { onConflict: 'round_id,team_id' })
+
+  if (pointsError) return { error: pointsError.message }
+
+  // Audit log
+  await supabase.from('audit_log').insert({
+    user_id: user.id,
+    action: 'round_points_recalculated',
     entity_type: 'round',
     entity_id: roundId,
     new_value: { points: pointsRecords },

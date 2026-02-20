@@ -46,7 +46,7 @@ export function AvailabilitySummary({
           const currentDeclaredGolferId = declarations?.[teamId] ?? null
           const memberOptions = members.map((m: any) => ({
             userId: m.user_id,
-            fullName: m.user.full_name,
+            fullName: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
           }))
 
           return (

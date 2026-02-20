@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { saveScore, lockScore, unlockScore } from '@/lib/actions/scores'
 import { useRouter } from 'next/navigation'
+import { HOLE_PARS } from '@/lib/constants/course'
 
 interface ScoreRow {
   scoreId: string | null
@@ -60,10 +61,24 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
   }
 
   const handleLock = async (row: ScoreRow) => {
-    if (!row.scoreId) return
+    if (!row.scoreId) {
+      setErrors((e) => ({ ...e, [row.userId]: 'Please save the score first before locking' }))
+      return
+    }
     setSaving(row.userId)
+    setErrors((e) => ({ ...e, [row.userId]: '' }))
+
+    // Optimistic update
+    setRows((prev) =>
+      prev.map((r) => r.userId === row.userId ? { ...r, isLocked: true } : r)
+    )
+
     const result = await lockScore(row.scoreId, roundId)
     if (result.error) {
+      // Revert optimistic update on error
+      setRows((prev) =>
+        prev.map((r) => r.userId === row.userId ? { ...r, isLocked: false } : r)
+      )
       setErrors((e) => ({ ...e, [row.userId]: result.error! }))
     } else {
       router.refresh()
@@ -74,8 +89,19 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
   const handleUnlock = async (row: ScoreRow) => {
     if (!row.scoreId) return
     setSaving(row.userId)
+    setErrors((e) => ({ ...e, [row.userId]: '' }))
+
+    // Optimistic update
+    setRows((prev) =>
+      prev.map((r) => r.userId === row.userId ? { ...r, isLocked: false } : r)
+    )
+
     const result = await unlockScore(row.scoreId, roundId)
     if (result.error) {
+      // Revert optimistic update on error
+      setRows((prev) =>
+        prev.map((r) => r.userId === row.userId ? { ...r, isLocked: true } : r)
+      )
       setErrors((e) => ({ ...e, [row.userId]: result.error! }))
     } else {
       router.refresh()
@@ -152,6 +178,7 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                               type="number"
                               min={1}
                               max={20}
+                              placeholder={String(HOLE_PARS[idx])}
                               value={row.holeScores[idx] || ''}
                               onChange={(e) => updateHole(row.userId, idx, e.target.value)}
                               disabled={row.isLocked || isBusy}
@@ -191,7 +218,7 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                     </button>
                     <button
                       onClick={() => handleLock(row)}
-                      disabled={isBusy || !allHolesEntered || !row.scoreId}
+                      disabled={isBusy || !allHolesEntered}
                       className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40"
                       title={!allHolesEntered ? 'Enter all 9 holes first' : ''}
                     >
@@ -208,9 +235,9 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                   <button
                     onClick={() => handleUnlock(row)}
                     disabled={isBusy}
-                    className="mt-3 px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-40"
+                    className="mt-3 px-3 py-1.5 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40"
                   >
-                    {isBusy ? 'Unlocking…' : '🔓 Unlock'}
+                    {isBusy ? 'Unlocking…' : '🔓 Unlock to Edit'}
                   </button>
                 )}
               </div>

@@ -79,7 +79,7 @@ export default async function DashboardPage() {
 
       <div className="bg-white p-6 rounded-lg shadow mb-6">
         <h2 className="text-xl font-semibold mb-2">
-          Welcome, {profile?.full_name || 'Golfer'}!
+          Welcome, {(profile?.display_name ?? profile?.full_name) || 'Golfer'}!
         </h2>
         <p className="text-gray-600 mb-4">{profile?.email}</p>
         {profile?.is_admin && (
@@ -137,6 +137,7 @@ export default async function DashboardPage() {
               });
               const scoringOpen = ['in_progress', 'scoring'].includes(round.status)
               const canEnterScore = scoringOpen && scoringRoundIds.has(round.id)
+              const roundEnded = round.status === 'completed'
 
               return (
                 <div key={round.id} className="bg-white p-6 rounded-lg shadow">
@@ -151,7 +152,12 @@ export default async function DashboardPage() {
                           {round.status === 'in_progress' ? '⛳ In Progress' : '📋 Scoring'}
                         </span>
                       )}
-                      {availability && (
+                      {roundEnded && (
+                        <span className="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">
+                          ✓ Completed
+                        </span>
+                      )}
+                      {availability && !roundEnded && (
                         <span className={`inline-flex items-center text-xs font-medium px-3 py-1 rounded-full ${
                           availability.status === 'in'
                             ? 'bg-green-100 text-green-800'
@@ -167,7 +173,7 @@ export default async function DashboardPage() {
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {availability && availability.status === 'undeclared' && (
+                    {availability && availability.status === 'undeclared' && !roundEnded && (
                       <Link
                         href={`/availability/${round.id}`}
                         className="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
@@ -183,12 +189,14 @@ export default async function DashboardPage() {
                         Enter My Score
                       </Link>
                     )}
-                    <Link
-                      href={`/rounds/${round.id}`}
-                      className="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    >
-                      Declare Golfers
-                    </Link>
+                    {!roundEnded && (
+                      <Link
+                        href={`/rounds/${round.id}`}
+                        className="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                      >
+                        Declare Golfers
+                      </Link>
+                    )}
                   </div>
                 </div>
               );

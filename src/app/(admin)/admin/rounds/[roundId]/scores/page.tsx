@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ScoreEntryTable } from '@/components/scores/score-entry-table'
 import { FinalizeRoundButton } from '@/components/scores/finalize-round-button'
+import { RecalculatePointsButton } from '@/components/scores/recalculate-points-button'
 
 export default async function ScoringPage({ params }: { params: Promise<{ roundId: string }> }) {
   const supabase = await createClient()
@@ -22,7 +23,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
       user_id,
       team_id,
       is_sub,
-      user:user_id ( id, full_name ),
+      user:user_id ( id, full_name, display_name ),
       team:team_id ( id, team_name, team_number )
     `)
     .in(
@@ -68,7 +69,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
       scoreId: existing?.id ?? null,
       userId: m.user_id,
       teamId: m.team_id,
-      fullName: m.user?.full_name ?? 'Unknown',
+      fullName: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
       teamName: m.team?.team_name ?? '',
       teamNumber: m.team?.team_number ?? 0,
       handicap,
@@ -138,6 +139,10 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
                 totalCount={totalCount}
               />
             </div>
+          )}
+
+          {isCompleted && (
+            <RecalculatePointsButton roundId={roundId} isCompleted={isCompleted} />
           )}
 
           <ScoreEntryTable roundId={roundId} rows={rows} />

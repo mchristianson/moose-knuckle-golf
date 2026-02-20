@@ -8,7 +8,7 @@ interface FoursomeMember {
   user_id: string
   team_id: string
   cart_number: 1 | 2
-  user?: { id: string; full_name: string }
+  user?: { id: string; full_name: string; display_name?: string }
   team?: { id: string; team_name: string; team_number: number }
 }
 
@@ -66,7 +66,7 @@ function buildInitialSlots(foursomes: Foursome[]): Record<SlotKey, GolferCard[]>
       slots[key].push({
         user_id: m.user_id,
         team_id: m.team_id,
-        fullName: m.user?.full_name || 'Unknown',
+        fullName: (m.user?.display_name ?? m.user?.full_name) || 'Unknown',
         teamName: m.team?.team_name || '',
         teamNumber: m.team?.team_number || 0,
       })

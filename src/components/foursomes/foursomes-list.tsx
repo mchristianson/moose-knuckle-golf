@@ -5,6 +5,7 @@ interface FoursomeMember {
   user?: {
     id: string
     full_name: string
+    display_name?: string
   }
   team?: {
     id: string
@@ -51,13 +52,15 @@ export function FoursomesList({ foursomes, teeTime }: FoursomesListProps) {
               ? addMinutesToTime(teeTime, 10)
               : null
 
+        const getDisplayName = (user: any) => user?.display_name ?? user?.full_name ?? ''
+
         const cart1Members = foursome.members
           .filter((m) => m.cart_number === 1)
-          .sort((a, b) => (a.user?.full_name || '').localeCompare(b.user?.full_name || ''))
+          .sort((a, b) => getDisplayName(a.user).localeCompare(getDisplayName(b.user)))
 
         const cart2Members = foursome.members
           .filter((m) => m.cart_number === 2)
-          .sort((a, b) => (a.user?.full_name || '').localeCompare(b.user?.full_name || ''))
+          .sort((a, b) => getDisplayName(a.user).localeCompare(getDisplayName(b.user)))
 
         return (
           <div key={foursome.id} className="bg-white rounded-lg shadow overflow-hidden">
@@ -74,7 +77,7 @@ export function FoursomesList({ foursomes, teeTime }: FoursomesListProps) {
                   {cart1Members.map((member) => (
                     <div key={member.user_id} className="flex items-center justify-between">
                       <div>
-                        <div className="font-medium">{member.user?.full_name}</div>
+                        <div className="font-medium">{getDisplayName(member.user)}</div>
                         <div className="text-xs text-gray-600">{member.team?.team_name}</div>
                       </div>
                       <div className="text-xs bg-blue-200 text-blue-900 px-2 py-1 rounded">
@@ -92,7 +95,7 @@ export function FoursomesList({ foursomes, teeTime }: FoursomesListProps) {
                   {cart2Members.map((member) => (
                     <div key={member.user_id} className="flex items-center justify-between">
                       <div>
-                        <div className="font-medium">{member.user?.full_name}</div>
+                        <div className="font-medium">{getDisplayName(member.user)}</div>
                         <div className="text-xs text-gray-600">{member.team?.team_name}</div>
                       </div>
                       <div className="text-xs bg-orange-200 text-orange-900 px-2 py-1 rounded">

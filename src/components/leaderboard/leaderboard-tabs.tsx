@@ -2,9 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-
-// Legend's front nine par values (holes 1–9)
-const HOLE_PARS = [4, 4, 4, 5, 3, 4, 3, 4, 5] // total par = 36
+import { HOLE_PARS, STROKE_INDEX } from '@/lib/constants/course'
 
 interface StandingRow {
   team_id: string
@@ -20,6 +18,7 @@ interface RoundPointsRow {
   points_earned: number
   is_tied: boolean
   team: { team_name: string; team_number: number }
+  golfer_name?: string
 }
 
 interface RecentRound {
@@ -78,18 +77,6 @@ function shortName(full: string): string {
   return `${parts[0]} ${parts[parts.length - 1][0]}`
 }
 
-/**
- * Calculate score-to-par for the holes played so far.
- * We apply the player's handicap strokes across the hardest holes first
- * (using USGA stroke allocation order for Legend's front nine) then subtract
- * par for each hole played to get the running score vs par.
- *
- * Stroke index order for Legend's front 9 (hardest → easiest):
- *   Hole: 1  2  3  4  5  6  7  8  9
- *   SI:   5  7  1  3  9  2  8  4  6
- * (Lower SI = hardest = gets a stroke first)
- */
-const STROKE_INDEX = [5, 7, 1, 3, 9, 2, 8, 4, 6] // per hole (1-indexed position)
 
 function scoreToPar(holeScores: number[], handicap: number): number | null {
   const played = holeScores.map((s, i) => ({ score: s, hole: i })).filter(h => h.score > 0)
@@ -233,7 +220,7 @@ export function LeaderboardTabs({
                         <thead className="bg-gray-50 border-b">
                           <tr>
                             <th className="text-left px-4 py-2 font-medium text-gray-600 w-12">Pos</th>
-                            <th className="text-left px-4 py-2 font-medium text-gray-600">Team</th>
+                            <th className="text-left px-4 py-2 font-medium text-gray-600">Golfer</th>
                             <th className="text-center px-4 py-2 font-medium text-gray-600">Net</th>
                             <th className="text-center px-4 py-2 font-medium text-gray-600">Pts</th>
                           </tr>
@@ -241,12 +228,18 @@ export function LeaderboardTabs({
                         <tbody className="divide-y">
                           {sorted.map((p: any) => {
                             const team = Array.isArray(p.team) ? p.team[0] : p.team
+                            const golfer = p.golfer
+                            const golferName = golfer?.full_name ?? '—'
+                            const keyValue = `${p.finish_position}-${golferName}-${team?.team_number}`
                             return (
-                              <tr key={team?.team_number ?? p.finish_position} className="hover:bg-gray-50">
+                              <tr key={keyValue} className="hover:bg-gray-50">
                                 <td className="px-4 py-2.5 font-semibold text-gray-700">
                                   {p.finish_position}{p.is_tied ? 'T' : ''}
                                 </td>
-                                <td className="px-4 py-2.5 font-medium">{team?.team_name ?? '—'}</td>
+                                <td className="px-4 py-2.5 font-medium">
+                                  <div>{golferName}</div>
+                                  <div className="text-xs text-gray-500">{team?.team_name ?? '—'}</div>
+                                </td>
                                 <td className="px-4 py-2.5 text-center text-gray-600">{p.net_score}</td>
                                 <td className="px-4 py-2.5 text-center font-bold text-green-700">{p.points_earned}</td>
                               </tr>
