@@ -115,8 +115,9 @@ function calculateScore(foursomes: [Foursome, Foursome], pairingHistory?: number
     // Score all unique pairs within the foursome
     for (let i = 0; i < golfers.length; i++) {
       for (let j = i + 1; j < golfers.length; j++) {
-        const userI = parseInt(golfers[i].userId)
-        const userJ = parseInt(golfers[j].userId)
+        if (!golfers[i].userId || !golfers[j].userId) continue
+        const userI = parseInt(golfers[i].userId!)
+        const userJ = parseInt(golfers[j].userId!)
 
         // Both users must be in range for history lookup
         if (userI < pairingHistory.length && userJ < pairingHistory[userI].length) {
@@ -161,8 +162,9 @@ export function buildPairingHistory(
       // For each pair of golfers
       for (let i = 0; i < foursome.length; i++) {
         for (let j = i + 1; j < foursome.length; j++) {
-          const userI = parseInt(foursome[i].userId)
-          const userJ = parseInt(foursome[j].userId)
+          if (!foursome[i].userId || !foursome[j].userId) continue
+          const userI = parseInt(foursome[i].userId!)
+          const userJ = parseInt(foursome[j].userId!)
 
           if (userI < totalGolfers && userJ < totalGolfers) {
             history[userI][userJ]++
