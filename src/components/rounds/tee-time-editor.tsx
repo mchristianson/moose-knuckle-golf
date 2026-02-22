@@ -42,69 +42,45 @@ export function TeeTimeEditor({ roundId, currentTeeTime }: TeeTimeEditorProps) {
   const secondTeeTime = addMinutesToTime(teeTime, 10)
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-lg font-semibold mb-4">Tee Times</h2>
+    <div className="flex items-center gap-3 flex-wrap">
+      <span className="text-sm text-gray-500">Tee times:</span>
+      <span className="font-medium text-sm text-green-700">
+        {currentTeeTime ? format12Hour(currentTeeTime) : '—'}
+        {currentTeeTime && (
+          <span className="text-gray-400 mx-1.5">/</span>
+        )}
+        {currentTeeTime ? format12Hour(addMinutesToTime(currentTeeTime, 10)) : ''}
+      </span>
 
       {isEditing ? (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              First Tee Time
-            </label>
-            <input
-              type="time"
-              value={teeTime}
-              onChange={(e) => setTeeTime(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Second tee time will be: <strong>{format12Hour(secondTeeTime)}</strong> (10 minutes later)
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={isLoading}
-              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
-            >
-              {isLoading ? 'Saving...' : 'Save'}
-            </button>
-            <button
-              onClick={() => {
-                setTeeTime(currentTeeTime || '08:00')
-                setIsEditing(false)
-              }}
-              className="bg-gray-400 text-white px-4 py-2 rounded-md hover:bg-gray-500"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">1st Tee Time</p>
-              <p className="text-2xl font-bold text-green-700">
-                {currentTeeTime ? format12Hour(currentTeeTime) : '—'}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">2nd Tee Time</p>
-              <p className="text-2xl font-bold text-green-700">
-                {currentTeeTime ? format12Hour(addMinutesToTime(currentTeeTime, 10)) : '—'}
-              </p>
-            </div>
-          </div>
-
+        <div className="flex items-center gap-2">
+          <input
+            type="time"
+            value={teeTime}
+            onChange={(e) => setTeeTime(e.target.value)}
+            className="px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
           <button
-            onClick={() => setIsEditing(true)}
-            className="text-sm bg-gray-100 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-200"
+            onClick={handleSave}
+            disabled={isLoading}
+            className="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
           >
-            ✏️ Edit Tee Times
+            {isLoading ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            onClick={() => { setTeeTime(currentTeeTime || '08:00'); setIsEditing(false) }}
+            className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            Cancel
           </button>
         </div>
+      ) : (
+        <button
+          onClick={() => setIsEditing(true)}
+          className="px-2 py-0.5 text-xs text-gray-500 border border-gray-300 rounded hover:bg-gray-100"
+        >
+          Edit
+        </button>
       )}
     </div>
   )

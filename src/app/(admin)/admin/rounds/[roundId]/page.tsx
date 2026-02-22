@@ -52,6 +52,10 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
           id,
           team_name,
           team_number
+        ),
+        sub:sub_id (
+          id,
+          full_name
         )
       )
     `)
@@ -64,24 +68,50 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
     .select('team_id, declared_golfer_id')
     .eq('round_id', roundId);
 
+  // Get approved subs for this round
+  const { data: roundSubsRaw } = await supabase
+    .from('round_subs')
+    .select('id, team_id, sub_id, subs(full_name)')
+    .eq('round_id', roundId)
+    .eq('status', 'approved');
+
   const declarations: Record<string, string> = Object.fromEntries(
     (declarationsRaw || []).map((d) => [d.team_id, d.declared_golfer_id])
   );
+
+  const roundSubs: Record<string, { subId: string; subName: string; roundSubId: string }> =
+    Object.fromEntries(
+      (roundSubsRaw || []).map((rs: any) => [
+        rs.team_id,
+        {
+          subId: rs.sub_id,
+          subName: rs.subs?.full_name ?? 'Unknown',
+          roundSubId: rs.id,
+        },
+      ])
+    );
 
   // Get total number of teams to check if all have declared
   const { data: allTeams } = await supabase
     .from('teams')
     .select('id')
-    .eq('is_active', true)
     .order('team_number');
 
   const totalTeams = allTeams?.length || 0;
-  const declaredCount = Object.keys(declarations).length;
-  const allDeclared = declaredCount === totalTeams && totalTeams > 0;
+  const subTeamIds = new Set(Object.keys(roundSubs));
+  const subTeamCount = subTeamIds.size;
+  // Only count declarations for teams that don't also have a sub (avoid double-counting)
+  const declaredCount = Object.keys(declarations).filter(id => !subTeamIds.has(id)).length;
+  // A team is accounted for if it has a declared golfer OR an approved sub assigned
+  const accountedForCount = declaredCount + subTeamCount;
+  const allDeclared = accountedForCount === totalTeams && totalTeams > 0;
 
   const roundDate = formatRoundDate(round.round_date);
 
-  const availableCount = availability?.filter(a => a.status === 'in').length || 0;
+  // Each sub-assigned team removes one slot from the "in" pool (their members are all out)
+  // so the effective available count adds one per sub team
+  const rawAvailableCount = availability?.filter(a => a.status === 'in').length || 0;
+  const availableCount = rawAvailableCount + subTeamCount;
 
   // Map of user_id → availability status — passed to DraggableFoursomes to flag mismatches
   const availabilityMap: Record<string, string> = Object.fromEntries(
@@ -90,43 +120,41 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <Link href="/admin/rounds" className="text-green-600 hover:text-green-700 text-sm">
-          ← Back to Rounds
-        </Link>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <Link href="/admin/rounds" className="text-green-600 hover:text-green-700 text-sm">
+            ← Back to Rounds
+          </Link>
+          <h1 className="text-2xl font-bold mt-1">
+            Round {round.round_number}
+            <span className="ml-2 text-base font-normal text-gray-500">{roundDate}</span>
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+            <span>
+              <span className="text-gray-400">Status:</span>{' '}
+              <span className="font-medium capitalize">{round.status.replace(/_/g, ' ')}</span>
+            </span>
+            <span>
+              <span className="text-gray-400">Type:</span>{' '}
+              <span className="font-medium capitalize">{round.round_type}</span>
+            </span>
+            <span>
+              <span className="text-gray-400">Season:</span>{' '}
+              <span className="font-medium">{round.season_year}</span>
+            </span>
+            <span>
+              <span className="text-gray-400">Available:</span>{' '}
+              <span className="font-medium">{availableCount} / 8</span>
+            </span>
+            <TeeTimeEditor roundId={roundId} currentTeeTime={round.tee_time} />
+          </div>
+        </div>
         <Link
           href={`/admin/rounds/${roundId}/scores`}
-          className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+          className="shrink-0 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
         >
           🏌️ Enter Scores
         </Link>
-      </div>
-
-      <h1 className="text-3xl font-bold mb-2">Round {round.round_number}</h1>
-      <p className="text-gray-600 mb-6">{roundDate}</p>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-sm text-gray-600">Status</div>
-          <div className="text-lg font-semibold capitalize">{round.status.replace('_', ' ')}</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-sm text-gray-600">Type</div>
-          <div className="text-lg font-semibold capitalize">{round.round_type}</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-sm text-gray-600">Season</div>
-          <div className="text-lg font-semibold">{round.season_year}</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-sm text-gray-600">Available</div>
-          <div className="text-lg font-semibold">{availableCount} of 8</div>
-          <div className="text-xs text-gray-500 mt-1">golfers</div>
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <TeeTimeEditor roundId={roundId} currentTeeTime={round.tee_time} />
       </div>
 
       {foursomes && foursomes.length > 0 ? (
@@ -136,6 +164,8 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
             roundId={roundId}
             teeTime={round.tee_time}
             availabilityMap={availabilityMap}
+            expectedGolfers={availableCount}
+            subsByTeam={Object.fromEntries(Object.entries(roundSubs).map(([teamId, rs]) => [teamId, rs.subName]))}
           />
         </div>
       ) : (
@@ -156,6 +186,7 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
           roundId={roundId}
           declarations={declarations}
           isAdmin={true}
+          roundSubs={roundSubs}
         />
       </div>
     </div>

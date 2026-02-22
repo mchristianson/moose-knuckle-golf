@@ -1,10 +1,18 @@
 import { DeclaredGolferSelector } from './declared-golfer-selector'
+import { SubAssignmentPanel } from './sub-assignment-panel'
+
+interface RoundSubInfo {
+  subId: string
+  subName: string
+  roundSubId: string
+}
 
 interface AvailabilitySummaryProps {
   availability: any[]
   roundId?: string
   declarations?: Record<string, string> // teamId -> declared golfer userId
   isAdmin?: boolean
+  roundSubs?: Record<string, RoundSubInfo> // teamId -> sub info
 }
 
 export function AvailabilitySummary({
@@ -12,6 +20,7 @@ export function AvailabilitySummary({
   roundId,
   declarations,
   isAdmin = false,
+  roundSubs = {},
 }: AvailabilitySummaryProps) {
   // Group by team_id (the FK on the availability row — team.id is not selected in the join)
   const teamData = availability.reduce((acc: any, avail: any) => {
@@ -38,9 +47,11 @@ export function AvailabilitySummary({
           const { teamId, team, members } = teamData
           const inCount = members.filter((m: any) => m.status === 'in').length
           const outCount = members.filter((m: any) => m.status === 'out').length
+          const assignedSub = roundSubs[teamId] ?? null
 
           let teamStatus = 'undeclared'
-          if (inCount > 0) teamStatus = 'in'
+          if (assignedSub) teamStatus = 'sub'
+          else if (inCount > 0) teamStatus = 'in'
           else if (outCount === members.length) teamStatus = 'out'
 
           const currentDeclaredGolferId = declarations?.[teamId] ?? null
@@ -61,10 +72,13 @@ export function AvailabilitySummary({
                     ? 'bg-green-100 text-green-800'
                     : teamStatus === 'out'
                     ? 'bg-red-100 text-red-800'
+                    : teamStatus === 'sub'
+                    ? 'bg-purple-100 text-purple-800'
                     : 'bg-yellow-100 text-yellow-800'
                 }`}>
                   {teamStatus === 'in' ? '✓ Playing' :
                    teamStatus === 'out' ? '✗ Out' :
+                   teamStatus === 'sub' ? '↔ Sub Assigned' :
                    '⚠ Pending'}
                 </span>
               </div>
@@ -88,15 +102,28 @@ export function AvailabilitySummary({
                 ))}
               </div>
 
-              {isAdmin && roundId && memberOptions.length > 0 && (
-                <div className="border-t pt-3">
-                  <p className="text-xs text-gray-500 mb-2">Declared golfer</p>
-                  <DeclaredGolferSelector
-                    roundId={roundId}
-                    teamId={teamId}
-                    members={memberOptions}
-                    currentDeclaredGolferId={currentDeclaredGolferId}
-                  />
+              {isAdmin && roundId && (
+                <div className="border-t pt-3 space-y-3">
+                  {!assignedSub && memberOptions.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">Declared golfer</p>
+                      <DeclaredGolferSelector
+                        roundId={roundId}
+                        teamId={teamId}
+                        members={memberOptions}
+                        currentDeclaredGolferId={currentDeclaredGolferId}
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-gray-500 mb-2">Sub assignment</p>
+                    <SubAssignmentPanel
+                      roundId={roundId}
+                      teamId={teamId}
+                      existingSubName={assignedSub?.subName}
+                      existingRoundSubId={assignedSub?.roundSubId}
+                    />
+                  </div>
                 </div>
               )}
             </div>

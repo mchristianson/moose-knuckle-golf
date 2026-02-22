@@ -11,9 +11,11 @@
  */
 
 interface Golfer {
-  userId: string
+  userId: string | null
   teamId: string
   fullName: string
+  subId?: string
+  isSub?: boolean
 }
 
 interface Foursome {
@@ -40,8 +42,8 @@ export function generateFoursomeAssignment(
   golfers: Golfer[],
   pairingHistory?: number[][]
 ): { foursomes: [Foursome, Foursome]; iterations: number } {
-  if (golfers.length !== 8) {
-    throw new Error('Exactly 8 golfers are required')
+  if (golfers.length < 2 || golfers.length > 8) {
+    throw new Error(`Expected 2–8 golfers, got ${golfers.length}`)
   }
 
   const iterations = 100
@@ -70,21 +72,25 @@ export function generateFoursomeAssignment(
  * Within each foursome: carts are [0,1] and [2,3]
  */
 function createFoursomes(golfers: Golfer[]): [Foursome, Foursome] {
+  const mid = Math.ceil(golfers.length / 2)
+  const group1 = golfers.slice(0, mid)
+  const group2 = golfers.slice(mid)
+
   const firstFoursome: Foursome = {
     teeTimeSlot: 1,
-    golfers: golfers.slice(0, 4),
+    golfers: group1,
     carts: {
-      cart1: [golfers[0], golfers[1]],
-      cart2: [golfers[2], golfers[3]],
+      cart1: group1.slice(0, Math.ceil(group1.length / 2)),
+      cart2: group1.slice(Math.ceil(group1.length / 2)),
     },
   }
 
   const secondFoursome: Foursome = {
     teeTimeSlot: 2,
-    golfers: golfers.slice(4, 8),
+    golfers: group2,
     carts: {
-      cart1: [golfers[4], golfers[5]],
-      cart2: [golfers[6], golfers[7]],
+      cart1: group2.slice(0, Math.ceil(group2.length / 2)),
+      cart2: group2.slice(Math.ceil(group2.length / 2)),
     },
   }
 

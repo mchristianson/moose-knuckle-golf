@@ -19,7 +19,7 @@ export function GenerateFoursomesButton({ roundId, availableCount, allDeclared }
 
   const handleGenerate = async () => {
     if (!allDeclared) {
-      setError('All teams must declare their golfer before generating foursomes')
+      setError('All teams must declare their golfer or have a sub assigned before generating foursomes')
       return
     }
 
@@ -58,7 +58,7 @@ export function GenerateFoursomesButton({ roundId, availableCount, allDeclared }
 
       {!allDeclared && (
         <p className="text-sm text-red-600">
-          All teams must declare their golfer before generating foursomes
+          All teams must declare their golfer or have a sub assigned before generating foursomes
         </p>
       )}
 
