@@ -155,7 +155,9 @@ export default async function LeaderboardPage() {
           members:foursome_members (
             user_id,
             is_sub,
+            sub_id,
             user:user_id ( full_name, display_name, id ),
+            sub:sub_id ( full_name ),
             team:team_id ( team_number, team_name, id )
           )
         `)
@@ -168,7 +170,7 @@ export default async function LeaderboardPage() {
         members: (f.members ?? []).map((m: any) => ({
           user_id: m.user_id,
           is_sub: m.is_sub,
-          full_name: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
+          full_name: m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? 'Unknown',
           team_name: m.team?.team_name ?? '',
           team_number: m.team?.team_number ?? 0,
         }))

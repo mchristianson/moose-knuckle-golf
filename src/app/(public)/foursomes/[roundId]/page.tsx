@@ -28,6 +28,11 @@ export default async function FoursomesPage({ params }: { params: Promise<{ roun
         *,
         user:user_id (
           id,
+          full_name,
+          display_name
+        ),
+        sub:sub_id (
+          id,
           full_name
         ),
         team:team_id (

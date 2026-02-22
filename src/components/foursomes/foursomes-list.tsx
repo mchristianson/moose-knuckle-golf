@@ -1,12 +1,17 @@
 interface FoursomeMember {
-  user_id: string
+  user_id: string | null
   team_id: string
   cart_number: 1 | 2
+  is_sub?: boolean
   user?: {
     id: string
     full_name: string
     display_name?: string
-  }
+  } | null
+  sub?: {
+    id: string
+    full_name: string
+  } | null
   team?: {
     id: string
     team_name: string
@@ -41,6 +46,32 @@ function addMinutesToTime(timeStr: string, minutes: number): string {
   return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`
 }
 
+function getMemberName(member: FoursomeMember): string {
+  return member.user?.display_name ?? member.user?.full_name ?? member.sub?.full_name ?? ''
+}
+
+function MemberRow({ member, badgeClass }: { member: FoursomeMember; badgeClass: string }) {
+  const name = getMemberName(member)
+  return (
+    <div key={member.user_id ?? member.sub?.id} className="flex items-center justify-between">
+      <div>
+        <div className="font-medium flex items-center gap-1.5">
+          {name}
+          {member.is_sub && (
+            <span className="text-xs font-semibold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
+              SUB
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-gray-600">{member.team?.team_name}</div>
+      </div>
+      <div className={`text-xs px-2 py-1 rounded ${badgeClass}`}>
+        Team #{member.team?.team_number}
+      </div>
+    </div>
+  )
+}
+
 export function FoursomesList({ foursomes, teeTime }: FoursomesListProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -52,15 +83,13 @@ export function FoursomesList({ foursomes, teeTime }: FoursomesListProps) {
               ? addMinutesToTime(teeTime, 10)
               : null
 
-        const getDisplayName = (user: any) => user?.display_name ?? user?.full_name ?? ''
-
         const cart1Members = foursome.members
           .filter((m) => m.cart_number === 1)
-          .sort((a, b) => getDisplayName(a.user).localeCompare(getDisplayName(b.user)))
+          .sort((a, b) => getMemberName(a).localeCompare(getMemberName(b)))
 
         const cart2Members = foursome.members
           .filter((m) => m.cart_number === 2)
-          .sort((a, b) => getDisplayName(a.user).localeCompare(getDisplayName(b.user)))
+          .sort((a, b) => getMemberName(a).localeCompare(getMemberName(b)))
 
         return (
           <div key={foursome.id} className="bg-white rounded-lg shadow overflow-hidden">
@@ -75,15 +104,7 @@ export function FoursomesList({ foursomes, teeTime }: FoursomesListProps) {
                 <h4 className="font-semibold text-blue-900 mb-2">🛒 Cart 1</h4>
                 <div className="space-y-2">
                   {cart1Members.map((member) => (
-                    <div key={member.user_id} className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{getDisplayName(member.user)}</div>
-                        <div className="text-xs text-gray-600">{member.team?.team_name}</div>
-                      </div>
-                      <div className="text-xs bg-blue-200 text-blue-900 px-2 py-1 rounded">
-                        Team #{member.team?.team_number}
-                      </div>
-                    </div>
+                    <MemberRow key={member.user_id ?? member.sub?.id} member={member} badgeClass="bg-blue-200 text-blue-900" />
                   ))}
                 </div>
               </div>
@@ -93,15 +114,7 @@ export function FoursomesList({ foursomes, teeTime }: FoursomesListProps) {
                 <h4 className="font-semibold text-orange-900 mb-2">🛒 Cart 2</h4>
                 <div className="space-y-2">
                   {cart2Members.map((member) => (
-                    <div key={member.user_id} className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{getDisplayName(member.user)}</div>
-                        <div className="text-xs text-gray-600">{member.team?.team_name}</div>
-                      </div>
-                      <div className="text-xs bg-orange-200 text-orange-900 px-2 py-1 rounded">
-                        Team #{member.team?.team_number}
-                      </div>
-                    </div>
+                    <MemberRow key={member.user_id ?? member.sub?.id} member={member} badgeClass="bg-orange-200 text-orange-900" />
                   ))}
                 </div>
               </div>
