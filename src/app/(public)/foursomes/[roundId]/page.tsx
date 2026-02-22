@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { formatRoundDate } from '@/lib/utils/date'
 import { FoursomesList } from "@/components/foursomes/foursomes-list";
 import { notFound } from "next/navigation";
 
@@ -51,12 +52,7 @@ export default async function FoursomesPage({ params }: { params: Promise<{ roun
 
           <h1 className="text-3xl font-bold mb-2">Round {round.round_number}</h1>
           <p className="text-gray-600 mb-6">
-            {new Date(round.round_date).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-            })}
+            {formatRoundDate(round.round_date)}
           </p>
 
           <div className="bg-white p-6 rounded-lg shadow text-center">
@@ -67,12 +63,7 @@ export default async function FoursomesPage({ params }: { params: Promise<{ roun
     );
   }
 
-  const roundDate = new Date(round.round_date).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const roundDate = formatRoundDate(round.round_date);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

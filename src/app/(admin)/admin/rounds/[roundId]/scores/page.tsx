@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { formatRoundDate } from '@/lib/utils/date'
 import { ScoreEntryTable } from '@/components/scores/score-entry-table'
 import { FinalizeRoundButton } from '@/components/scores/finalize-round-button'
 import { RecalculatePointsButton } from '@/components/scores/recalculate-points-button'
@@ -84,9 +85,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
   const lockedCount = rows.filter((r) => r.isLocked).length
   const totalCount = rows.length
 
-  const roundDate = new Date(round.round_date).toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-  })
+  const roundDate = formatRoundDate(round.round_date)
 
   const isCompleted = round.status === 'completed'
 

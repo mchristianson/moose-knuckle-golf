@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { formatRoundDate } from "@/lib/utils/date";
 import { AvailabilitySummary } from "@/components/availability/availability-summary";
 import { TeeTimeEditor } from "@/components/rounds/tee-time-editor";
 import { GenerateFoursomesButton } from "@/components/foursomes/generate-foursomes-button";
@@ -67,12 +68,18 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
     (declarationsRaw || []).map((d) => [d.team_id, d.declared_golfer_id])
   );
 
-  const roundDate = new Date(round.round_date).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  // Get total number of teams to check if all have declared
+  const { data: allTeams } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('is_active', true)
+    .order('team_number');
+
+  const totalTeams = allTeams?.length || 0;
+  const declaredCount = Object.keys(declarations).length;
+  const allDeclared = declaredCount === totalTeams && totalTeams > 0;
+
+  const roundDate = formatRoundDate(round.round_date);
 
   const availableCount = availability?.filter(a => a.status === 'in').length || 0;
 
@@ -134,14 +141,14 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
       ) : (
         <div className="mb-6">
           <h2 className="text-2xl font-semibold mb-4">Foursome Assignment</h2>
-          <GenerateFoursomesButton roundId={roundId} availableCount={availableCount} />
+          <GenerateFoursomesButton roundId={roundId} availableCount={availableCount} allDeclared={allDeclared} />
         </div>
       )}
 
       <div className="mb-6">
         {foursomes && foursomes.length > 0 && (
           <div className="mb-4">
-            <GenerateFoursomesButton roundId={roundId} availableCount={availableCount} />
+            <GenerateFoursomesButton roundId={roundId} availableCount={availableCount} allDeclared={allDeclared} />
           </div>
         )}
         <AvailabilitySummary

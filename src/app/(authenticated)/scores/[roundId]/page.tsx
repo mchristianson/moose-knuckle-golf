@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { formatRoundDate } from '@/lib/utils/date'
 import { MyScoreCard } from '@/components/scores/my-score-card'
 
 export default async function MyScorePage({
@@ -60,9 +61,7 @@ export default async function MyScorePage({
 
   const handicap = handicapRow?.current_handicap ?? 0
 
-  const roundDate = new Date(round.round_date).toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric',
-  })
+  const roundDate = formatRoundDate(round.round_date)
 
   const holeScores: number[] = existingScore?.hole_scores ?? Array(9).fill(0)
   const isLocked = existingScore?.is_locked ?? false

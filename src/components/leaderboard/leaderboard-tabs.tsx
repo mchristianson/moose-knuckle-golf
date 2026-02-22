@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { HOLE_PARS, STROKE_INDEX } from '@/lib/constants/course'
+import { formatRoundDate, formatTeeTime } from '@/lib/utils/date'
 
 interface StandingRow {
   team_id: string
@@ -47,11 +48,43 @@ interface CurrentRound {
   status: string
 }
 
+interface NextRoundAvailability {
+  user_id: string
+  team_id: string
+  status: 'in' | 'out'
+  full_name: string
+  team_name: string
+  team_number: number
+}
+
+interface NextRoundFoursome {
+  id: string
+  tee_time_slot: number
+  members: {
+    user_id: string
+    is_sub: boolean
+    full_name: string
+    team_name: string
+    team_number: number
+  }[]
+}
+
+interface NextRound {
+  id: string
+  round_number: number
+  round_date: string
+  status: string
+  tee_time: string
+}
+
 interface LeaderboardTabsProps {
   standings: StandingRow[]
   recentRounds: RecentRound[]
   currentRound: CurrentRound | null
   currentRoundScores: CurrentRoundScore[]
+  nextRound: NextRound | null
+  nextRoundAvailability: NextRoundAvailability[]
+  nextRoundFoursomes: NextRoundFoursome[]
   currentYear: number
 }
 
@@ -64,11 +97,6 @@ function medal(idx: number) {
   return `${idx + 1}`
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric',
-  })
-}
 
 /** Short first name + last initial: "Matthew Christianson" → "Matt C" */
 function shortName(full: string): string {
@@ -119,11 +147,16 @@ export function LeaderboardTabs({
   recentRounds,
   currentRound,
   currentRoundScores,
+  nextRound,
+  nextRoundAvailability,
+  nextRoundFoursomes,
   currentYear,
 }: LeaderboardTabsProps) {
-  const [activeTab, setActiveTab] = useState<'season' | 'current'>(currentRound ? 'current' : 'season')
+  const [activeTab, setActiveTab] = useState<'season' | 'current' | 'next'>(
+    nextRound ? 'next' : currentRound ? 'current' : 'season'
+  )
 
-  const tabClass = (tab: 'season' | 'current') =>
+  const tabClass = (tab: 'season' | 'current' | 'next') =>
     `px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
       activeTab === tab
         ? 'border-green-600 text-green-700'
@@ -157,16 +190,21 @@ export function LeaderboardTabs({
         <button className={tabClass('season')} onClick={() => setActiveTab('season')}>
           Season Standings
         </button>
-        <button className={tabClass('current')} onClick={() => setActiveTab('current')}>
-          {currentRound ? (
+        {currentRound && (
+          <button className={tabClass('current')} onClick={() => setActiveTab('current')}>
             <span className="flex items-center gap-2">
               Current Round
               {currentRound.status === 'in_progress' && (
                 <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               )}
             </span>
-          ) : 'Current Round'}
-        </button>
+          </button>
+        )}
+        {nextRound && (
+          <button className={tabClass('next')} onClick={() => setActiveTab('next')}>
+            Next Round
+          </button>
+        )}
       </div>
 
       {/* ── Season tab ── */}
@@ -214,7 +252,7 @@ export function LeaderboardTabs({
                     <div key={round.id} className="bg-white sm:rounded-lg shadow overflow-hidden">
                       <div className="bg-gray-700 text-white px-4 py-3">
                         <h3 className="font-semibold">Round {round.round_number}</h3>
-                        <p className="text-gray-300 text-sm">{formatDate(round.round_date)}</p>
+                        <p className="text-gray-300 text-sm">{formatRoundDate(round.round_date)}</p>
                       </div>
                       <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b">
@@ -270,7 +308,7 @@ export function LeaderboardTabs({
               <div className="bg-green-700 text-white px-4 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-green-300 text-xs font-medium uppercase tracking-widest">Round {currentRound.round_number}</p>
-                  <p className="font-semibold">{formatDate(currentRound.round_date)}</p>
+                  <p className="font-semibold">{formatRoundDate(currentRound.round_date)}</p>
                 </div>
                 {currentRound.status === 'scoring' ? (
                   <Link
@@ -362,6 +400,100 @@ export function LeaderboardTabs({
                     <span className="ml-auto"><span className="font-semibold">F</span> = Finished · Scores adjusted for handicap</span>
                   </div>
                 </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Next round tab ── */}
+      {activeTab === 'next' && (
+        <div>
+          {!nextRound ? (
+            <div className="bg-white sm:rounded-lg shadow px-6 py-12 text-center text-gray-500">
+              <p className="text-lg">No upcoming rounds scheduled.</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {/* Next Round Header */}
+              <div className="bg-white sm:rounded-lg shadow overflow-hidden">
+                <div className="bg-blue-600 text-white px-4 py-4">
+                  <p className="text-blue-300 text-xs font-medium uppercase tracking-widest">Round {nextRound.round_number}</p>
+                  <p className="font-semibold text-lg">{formatRoundDate(nextRound.round_date)}</p>
+                  {nextRound.tee_time && (
+                    <p className="text-blue-200 text-sm mt-1">🕐 Tee time: {formatTeeTime(nextRound.tee_time)}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Availability Summary */}
+              {nextRoundAvailability.length > 0 && (
+                <div className="bg-white sm:rounded-lg shadow overflow-hidden">
+                  <div className="bg-gray-700 text-white px-4 py-3">
+                    <h3 className="font-semibold">Availability</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                    {/* Group by team */}
+                    {Array.from(
+                      new Set(nextRoundAvailability.map((a) => a.team_id))
+                    )
+                      .map((teamId) => {
+                        const team = nextRoundAvailability.find((a) => a.team_id === teamId)!
+                        const teamAvailability = nextRoundAvailability.filter((a) => a.team_id === teamId)
+                        const inCount = teamAvailability.filter((a) => a.status === 'in').length
+                        const outCount = teamAvailability.filter((a) => a.status === 'out').length
+
+                        return (
+                          <div key={teamId} className="border rounded-lg p-3">
+                            <h4 className="font-semibold mb-2">Team {team.team_number} — {team.team_name}</h4>
+                            <div className="space-y-1 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="text-green-600 font-semibold">✓ In:</span>
+                                <span>{inCount}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-red-600 font-semibold">✗ Out:</span>
+                                <span>{outCount}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* Foursomes */}
+              {nextRoundFoursomes.length > 0 ? (
+                <div className="space-y-4">
+                  <h3 className="text-xl font-bold px-4 sm:px-0">Foursomes</h3>
+                  {nextRoundFoursomes.map((foursome) => (
+                    <div key={foursome.id} className="bg-white sm:rounded-lg shadow overflow-hidden">
+                      <div className="bg-gray-700 text-white px-4 py-2">
+                        <p className="font-semibold text-sm">Tee Time {foursome.tee_time_slot + 1}</p>
+                      </div>
+                      <div className="p-4 space-y-2">
+                        {foursome.members.map((member) => (
+                          <div key={member.user_id} className="flex justify-between items-center text-sm">
+                            <div>
+                              <p className="font-medium">{member.full_name}</p>
+                              <p className="text-xs text-gray-500">Team {member.team_number} — {member.team_name}</p>
+                            </div>
+                            {member.is_sub && (
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded">
+                                Sub
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white sm:rounded-lg shadow px-6 py-8 text-center text-gray-500">
+                  <p className="text-sm">Foursomes have not been generated yet.</p>
+                </div>
               )}
             </div>
           )}

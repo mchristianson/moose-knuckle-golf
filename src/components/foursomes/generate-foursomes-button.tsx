@@ -7,16 +7,22 @@ import { useRouter } from 'next/navigation'
 interface GenerateFoursomesButtonProps {
   roundId: string
   availableCount: number
+  allDeclared: boolean
 }
 
-export function GenerateFoursomesButton({ roundId, availableCount }: GenerateFoursomesButtonProps) {
+export function GenerateFoursomesButton({ roundId, availableCount, allDeclared }: GenerateFoursomesButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isDisabled = availableCount !== 8
+  const isDisabled = availableCount !== 8 || !allDeclared
 
   const handleGenerate = async () => {
+    if (!allDeclared) {
+      setError('All teams must declare their golfer before generating foursomes')
+      return
+    }
+
     if (availableCount !== 8) {
       setError('Exactly 8 golfers must be available to generate foursomes')
       return
@@ -50,7 +56,13 @@ export function GenerateFoursomesButton({ roundId, availableCount }: GenerateFou
         {loading ? 'Generating...' : '🎲 Auto-Generate Foursomes'}
       </button>
 
-      {availableCount !== 8 && (
+      {!allDeclared && (
+        <p className="text-sm text-red-600">
+          All teams must declare their golfer before generating foursomes
+        </p>
+      )}
+
+      {allDeclared && availableCount !== 8 && (
         <p className="text-sm text-red-600">
           {availableCount < 8
             ? `Need ${8 - availableCount} more golfer(s) available`

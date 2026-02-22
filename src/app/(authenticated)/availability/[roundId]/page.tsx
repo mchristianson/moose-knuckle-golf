@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { AvailabilityToggle } from "@/components/availability/availability-toggle";
+import { formatRoundDate } from '@/lib/utils/date'
 import { redirect } from "next/navigation";
 
 export default async function AvailabilityPage({ params }: { params: Promise<{ roundId: string }> }) {
@@ -51,11 +52,7 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ r
     .neq('user_id', user.id)
     .maybeSingle();
 
-  const roundDate = new Date(round.round_date).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
+  const roundDate = formatRoundDate(round.round_date);
 
   const deadline = round.availability_deadline
     ? new Date(round.availability_deadline).toLocaleString('en-US', {

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { DeclaredGolferSelector } from "@/components/availability/declared-golfer-selector";
+import { formatRoundDate } from '@/lib/utils/date'
 import { redirect } from "next/navigation";
 
 export default async function RoundDeclarationsPage({
@@ -61,11 +62,7 @@ export default async function RoundDeclarationsPage({
     (declarations || []).map((d) => [d.team_id, d.declared_golfer_id])
   );
 
-  const roundDate = new Date(round.round_date).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  const roundDate = formatRoundDate(round.round_date);
 
   const declaredCount = Object.keys(declarationMap).length;
   const totalTeams = teams?.length || 0;
@@ -90,7 +87,7 @@ export default async function RoundDeclarationsPage({
         {(teams || []).map((team: any) => {
           const members = (team.team_members || []).map((tm: any) => ({
             userId: tm.user_id,
-            fullName: tm.user?.display_name ?? tm.user?.full_name || "Unknown",
+            fullName: (tm.user?.display_name ?? tm.user?.full_name) || "Unknown",
           }));
           const currentDeclaredGolferId = declarationMap[team.id] || null;
           const canEdit = isAdmin || team.id === myTeamId;

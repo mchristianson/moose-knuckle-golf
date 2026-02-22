@@ -12,6 +12,68 @@ export default async function RoundsPage() {
     .eq('season_year', currentYear)
     .order('round_date', { ascending: true });
 
+  // Get all active teams count
+  const { data: allTeams } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('is_active', true);
+
+  const totalTeams = allTeams?.length || 0;
+
+  // Get declarations for all rounds to check if teams have declared
+  let declarationsByRound: Record<string, number> = {};
+  let declarationDetailsByRound: Record<string, any> = {};
+  if (rounds && rounds.length > 0) {
+    const roundIds = rounds.map((r: any) => r.id);
+    const { data: allDeclarations } = await supabase
+      .from('round_team_declarations')
+      .select(`
+        round_id,
+        team_id,
+        declared_golfer_id,
+        team:team_id ( team_number, team_name ),
+        user:declared_golfer_id ( full_name, display_name )
+      `)
+      .in('round_id', roundIds);
+
+    if (allDeclarations) {
+      allDeclarations.forEach((d: any) => {
+        declarationsByRound[d.round_id] = (declarationsByRound[d.round_id] || 0) + 1;
+        
+        if (!declarationDetailsByRound[d.round_id]) {
+          declarationDetailsByRound[d.round_id] = { declared: [], notDeclared: [] };
+        }
+        
+        const team = d.team || {};
+        const golfer = d.user || {};
+        declarationDetailsByRound[d.round_id].declared.push({
+          teamId: d.team_id,
+          teamNumber: team.team_number,
+          teamName: team.team_name,
+          golferName: golfer.display_name || golfer.full_name || 'Unknown',
+        });
+      });
+    }
+    
+    // Add teams that haven't declared
+    allTeams?.forEach((team: any) => {
+      roundIds.forEach((roundId: string) => {
+        if (!declarationDetailsByRound[roundId]) {
+          declarationDetailsByRound[roundId] = { declared: [], notDeclared: [] };
+        }
+        
+        const isDeclared = declarationDetailsByRound[roundId].declared.some((d: any) => d.teamId === team.id);
+        if (!isDeclared) {
+          declarationDetailsByRound[roundId].notDeclared.push({
+            teamId: team.id,
+            teamNumber: team.team_number,
+            teamName: team.team_name,
+          });
+        }
+      });
+    });
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -37,7 +99,12 @@ export default async function RoundsPage() {
       ) : (
         <div className="space-y-4">
           {rounds.map((round: any) => (
-            <RoundCard key={round.id} round={round} />
+            <RoundCard
+              key={round.id}
+              round={round}
+              allDeclared={declarationsByRound[round.id] === totalTeams && totalTeams > 0}
+              declarationDetails={declarationDetailsByRound[round.id]}
+            />
           ))}
         </div>
       )}

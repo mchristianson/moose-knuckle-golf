@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { formatRoundDate } from '@/lib/utils/date'
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -67,6 +68,72 @@ export default async function DashboardPage() {
     .eq('user_id', user?.id)
     .in('round_id', upcomingRounds?.map(r => r.id) || []);
 
+  // Get all teams info for comparison
+  const { data: allTeams } = await supabase
+    .from('teams')
+    .select('id, team_number, team_name')
+    .order('team_number');
+
+  const totalTeams = allTeams?.length || 0;
+
+  // Get declarations for upcoming rounds
+  let declarationsByRound: Record<string, any> = {};
+  if (upcomingRounds && upcomingRounds.length > 0 && allTeams && allTeams.length > 0) {
+    // First, initialize all rounds with all teams in notDeclared
+    upcomingRounds.forEach((round: any) => {
+      declarationsByRound[round.id] = {
+        declared: [],
+        notDeclared: allTeams.map((team: any) => ({
+          teamId: team.id,
+          teamNumber: team.team_number,
+          teamName: team.team_name,
+        }))
+      };
+    });
+
+    // Then fetch declarations and move teams from notDeclared to declared
+    const { data: allDeclarations } = await supabase
+      .from('round_team_declarations')
+      .select(`
+        round_id,
+        team_id,
+        declared_golfer_id,
+        team:team_id ( team_number, team_name ),
+        user:declared_golfer_id ( full_name, display_name )
+      `)
+      .in('round_id', upcomingRounds.map((r: any) => r.id));
+
+    if (allDeclarations) {
+      allDeclarations.forEach((d: any) => {
+        const team = d.team || {};
+        const golfer = d.user || {};
+        
+        // Move from notDeclared to declared
+        const notDeclaredIndex = declarationsByRound[d.round_id].notDeclared.findIndex((t: any) => t.teamId === d.team_id);
+        if (notDeclaredIndex !== -1) {
+          declarationsByRound[d.round_id].notDeclared.splice(notDeclaredIndex, 1);
+        }
+        
+        declarationsByRound[d.round_id].declared.push({
+          teamId: d.team_id,
+          teamNumber: team.team_number,
+          teamName: team.team_name,
+          golferName: golfer.display_name || golfer.full_name || 'Unknown',
+        });
+      });
+    }
+  }
+
+  // Initialize empty declarations for all rounds even if no teams
+  if (!declarationsByRound || Object.keys(declarationsByRound).length === 0) {
+    upcomingRounds?.forEach((round: any) => {
+      declarationsByRound[round.id] = {
+        declared: [],
+        notDeclared: []
+      };
+    });
+  }
+
   // Scoring-open rounds that are NOT already in upcomingRounds (they may be today or past)
   const upcomingIds = new Set(upcomingRounds?.map((r) => r.id) ?? [])
   const extraActiveRounds = (activeRounds ?? []).filter(
@@ -95,9 +162,7 @@ export default async function DashboardPage() {
           <h2 className="text-2xl font-bold mb-4">Score Entry Open</h2>
           <div className="space-y-4">
             {extraActiveRounds.map((round: any) => {
-              const roundDate = new Date(round.round_date).toLocaleDateString('en-US', {
-                weekday: 'long', month: 'long', day: 'numeric',
-              })
+              const roundDate = formatRoundDate(round.round_date)
               return (
                 <div key={round.id} className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
                   <div className="flex justify-between items-center">
@@ -130,11 +195,7 @@ export default async function DashboardPage() {
           <div className="space-y-4">
             {upcomingRounds.map((round: any) => {
               const availability = myAvailability?.find(a => a.round_id === round.id);
-              const roundDate = new Date(round.round_date).toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              });
+              const roundDate = formatRoundDate(round.round_date);
               const scoringOpen = ['in_progress', 'scoring'].includes(round.status)
               const canEnterScore = scoringOpen && scoringRoundIds.has(round.id)
               const roundEnded = round.status === 'completed'
@@ -172,6 +233,42 @@ export default async function DashboardPage() {
                       )}
                     </div>
                   </div>
+                  {/* Declaration Status */}
+                  {!roundEnded && ['availability_open', 'foursomes_set'].includes(round.status) && declarationsByRound[round.id] && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
+                          Declared ({declarationsByRound[round.id].declared.length}/{declarationsByRound[round.id].declared.length + declarationsByRound[round.id].notDeclared.length})
+                        </p>
+                        {declarationsByRound[round.id].declared.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {declarationsByRound[round.id].declared.map((team: any) => (
+                              <span key={team.teamId} className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                                ✓ T{team.teamNumber}: {team.golferName}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-500 italic">No teams have declared yet</p>
+                        )}
+                      </div>
+                      {declarationsByRound[round.id].notDeclared.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
+                            Not Declared ({declarationsByRound[round.id].notDeclared.length}/{declarationsByRound[round.id].declared.length + declarationsByRound[round.id].notDeclared.length})
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {declarationsByRound[round.id].notDeclared.map((team: any) => (
+                              <span key={team.teamId} className="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+                                ✗ T{team.teamNumber}: {team.teamName}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-4 flex flex-wrap gap-2">
                     {availability && availability.status === 'undeclared' && !roundEnded && (
                       <Link

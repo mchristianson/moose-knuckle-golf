@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatRoundDate } from '@/lib/utils/date'
 import { approveSub } from '@/lib/actions/subs'
 
 interface SubRequest {
@@ -82,7 +83,7 @@ export function SubRequestList({ initialRequests }: SubRequestListProps) {
               <div className="font-semibold">Round {request.round?.round_number}</div>
               <div className="text-sm text-gray-600">
                 {request.round?.round_date &&
-                  new Date(request.round.round_date).toLocaleDateString()}
+                  formatRoundDate(request.round.round_date)}
               </div>
             </div>
 
