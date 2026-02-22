@@ -11,6 +11,7 @@ export default async function PublicLayout({
 
   const navItems = [
     { href: '/leaderboard', label: 'Leaderboard' },
+    { href: '/manual', label: 'Manual' },
     ...(user ? [{ href: '/dashboard', label: 'Dashboard' }] : []),
   ]
 

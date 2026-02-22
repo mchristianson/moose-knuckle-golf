@@ -21,6 +21,7 @@ export default async function AuthenticatedLayout({
 
   const navItems = [
     { href: '/leaderboard', label: 'Leaderboard' },
+    { href: '/manual', label: 'Manual' },
     { href: '/dashboard', label: 'Dashboard' },
   ]
 
