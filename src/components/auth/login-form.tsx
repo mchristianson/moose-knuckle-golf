@@ -1,6 +1,7 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
+import { useActionState } from 'react'
+import { useFormStatus } from 'react-dom'
 import { login } from '@/lib/actions/auth'
 
 function SubmitButton() {
@@ -18,7 +19,7 @@ function SubmitButton() {
 }
 
 export function LoginForm() {
-  const [state, formAction] = useFormState<{ error: string | null }, FormData>(login, { error: null })
+  const [state, formAction] = useActionState<{ error: string | null }, FormData>(login, { error: null })
 
   return (
     <form action={formAction} className="space-y-4">

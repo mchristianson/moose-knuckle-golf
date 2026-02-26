@@ -121,6 +121,120 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
   return { success: true }
 }
 
+// Any golfer in the same foursome can submit a score for another player in their group
+export async function submitScoreForFoursome(
+  roundId: string,
+  targetUserId: string | null,
+  holeScores: number[]
+) {
+  // External subs have no user account — their scores must be entered by an admin
+  if (!targetUserId) {
+    return { error: 'This player has no user account; an admin must enter their score.' }
+  }
+
+  const { supabase, user } = await getAuthenticatedUser()
+
+  // Verify the round is open for scoring
+  const { data: round } = await supabase
+    .from('rounds')
+    .select('status')
+    .eq('id', roundId)
+    .single()
+
+  if (!round) return { error: 'Round not found' }
+  if (!['in_progress', 'scoring'].includes(round.status)) {
+    return { error: 'Scoring is not open for this round' }
+  }
+
+  const { data: foursomeIds } = await supabase
+    .from('foursomes')
+    .select('id')
+    .eq('round_id', roundId)
+
+  if (!foursomeIds || foursomeIds.length === 0) {
+    return { error: 'No foursomes found for this round' }
+  }
+
+  // Verify calling user is in a foursome for this round and get their foursome_id
+  const { data: callerMembership } = await supabase
+    .from('foursome_members')
+    .select('foursome_id')
+    .in('foursome_id', foursomeIds.map((f) => f.id))
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!callerMembership) {
+    return { error: 'You are not listed as a player in this round' }
+  }
+
+  // Verify the target user is in the SAME foursome as the calling user
+  const { data: targetMembership } = await supabase
+    .from('foursome_members')
+    .select('team_id, is_sub')
+    .eq('foursome_id', callerMembership.foursome_id)
+    .eq('user_id', targetUserId)
+    .maybeSingle()
+
+  if (!targetMembership) {
+    return { error: 'That player is not in your foursome' }
+  }
+
+  // Ensure the target score isn't already locked
+  const { data: existing } = await supabase
+    .from('scores')
+    .select('id, is_locked')
+    .eq('round_id', roundId)
+    .eq('user_id', targetUserId)
+    .maybeSingle()
+
+  if (existing?.is_locked) {
+    return { error: 'That score has been locked and cannot be changed' }
+  }
+
+  if (holeScores.length !== 9) {
+    return { error: 'Expected exactly 9 hole score slots' }
+  }
+  if (holeScores.some((h) => h < 0)) {
+    return { error: 'Hole scores cannot be negative' }
+  }
+
+  // Fetch current handicap for the target player
+  const { data: handicapRow } = await supabase
+    .from('handicaps')
+    .select('current_handicap')
+    .eq('user_id', targetUserId)
+    .maybeSingle()
+
+  const handicap = handicapRow?.current_handicap ?? 0
+  const filledScores = holeScores.filter((h) => h > 0)
+  const grossScore = filledScores.reduce((a, b) => a + b, 0)
+  const allFilled = filledScores.length === 9
+  const netScore = allFilled ? Math.round((grossScore - handicap) * 10) / 10 : null
+
+  const { error } = await supabase
+    .from('scores')
+    .upsert(
+      {
+        round_id: roundId,
+        user_id: targetUserId,
+        team_id: targetMembership.team_id,
+        hole_scores: holeScores,
+        handicap_at_time: handicap,
+        net_score: netScore,
+        is_sub: targetMembership.is_sub,
+        submitted_at: new Date().toISOString(),
+        submitted_by: user.id,
+      },
+      { onConflict: 'round_id,user_id' }
+    )
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/scores/${roundId}`)
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
 // Save hole-by-hole scores for a golfer in a round (does not lock)
 export async function saveScore(
   roundId: string,

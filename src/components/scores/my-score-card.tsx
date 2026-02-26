@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { submitMyScore } from '@/lib/actions/scores'
+import { useState, useEffect, useRef } from 'react'
+import { submitScoreForFoursome } from '@/lib/actions/scores'
 
 // Legend's front nine par values
 const HOLE_PARS = [4, 4, 4, 5, 3, 4, 3, 4, 5]
@@ -9,6 +9,7 @@ const HOLE_PARS = [4, 4, 4, 5, 3, 4, 3, 4, 5]
 interface MyScoreCardProps {
   roundId: string
   userId: string
+  targetUserId: string
   teamName: string
   teamNumber: number
   handicap: number
@@ -22,6 +23,7 @@ interface MyScoreCardProps {
 
 export function MyScoreCard({
   roundId,
+  targetUserId,
   teamName,
   teamNumber,
   handicap,
@@ -29,10 +31,6 @@ export function MyScoreCard({
   isLocked,
   scoringOpen,
 }: MyScoreCardProps) {
-  // holes: the score for each hole (starts at par)
-  // touched: whether the user has adjusted this hole away from the default
-  const hasExisting = initialHoleScores.some(s => s > 0)
-
   const [holes, setHoles] = useState<number[]>(() =>
     HOLE_PARS.map((par, i) => (initialHoleScores[i] > 0 ? initialHoleScores[i] : par))
   )
@@ -44,23 +42,48 @@ export function MyScoreCard({
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
+  // Track whether the user has made a change in this session
+  const userChangedRef = useRef(false)
+
   const readOnly = isLocked || !scoringOpen
 
   const touchedCount = touched.filter(Boolean).length
   const allTouched = touchedCount === 9
 
-  // Only include touched holes in gross/net calculations
   const gross = holes.reduce((sum, val, i) => sum + (touched[i] ? val : 0), 0)
   const net = allTouched ? Math.round((gross - handicap) * 10) / 10 : null
+  const projectedNet = touchedCount > 0 && !allTouched
+    ? Math.round((gross / touchedCount * 9 - handicap) * 10) / 10
+    : null
 
-  // isDirty: any touched hole differs from initial, or newly touched holes
-  const isDirty = holes.some((val, i) => {
-    if (!touched[i]) return false
-    return val !== (initialHoleScores[i] > 0 ? initialHoleScores[i] : 0)
-  }) || touched.some((t, i) => t && !(initialHoleScores[i] > 0))
+  // Auto-save: debounce 800ms after the last user-initiated change
+  useEffect(() => {
+    if (!userChangedRef.current || readOnly || !touched.some(Boolean)) return
+
+    const holesCopy = [...holes]
+    const touchedCopy = [...touched]
+
+    const timer = setTimeout(async () => {
+      setSaving(true)
+      setError(null)
+      setSaved(false)
+      const payload = holesCopy.map((val, i) => (touchedCopy[i] ? val : 0))
+      const result = await submitScoreForFoursome(roundId, targetUserId, payload) as any
+      setSaving(false)
+      if (result?.error) {
+        setError(result.error)
+      } else {
+        setSaved(true)
+      }
+    }, 800)
+
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holes, touched])
 
   const adjust = (index: number, delta: number) => {
     if (readOnly) return
+    userChangedRef.current = true
     setHoles((prev) => {
       const next = [...prev]
       next[index] = Math.max(1, Math.min(20, next[index] + delta))
@@ -75,19 +98,21 @@ export function MyScoreCard({
     setError(null)
   }
 
-  const handleSave = async () => {
-    setSaving(true)
-    setError(null)
+  const setToPar = (index: number) => {
+    if (readOnly) return
+    userChangedRef.current = true
+    setHoles((prev) => {
+      const next = [...prev]
+      next[index] = HOLE_PARS[index]
+      return next
+    })
+    setTouched((prev) => {
+      const next = [...prev]
+      next[index] = true
+      return next
+    })
     setSaved(false)
-    // Send 0 for untouched holes so the server knows they're not entered
-    const payload = holes.map((val, i) => (touched[i] ? val : 0))
-    const result = await submitMyScore(roundId, payload) as any
-    setSaving(false)
-    if (result?.error) {
-      setError(result.error)
-    } else {
-      setSaved(true)
-    }
+    setError(null)
   }
 
   return (
@@ -124,18 +149,34 @@ export function MyScoreCard({
             <p className="text-4xl font-black tabular-nums text-green-200">{handicap}</p>
           </div>
           <div className="bg-green-800/50 rounded-lg py-3 px-2">
-            <p className="text-green-300 text-xs uppercase tracking-wide mb-1">Net</p>
+            <p className="text-green-300 text-xs uppercase tracking-wide mb-1">
+              {projectedNet !== null ? 'Proj. Net' : 'Net'}
+            </p>
             <p className="text-4xl font-black tabular-nums">
-              {net !== null ? net : <span className="text-2xl text-green-400">—</span>}
+              {net !== null
+                ? net
+                : projectedNet !== null
+                ? <span className="text-green-100">{projectedNet}</span>
+                : <span className="text-2xl text-green-400">—</span>}
             </p>
           </div>
         </div>
 
-        {/* Progress bar */}
+        {/* Progress bar + auto-save status */}
         <div className="mt-4">
           <div className="flex justify-between text-xs text-green-300 mb-1">
             <span>{touchedCount} of 9 holes entered</span>
-            {allTouched && <span className="text-green-200 font-medium">✓ Complete</span>}
+            <span className="text-green-200 font-medium">
+              {saving
+                ? '⏳ Saving…'
+                : error
+                ? '⚠ Save failed'
+                : saved
+                ? '✓ Saved'
+                : allTouched
+                ? '✓ Complete'
+                : null}
+            </span>
           </div>
           <div className="h-1.5 bg-green-800 rounded-full overflow-hidden">
             <div
@@ -150,7 +191,7 @@ export function MyScoreCard({
       <div className="p-4">
         {!readOnly && (
           <p className="text-xs text-gray-400 text-center mb-3">
-            Each hole starts at par — tap + or − to enter your score
+            Tap a hole to set par — use + or − to adjust
           </p>
         )}
         <div className="grid grid-cols-3 gap-3">
@@ -163,38 +204,18 @@ export function MyScoreCard({
               touched={touched[i]}
               readOnly={readOnly}
               onAdjust={(delta) => adjust(i, delta)}
+              onSetPar={() => setToPar(i)}
             />
           ))}
         </div>
       </div>
 
-      {/* ── Save action ── */}
-      {!readOnly && (
-        <div className="px-4 pb-5 pt-1">
-          {error && (
-            <div className="mb-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
-          {saved && (
-            <div className="mb-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
-              <p className="text-sm text-green-700 font-medium">✓ Score saved!</p>
-            </div>
-          )}
-          <button
-            onClick={handleSave}
-            disabled={saving || !isDirty || touchedCount === 0}
-            className="w-full py-4 rounded-xl text-lg font-bold bg-green-600 text-white
-                       hover:bg-green-700 active:scale-[0.98] transition-all
-                       disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Saving…' : 'Save Score'}
-          </button>
-          {!allTouched && touchedCount > 0 && (
-            <p className="text-center text-xs text-gray-400 mt-2">
-              You can save now and finish the remaining holes later.
-            </p>
-          )}
+      {/* ── Status / error ── */}
+      {!readOnly && error && (
+        <div className="px-4 pb-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
         </div>
       )}
 
@@ -218,6 +239,7 @@ interface HoleCellProps {
   touched: boolean
   readOnly: boolean
   onAdjust: (delta: number) => void
+  onSetPar: () => void
 }
 
 /** Label relative to par */
@@ -230,11 +252,10 @@ function relLabel(diff: number): { text: string; color: string } {
   return { text: `+${diff}`, color: 'text-red-700' }
 }
 
-function HoleCell({ hole, par, value, touched, readOnly, onAdjust }: HoleCellProps) {
+function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: HoleCellProps) {
   const diff = value - par
   const rel = relLabel(diff)
 
-  // Colour the header based on state
   const headerBg = !touched
     ? 'bg-gray-200 text-gray-500'
     : diff < 0
@@ -265,16 +286,20 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust }: HoleCellPro
         <span className="opacity-80">Par {par}</span>
       </div>
 
-      {/* Score display */}
-      <div className="text-center py-3 relative">
-        {/* Score — ghost when untouched */}
+      {/* Score display — tap to set par */}
+      <button
+        onClick={!readOnly ? onSetPar : undefined}
+        disabled={readOnly}
+        className={`w-full text-center py-3 relative ${
+          !readOnly ? 'cursor-pointer active:bg-gray-100' : 'cursor-default'
+        }`}
+        aria-label={`Set hole ${hole} to par ${par}`}
+      >
         <span className={`text-4xl font-black tabular-nums transition-all ${
           touched ? 'text-gray-900 opacity-100' : 'text-gray-300 opacity-40'
         }`}>
           {value}
         </span>
-
-        {/* Relative label — only show when touched */}
         <div className="h-4 mt-0.5">
           {touched && (
             <span className={`text-xs font-semibold ${rel.color}`}>
@@ -282,7 +307,7 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust }: HoleCellPro
             </span>
           )}
         </div>
-      </div>
+      </button>
 
       {/* +/− controls */}
       {!readOnly && (

@@ -36,7 +36,7 @@ export default async function AdminLayout({
       </header>
       <div className="flex flex-1">
         <AdminSidebar />
-        <main className="flex-1 container mx-auto px-4 py-8">
+        <main className="flex-1 container mx-auto px-4">
           {children}
         </main>
       </div>

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { loginSchema, registerSchema } from '@/lib/validators/auth'
 
@@ -71,11 +72,13 @@ export async function signout() {
 
 export async function signInWithGoogle() {
   const supabase = await createClient()
+  const headersList = await headers()
+  const origin = headersList.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/callback`,
+      redirectTo: `${origin}/auth/callback`,
     },
   })
 

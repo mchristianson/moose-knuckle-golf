@@ -313,9 +313,9 @@ export function LeaderboardTabs({
                 {currentRound.status === 'scoring' ? (
                   <Link
                     href={`/scores/${currentRound.id}`}
-                    className="text-xs bg-green-600 border border-green-500 px-3 py-1 rounded-full font-medium capitalize flex items-center gap-1.5 hover:bg-green-500 transition-colors"
+                    className="bg-white text-green-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-green-50 transition-colors shadow-sm"
                   >
-                    📋 Scoring
+                    📋 Enter Scores
                   </Link>
                 ) : (
                   <span className="text-xs bg-green-600 border border-green-500 px-3 py-1 rounded-full font-medium capitalize flex items-center gap-1.5">

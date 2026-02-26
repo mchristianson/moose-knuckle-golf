@@ -28,7 +28,7 @@ export default async function AuthenticatedLayout({
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader navItems={navItems} isLoggedIn={!!user} isAdmin={isAdmin} />
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4">
         {children}
       </main>
     </div>

@@ -18,7 +18,7 @@ export default async function PublicLayout({
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader navItems={navItems} isLoggedIn={!!user} />
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4">
         {children}
       </main>
     </div>

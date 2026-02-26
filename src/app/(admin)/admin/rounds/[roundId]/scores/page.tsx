@@ -25,6 +25,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
       team_id,
       is_sub,
       user:user_id ( id, full_name, display_name ),
+      sub:sub_id ( id, full_name ),
       team:team_id ( id, team_name, team_number )
     `)
     .in(
@@ -43,8 +44,10 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
     .select('*')
     .eq('round_id', roundId)
 
-  // Get handicaps for all players
-  const playerIds = (foursomeMembers ?? []).map((m) => m.user_id)
+  // Get handicaps for all players (filter nulls — external subs have no user_id)
+  const playerIds = (foursomeMembers ?? [])
+    .map((m) => m.user_id)
+    .filter((id): id is string => id !== null)
   const { data: handicaps } = await supabase
     .from('handicaps')
     .select('user_id, current_handicap')
@@ -70,7 +73,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
       scoreId: existing?.id ?? null,
       userId: m.user_id,
       teamId: m.team_id,
-      fullName: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
+      fullName: m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? 'Unknown',
       teamName: m.team?.team_name ?? '',
       teamNumber: m.team?.team_number ?? 0,
       handicap,
