@@ -155,7 +155,7 @@ export default function UserManualPage() {
               <span className="text-lg">🎯</span>
               <div>
                 <span className="font-medium">Score Entry Open</span>
-                <p className="text-gray-600 text-xs mt-0.5">Appears when a round is active and your scores are ready to enter.</p>
+                <p className="text-gray-600 text-xs mt-0.5">Appears when a round is active and you are in a foursome. You can enter scores for yourself and your foursome-mates.</p>
               </div>
             </div>
             <div className="px-4 py-3 flex gap-3">
@@ -266,22 +266,46 @@ export default function UserManualPage() {
       {/* Section 8: Scoring */}
       <section id="scoring" className="mb-12">
         <h2 className="text-2xl font-bold text-green-800 mb-4 flex items-center gap-2">
-          <span>🖊️</span> Entering Your Score
+          <span>🖊️</span> Entering Scores
         </h2>
         <p className="text-gray-700 mb-4">
-          After the round, the admin opens scoring. Your Dashboard will show an <strong>"Enter My Score"</strong> button.
-          You can only enter scores if you were the declared golfer for your team in that round.
+          After the round, the admin opens scoring. Your Dashboard will show an <strong>"Enter My Score"</strong> button
+          if you are in a foursome for that round. The score entry page shows <strong>all four players in your foursome</strong> —
+          you can enter or update scores for any of them, not just yourself.
         </p>
+
+        <div className="border rounded-lg overflow-hidden mb-4">
+          <div className="bg-gray-100 px-4 py-2 border-b">
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Switching Between Players</p>
+          </div>
+          <div className="px-4 py-4 text-sm text-gray-700">
+            <p className="mb-3">
+              At the top of the score entry page, a row of buttons shows each player in your foursome.
+              Your own name is marked <span className="text-gray-400 text-xs font-medium">(me)</span>.
+              Click any player's button to load their scorecard.
+            </p>
+            <div className="flex gap-1 text-xs font-medium">
+              <span className="bg-green-700 text-white px-3 py-1.5 rounded-l-lg">Matty Ice <span className="text-green-200">(me)</span></span>
+              <span className="-ml-px bg-white border border-gray-300 text-gray-700 px-3 py-1.5">Skinny</span>
+              <span className="-ml-px bg-white border border-gray-300 text-gray-700 px-3 py-1.5">Grimmie</span>
+              <span className="-ml-px bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-r-lg">Erin 🔒</span>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              A <strong>🔒</strong> next to a name means that player's score has been locked and cannot be edited.
+            </p>
+          </div>
+        </div>
+
         <div className="border rounded-lg p-5 bg-white mb-4">
-          <h3 className="font-semibold text-gray-800 mb-3">The Score Entry Form</h3>
+          <h3 className="font-semibold text-gray-800 mb-3">The Scorecard</h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="font-medium text-gray-700">9 Holes</p>
-              <p className="text-gray-500 text-xs mt-1">Enter your gross score for each hole (1–9).</p>
+              <p className="text-gray-500 text-xs mt-1">Enter the gross score for each hole (1–9).</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="font-medium text-gray-700">Handicap</p>
-              <p className="text-gray-500 text-xs mt-1">Shown automatically — set by your admin.</p>
+              <p className="text-gray-500 text-xs mt-1">Shown automatically — set by the admin for each player.</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="font-medium text-gray-700">Gross Score</p>
@@ -289,12 +313,19 @@ export default function UserManualPage() {
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="font-medium text-gray-700">Net Score</p>
-              <p className="text-gray-500 text-xs mt-1">Gross minus handicap — this is what determines your finish position.</p>
+              <p className="text-gray-500 text-xs mt-1">Gross minus handicap — this determines finish position and points.</p>
             </div>
           </div>
         </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm mb-4">
+          <p className="font-semibold text-blue-800 mb-1">External subs</p>
+          <p className="text-blue-900">If a foursome includes an external substitute who doesn't have a league account,
+          only an admin can enter their score.</p>
+        </div>
+
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm">
-          <p className="font-semibold text-green-800 mb-1">After submitting scores</p>
+          <p className="font-semibold text-green-800 mb-1">After scores are submitted</p>
           <p className="text-green-900">Once the admin closes scoring and finalizes the round, points are calculated
           and the season leaderboard updates automatically.</p>
         </div>

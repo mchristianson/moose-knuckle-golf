@@ -11,6 +11,7 @@ interface StandingRow {
   team_number: number
   total_points: number
   rounds_played: number
+  avg_net_score: number | null
 }
 
 interface RoundPointsRow {
@@ -106,26 +107,37 @@ function shortName(full: string): string {
 }
 
 
-function scoreToPar(holeScores: number[], handicap: number): number | null {
-  const played = holeScores.map((s, i) => ({ score: s, hole: i })).filter(h => h.score > 0)
-  if (played.length === 0) return null
-
-  // How many strokes does this player get? (handicap = total strokes over 9 holes)
-  // Distribute strokes: each hole whose SI ≤ handicap gets 1 extra stroke;
-  // if handicap > 9, each hole gets at least 1 and holes with SI ≤ (handicap - 9) get 2.
-  const strokesPerHole = HOLE_PARS.map((_, i) => {
+function strokesPerHoleForHandicap(handicap: number): number[] {
+  return HOLE_PARS.map((_, i) => {
     const si = STROKE_INDEX[i]
     if (handicap >= 9) return si <= (handicap - 9) ? 2 : 1
     return si <= handicap ? 1 : 0
   })
-
-  let scoreToPar = 0
-  for (const { score, hole } of played) {
-    const netScore = score - strokesPerHole[hole]
-    scoreToPar += netScore - HOLE_PARS[hole]
-  }
-  return scoreToPar
 }
+
+function scoreToPar(holeScores: number[], handicap: number): number | null {
+  const played = holeScores.map((s, i) => ({ score: s, hole: i })).filter(h => h.score > 0)
+  if (played.length === 0) return null
+
+  const strokes = strokesPerHoleForHandicap(handicap)
+  let total = 0
+  for (const { score, hole } of played) {
+    total += (score - strokes[hole]) - HOLE_PARS[hole]
+  }
+  return total
+}
+
+function grossToPar(holeScores: number[]): number | null {
+  const played = holeScores.map((s, i) => ({ score: s, hole: i })).filter(h => h.score > 0)
+  if (played.length === 0) return null
+
+  let total = 0
+  for (const { score, hole } of played) {
+    total += score - HOLE_PARS[hole]
+  }
+  return total
+}
+
 
 function formatScoreToPar(score: number | null, holesPlayed: number): string {
   if (score === null || holesPlayed === 0) return '—'
@@ -163,11 +175,12 @@ export function LeaderboardTabs({
         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
     }`
 
-  // Compute score-to-par for each player and sort
+  // Compute score-to-par and running net score for each player and sort
   const scoredPlayers = currentRoundScores.map((s) => {
     const holesPlayed = s.hole_scores.filter(h => h > 0).length
     const toPar = scoreToPar(s.hole_scores, s.handicap_at_time ?? 0)
-    return { ...s, holesPlayed, toPar }
+    const gross = grossToPar(s.hole_scores)
+    return { ...s, holesPlayed, toPar, gross }
   }).sort((a, b) => {
     // Players with more holes played sort before those with none
     if (a.holesPlayed === 0 && b.holesPlayed > 0) return 1
@@ -223,6 +236,7 @@ export function LeaderboardTabs({
                     <th className="text-left px-6 py-3 font-medium text-gray-600 w-16">Rank</th>
                     <th className="text-left px-6 py-3 font-medium text-gray-600">Team</th>
                     <th className="text-center px-6 py-3 font-medium text-gray-600">Rounds</th>
+                    <th className="text-center px-6 py-3 font-medium text-gray-600">Avg Net</th>
                     <th className="text-center px-6 py-3 font-medium text-gray-600">Points</th>
                   </tr>
                 </thead>
@@ -232,6 +246,9 @@ export function LeaderboardTabs({
                       <td className="px-6 py-4 font-bold text-lg text-center">{medal(idx)}</td>
                       <td className="px-6 py-4 font-semibold">{row.team_name}</td>
                       <td className="px-6 py-4 text-center text-gray-600">{row.rounds_played}</td>
+                      <td className="px-6 py-4 text-center text-gray-600">
+                        {row.avg_net_score != null ? row.avg_net_score : '—'}
+                      </td>
                       <td className="px-6 py-4 text-center font-bold text-green-700 text-lg">{row.total_points}</td>
                     </tr>
                   ))}
@@ -340,16 +357,18 @@ export function LeaderboardTabs({
               ) : (
                 <>
                   {/* Column headers */}
-                  <div className="grid grid-cols-[1fr_auto_auto] items-center px-4 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <div className="grid grid-cols-[1fr_auto_auto_auto] items-center px-4 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     <span>Golfer</span>
-                    <span className="w-16 text-center">Score</span>
+                    <span className="w-14 text-center">Gross</span>
+                    <span className="w-14 text-center">Net</span>
                     <span className="w-12 text-center">Thru</span>
                   </div>
 
                   {/* Player rows */}
                   <div className="divide-y">
                     {scoredPlayers.map((s, idx) => {
-                      const scoreStr = formatScoreToPar(s.toPar, s.holesPlayed)
+                      const netStr = formatScoreToPar(s.toPar, s.holesPlayed)
+                      const grossStr = formatScoreToPar(s.gross, s.holesPlayed)
                       const thruStr = s.holesPlayed === 0 ? '—' : s.holesPlayed === 9 ? 'F' : `${s.holesPlayed}`
                       const isLeader = idx === 0 && s.holesPlayed > 0
                       const name = shortName(s.full_name)
@@ -357,7 +376,7 @@ export function LeaderboardTabs({
                       return (
                         <div
                           key={s.user_id}
-                          className={`grid grid-cols-[1fr_auto_auto] items-center px-4 py-3.5 ${
+                          className={`grid grid-cols-[1fr_auto_auto_auto] items-center px-4 py-3.5 ${
                             isLeader ? 'bg-yellow-50' : 'hover:bg-gray-50'
                           }`}
                         >
@@ -373,9 +392,14 @@ export function LeaderboardTabs({
                             </div>
                           </div>
 
-                          {/* Score to par */}
-                          <div className={`w-16 text-center font-black text-xl tabular-nums ${scoreColor(s.toPar)}`}>
-                            {scoreStr}
+                          {/* Gross score to par */}
+                          <div className={`w-14 text-center font-semibold text-sm tabular-nums ${scoreColor(s.gross)}`}>
+                            {grossStr}
+                          </div>
+
+                          {/* Net score to par */}
+                          <div className={`w-14 text-center font-black text-xl tabular-nums ${scoreColor(s.toPar)}`}>
+                            {netStr}
                           </div>
 
                           {/* Through */}
@@ -397,7 +421,7 @@ export function LeaderboardTabs({
                     <span><span className="font-semibold text-red-600">−#</span> Under par</span>
                     <span><span className="font-semibold text-green-700">E</span> Even</span>
                     <span><span className="font-semibold text-gray-900">+#</span> Over par</span>
-                    <span className="ml-auto"><span className="font-semibold">F</span> = Finished · Scores adjusted for handicap</span>
+                    <span className="ml-auto"><span className="font-semibold">F</span> = Finished · Net adjusted for handicap</span>
                   </div>
                 </>
               )}

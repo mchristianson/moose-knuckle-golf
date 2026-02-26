@@ -22,6 +22,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
     .from('foursome_members')
     .select(`
       user_id,
+      sub_id,
       team_id,
       is_sub,
       user:user_id ( id, full_name, display_name ),
@@ -63,6 +64,8 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
 
   // Build rows
   const rows = (foursomeMembers ?? []).map((m: any) => {
+    // External subs have no user_id — use their sub_id as the unique identifier
+    const rowUserId: string = m.user_id ?? m.sub_id
     const existing = scoreMap[m.user_id]
     const handicap = handicapMap[m.user_id] ?? 0
     const holeScores: number[] = existing?.hole_scores ?? Array(9).fill(0)
@@ -71,7 +74,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
 
     return {
       scoreId: existing?.id ?? null,
-      userId: m.user_id,
+      userId: rowUserId,
       teamId: m.team_id,
       fullName: m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? 'Unknown',
       teamName: m.team?.team_name ?? '',
