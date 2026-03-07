@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { formatRoundDate } from '@/lib/utils/date'
+import { Button } from '@/components/Button'
+import { Card } from '@/components/Card'
+import { DashboardRoundCard } from '@/components/dashboard/DashboardRoundCard'
+import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection'
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -140,170 +144,136 @@ export default async function DashboardPage() {
     (r) => !upcomingIds.has(r.id) && scoringRoundIds.has(r.id)
   )
 
+  // Separate rounds into active (scoring open) and upcoming (future)
+  const activeScoringSectionRounds = (activeRounds ?? []).filter(
+    (r) => scoringRoundIds.has(r.id)
+  )
+  const futureUpcomingRounds = (upcomingRounds ?? []).filter(
+    (r) => !activeScoringSectionRounds.some((ar) => ar.id === r.id)
+  )
+  const pastRounds = (upcomingRounds ?? []).filter((r) => r.status === 'completed')
+
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+      {/* Welcome Section - Compact */}
+      <Card className="mb-lg">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-h2 mb-xs">
+              Welcome, {(profile?.display_name ?? profile?.full_name) || 'Golfer'}!
+            </h1>
+            {profile?.is_admin && (
+              <span className="inline-flex items-center bg-primary text-white text-xs font-medium px-3 py-1 rounded-full mt-2">
+                Admin
+              </span>
+            )}
+          </div>
+          <button className="text-2xl hover:opacity-70 transition-opacity" aria-label="Edit profile">
+            ✏️
+          </button>
+        </div>
+      </Card>
 
-      <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <h2 className="text-xl font-semibold mb-2">
-          Welcome, {(profile?.display_name ?? profile?.full_name) || 'Golfer'}!
-        </h2>
-        <p className="text-gray-600 mb-4">{profile?.email}</p>
-        {profile?.is_admin && (
-          <span className="inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">
-            Admin
-          </span>
-        )}
-      </div>
-
-      {/* Scoring-open rounds not in the upcoming list (e.g. today's round already in progress) */}
-      {extraActiveRounds.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-4">Score Entry Open</h2>
-          <div className="space-y-4">
-            {extraActiveRounds.map((round: any) => {
-              const roundDate = formatRoundDate(round.round_date)
-              return (
-                <div key={round.id} className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-lg font-semibold">Round {round.round_number}</h3>
-                      <p className="text-gray-600">{roundDate}</p>
-                    </div>
-                    <span className="inline-block bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">
-                      {round.status === 'in_progress' ? '⛳ In Progress' : '📋 Scoring'}
-                    </span>
-                  </div>
-                  <div className="mt-4">
-                    <Link
-                      href={`/scores/${round.id}`}
-                      className="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium"
-                    >
-                      Enter My Score
-                    </Link>
-                  </div>
-                </div>
-              )
-            })}
+      {/* Active/Scoring Rounds - Highest Priority */}
+      {activeScoringSectionRounds.length > 0 && (
+        <div className="mb-lg">
+          <h2 className="text-h2 mb-md flex items-center gap-2">
+            <span>📌</span>
+            <span>Round in Play</span>
+          </h2>
+          <div className="space-y-md">
+            {activeScoringSectionRounds.map((round: any) => (
+              <DashboardRoundCard
+                key={round.id}
+                round={round}
+                availability={myAvailability?.find(a => a.round_id === round.id)}
+                declarations={declarationsByRound[round.id]}
+                canEnterScore={scoringRoundIds.has(round.id)}
+              />
+            ))}
           </div>
         </div>
       )}
 
-      {upcomingRounds && upcomingRounds.length > 0 ? (
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Upcoming Rounds</h2>
-          <div className="space-y-4">
-            {upcomingRounds.map((round: any) => {
-              const availability = myAvailability?.find(a => a.round_id === round.id);
-              const roundDate = formatRoundDate(round.round_date);
-              const scoringOpen = ['in_progress', 'scoring'].includes(round.status)
-              const canEnterScore = scoringOpen && scoringRoundIds.has(round.id)
-              const roundEnded = round.status === 'completed'
-
-              return (
-                <div key={round.id} className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold">Round {round.round_number}</h3>
-                      <p className="text-gray-600">{roundDate}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 justify-end">
-                      {scoringOpen && (
-                        <span className="inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-3 py-1 rounded-full">
-                          {round.status === 'in_progress' ? '⛳ In Progress' : '📋 Scoring'}
-                        </span>
-                      )}
-                      {roundEnded && (
-                        <span className="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">
-                          ✓ Completed
-                        </span>
-                      )}
-                      {availability && !roundEnded && (
-                        <span className={`inline-flex items-center text-xs font-medium px-3 py-1 rounded-full ${
-                          availability.status === 'in'
-                            ? 'bg-green-100 text-green-800'
-                            : availability.status === 'out'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {availability.status === 'in' ? '✓ Playing' :
-                           availability.status === 'out' ? '✗ Not Playing' :
-                           '⚠ Undeclared'}
-                        </span>
-                      )}
-                    </div>
+      {/* Extra Active Rounds (today's scoring that wasn't in upcoming) */}
+      {extraActiveRounds.length > 0 && !activeScoringSectionRounds.some((r) => extraActiveRounds.some((e) => e.id === r.id)) && (
+        <div className="mb-lg">
+          <h2 className="text-h2 mb-md">Score Entry Open</h2>
+          <div className="space-y-md">
+            {extraActiveRounds.map((round: any) => (
+              <Card key={round.id} variant="elevated" className="border-l-4 border-l-success">
+                <div className="flex justify-between items-start gap-md mb-md">
+                  <div>
+                    <h3 className="text-h4 mb-xs">Round {round.round_number}</h3>
+                    <p className="text-small text-neutral-700">{formatRoundDate(round.round_date)}</p>
                   </div>
-                  {/* Declaration Status */}
-                  {!roundEnded && ['availability_open', 'foursomes_set'].includes(round.status) && declarationsByRound[round.id] && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
-                      <div>
-                        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                          Declared ({declarationsByRound[round.id].declared.length}/{declarationsByRound[round.id].declared.length + declarationsByRound[round.id].notDeclared.length})
-                        </p>
-                        {declarationsByRound[round.id].declared.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {declarationsByRound[round.id].declared.map((team: any) => (
-                              <span key={team.teamId} className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                                ✓ T{team.teamNumber}: {team.golferName}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-500 italic">No teams have declared yet</p>
-                        )}
-                      </div>
-                      {declarationsByRound[round.id].notDeclared.length > 0 && (
-                        <div>
-                          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                            Not Declared ({declarationsByRound[round.id].notDeclared.length}/{declarationsByRound[round.id].declared.length + declarationsByRound[round.id].notDeclared.length})
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {declarationsByRound[round.id].notDeclared.map((team: any) => (
-                              <span key={team.teamId} className="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
-                                ✗ T{team.teamNumber}: {team.teamName}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {availability && availability.status === 'undeclared' && !roundEnded && (
-                      <Link
-                        href={`/availability/${round.id}`}
-                        className="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-                      >
-                        Declare Availability
-                      </Link>
-                    )}
-                    {canEnterScore && (
-                      <Link
-                        href={`/scores/${round.id}`}
-                        className="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium"
-                      >
-                        Enter My Score
-                      </Link>
-                    )}
-                    {!roundEnded && (
-                      <Link
-                        href={`/rounds/${round.id}`}
-                        className="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                      >
-                        Declare Golfers
-                      </Link>
-                    )}
-                  </div>
+                  <span className="inline-flex items-center bg-success text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
+                    {round.status === 'in_progress' ? '⛳ In Progress' : '📋 Scoring'}
+                  </span>
                 </div>
-              );
-            })}
+                <Button variant="primary" asChild>
+                  <Link href={`/scores/${round.id}`}>
+                    Enter My Score
+                  </Link>
+                </Button>
+              </Card>
+            ))}
           </div>
         </div>
-      ) : (
-        <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-          <p className="text-gray-600">No upcoming rounds scheduled yet</p>
-        </div>
+      )}
+
+      {/* Upcoming Rounds - Collapsible */}
+      {futureUpcomingRounds.length > 0 ? (
+        <CollapsibleSection
+          title="Upcoming Rounds"
+          count={futureUpcomingRounds.length}
+          defaultOpen={futureUpcomingRounds.length === 1}
+        >
+          <div className="space-y-md">
+            {futureUpcomingRounds.map((round: any) => (
+              <DashboardRoundCard
+                key={round.id}
+                round={round}
+                availability={myAvailability?.find(a => a.round_id === round.id)}
+                declarations={declarationsByRound[round.id]}
+                canEnterScore={scoringRoundIds.has(round.id)}
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
+      ) : null}
+
+      {/* Past Rounds - Collapsible */}
+      {pastRounds.length > 0 && (
+        <CollapsibleSection
+          title="Past Rounds"
+          count={pastRounds.length}
+          defaultOpen={false}
+        >
+          <div className="space-y-md">
+            {pastRounds.map((round: any) => (
+              <DashboardRoundCard
+                key={round.id}
+                round={round}
+                availability={myAvailability?.find(a => a.round_id === round.id)}
+                declarations={declarationsByRound[round.id]}
+                canEnterScore={false}
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* Empty State */}
+      {upcomingRounds?.length === 0 && activeRounds?.length === 0 && (
+        <Card className="text-center py-lg">
+          <p className="text-neutral-700 mb-md">No upcoming rounds scheduled yet</p>
+          {profile?.is_admin && (
+            <Button variant="primary" asChild>
+              <Link href="/admin/rounds">Create a Round</Link>
+            </Button>
+          )}
+        </Card>
       )}
     </div>
   );

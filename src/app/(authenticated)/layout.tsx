@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { SiteHeader } from '@/components/layout/site-header'
+import { ActionBar } from '@/components/layout/ActionBar'
 
 export default async function AuthenticatedLayout({
   children,
@@ -28,9 +29,10 @@ export default async function AuthenticatedLayout({
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader navItems={navItems} isLoggedIn={!!user} isAdmin={isAdmin} />
-      <main className="flex-1 container mx-auto px-4">
+      <main className="flex-1 container mx-auto px-4 py-6">
         {children}
       </main>
+      <ActionBar />
     </div>
   )
 }

@@ -8,6 +8,7 @@ export interface ButtonProps
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
+  asChild?: boolean;
   children?: React.ReactNode;
 }
 
@@ -34,6 +35,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isLoading = false,
       disabled,
       className = "",
+      asChild = false,
       children,
       ...props
     },
@@ -46,6 +48,17 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const sizeStyle = sizeStyles[size];
 
     const combinedClassName = `${baseStyles} ${variantStyle} ${sizeStyle} ${className}`.trim();
+
+    // If asChild is true, clone the child element and apply button classes
+    if (asChild && React.isValidElement(children)) {
+      const child = children as React.ReactElement<any>;
+      const childClassName = child.props?.className || "";
+      const newClassName = `${combinedClassName} ${childClassName}`.trim();
+
+      return React.cloneElement(child, {
+        className: newClassName,
+      } as any);
+    }
 
     return (
       <button
