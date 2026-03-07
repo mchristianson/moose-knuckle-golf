@@ -5,6 +5,22 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Design System Colors */
+  --color-primary: #1B4D2E;
+  --color-primary-dark: #152B21;
+  --color-primary-light: #2D6A45;
+  --color-secondary: #2B8A8A;
+  --color-secondary-dark: #1F6366;
+  --color-secondary-light: #41A8A8;
+  --color-success: #16A34A;
+  --color-warning: #EAB308;
+  --color-danger: #DC2626;
+  --color-neutral-50: #F5F1E8;
+  --color-neutral-100: #F3F4F6;
+  --color-neutral-400: #9CA3AF;
+  --color-neutral-700: #374151;
+  --color-neutral-900: #111827;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -17,11 +33,33 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Typography utilities */
+  .text-h1 {
+    @apply text-h1;
+  }
+  .text-h2 {
+    @apply text-h2;
+  }
+  .text-h3 {
+    @apply text-h3;
+  }
+  .text-h4 {
+    @apply text-h4;
+  }
+  .text-body {
+    @apply text-body;
+  }
+  .text-small {
+    @apply text-small;
+  }
+  .text-caption {
+    @apply text-caption;
   }
 }
