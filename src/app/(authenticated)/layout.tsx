@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { SiteHeader } from '@/components/layout/site-header'
-import { ActionBar } from '@/components/layout/ActionBar'
+import { AppBottomNav } from '@/components/layout/app-bottom-nav'
 
 export default async function AuthenticatedLayout({
   children,
@@ -46,7 +46,7 @@ export default async function AuthenticatedLayout({
       <main className="flex-1 container mx-auto px-4 py-6">
         {children}
       </main>
-      <ActionBar currentRoundId={currentRoundId} />
+      <AppBottomNav currentRoundId={currentRoundId} />
     </div>
   )
 }

@@ -441,12 +441,20 @@ export function LeaderboardTabs({
             <div className="space-y-8">
               {/* Next Round Header */}
               <div className="bg-white sm:rounded-lg shadow overflow-hidden">
-                <div className="bg-blue-600 text-white px-4 py-4">
-                  <p className="text-blue-300 text-xs font-medium uppercase tracking-widest">Round {nextRound.round_number}</p>
-                  <p className="font-semibold text-lg">{formatRoundDate(nextRound.round_date)}</p>
-                  {nextRound.tee_time && (
-                    <p className="text-blue-200 text-sm mt-1">🕐 Tee time: {formatTeeTime(nextRound.tee_time)}</p>
-                  )}
+                <div className="bg-blue-600 text-white px-4 py-4 flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="text-blue-300 text-xs font-medium uppercase tracking-widest">Round {nextRound.round_number}</p>
+                    <p className="font-semibold text-lg">{formatRoundDate(nextRound.round_date)}</p>
+                    {nextRound.tee_time && (
+                      <p className="text-blue-200 text-sm mt-1">🕐 Tee time: {formatTeeTime(nextRound.tee_time)}</p>
+                    )}
+                  </div>
+                  <Link
+                    href={`/availability/${nextRound.id}`}
+                    className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm whitespace-nowrap shrink-0 ml-4"
+                  >
+                    📋 Declare
+                  </Link>
                 </div>
               </div>
 
