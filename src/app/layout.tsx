@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Moose Knuckle Golf League",
   description: "Manage your golf league with ease",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

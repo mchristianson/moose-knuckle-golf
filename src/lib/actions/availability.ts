@@ -108,7 +108,9 @@ export async function declareAvailability(roundId: string, status: 'in' | 'out')
 
   revalidatePath(`/availability/${roundId}`)
   revalidatePath('/dashboard')
-  return { success: true }
+  revalidatePath(`/rounds/${roundId}`)
+
+  redirect('/dashboard?declared=true')
 }
 
 export async function adminOverrideAvailability(availabilityId: string, status: 'in' | 'out') {

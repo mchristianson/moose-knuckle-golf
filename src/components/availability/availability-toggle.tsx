@@ -11,18 +11,17 @@ interface AvailabilityToggleProps {
 }
 
 export function AvailabilityToggle({ roundId, currentStatus }: AvailabilityToggleProps) {
-  const [status, setStatus] = useState(currentStatus)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleToggle = async (newStatus: 'in' | 'out') => {
     setIsLoading(true)
-    setStatus(newStatus)
-    const result = await declareAvailability(roundId, newStatus)
-    if (result?.error) {
-      alert(result.error)
-      setStatus(currentStatus)
+    try {
+      await declareAvailability(roundId, newStatus)
+      // Server action will redirect on success
+    } catch (error) {
+      setIsLoading(false)
+      alert(error instanceof Error ? error.message : 'Failed to declare availability')
     }
-    setIsLoading(false)
   }
 
   return (
@@ -31,24 +30,24 @@ export function AvailabilityToggle({ roundId, currentStatus }: AvailabilityToggl
         onClick={() => handleToggle('in')}
         disabled={isLoading}
         className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
-          status === 'in'
+          currentStatus === 'in'
             ? 'bg-green-600 text-white shadow-md'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
         }`}
       >
-        <Icon icon={CheckIcon} size="sm" className={status === 'in' ? 'text-white' : 'text-gray-700'} />
+        <Icon icon={CheckIcon} size="sm" className={currentStatus === 'in' ? 'text-white' : 'text-gray-700'} />
         I'm In
       </button>
       <button
         onClick={() => handleToggle('out')}
         disabled={isLoading}
         className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
-          status === 'out'
+          currentStatus === 'out'
             ? 'bg-red-600 text-white shadow-md'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
         }`}
       >
-        <Icon icon={XMarkIcon} size="sm" className={status === 'out' ? 'text-white' : 'text-gray-700'} />
+        <Icon icon={XMarkIcon} size="sm" className={currentStatus === 'out' ? 'text-white' : 'text-gray-700'} />
         I'm Out
       </button>
     </div>

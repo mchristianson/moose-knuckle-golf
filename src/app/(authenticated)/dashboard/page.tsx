@@ -6,9 +6,14 @@ import { Card } from '@/components/Card'
 import { Icon } from '@/components/Icon'
 import { DashboardRoundCard } from '@/components/dashboard/DashboardRoundCard'
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection'
-import { PencilIcon, MapPinIcon, FlagIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline'
+import { PencilIcon, MapPinIcon, FlagIcon, ClipboardDocumentListIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ declared?: string }>;
+}) {
+  const { declared } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -157,6 +162,16 @@ export default async function DashboardPage() {
 
   return (
     <div>
+      {/* Success Message */}
+      {declared && (
+        <Card variant="elevated" className="mb-lg border-l-4 border-l-success bg-green-50">
+          <div className="flex items-center gap-2">
+            <Icon icon={CheckCircleIcon} size="md" className="text-success" />
+            <p className="text-success font-medium">Availability declared successfully!</p>
+          </div>
+        </Card>
+      )}
+
       {/* Welcome Section - Compact */}
       <Card className="mb-lg">
         <div className="flex items-start justify-between">
