@@ -106,6 +106,35 @@ export async function declareAvailability(roundId: string, status: 'in' | 'out')
     return { error: error.message }
   }
 
+  // If declaring "in", automatically set as team's golfer
+  // If declaring "out", clear team's declaration
+  if (status === 'in') {
+    const { error: declError } = await supabase
+      .from('round_team_declarations')
+      .upsert(
+        {
+          round_id: roundId,
+          team_id: availability.team_id,
+          declared_golfer_id: user.id,
+          declared_by: user.id,
+          declared_at: new Date().toISOString(),
+        },
+        { onConflict: 'round_id,team_id' }
+      )
+
+    if (declError) {
+      return { error: `Availability updated but failed to set team golfer: ${declError.message}` }
+    }
+  } else if (status === 'out') {
+    // Clear the team's declaration if this user was the declared golfer
+    await supabase
+      .from('round_team_declarations')
+      .delete()
+      .eq('round_id', roundId)
+      .eq('team_id', availability.team_id)
+      .eq('declared_golfer_id', user.id)
+  }
+
   revalidatePath(`/availability/${roundId}`)
   revalidatePath('/dashboard')
   revalidatePath(`/rounds/${roundId}`)

@@ -19,6 +19,10 @@ export function AvailabilityToggle({ roundId, currentStatus }: AvailabilityToggl
       await declareAvailability(roundId, newStatus)
       // Server action will redirect on success
     } catch (error) {
+      // Ignore NEXT_REDIRECT error (it's intentional for redirect on success)
+      if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+        return
+      }
       setIsLoading(false)
       alert(error instanceof Error ? error.message : 'Failed to declare availability')
     }
