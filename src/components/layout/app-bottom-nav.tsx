@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { Icon } from '@/components/Icon'
+import { TrophyIcon, ChartBarIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline'
 
 interface AppBottomNavProps {
   currentRoundId?: string
@@ -17,7 +19,7 @@ export function AppBottomNav({ currentRoundId }: AppBottomNavProps) {
             href="/leaderboard"
             className="flex-1 flex items-center justify-center text-sm font-medium text-secondary hover:bg-neutral-50 transition-colors active:bg-neutral-100"
           >
-            <span className="text-lg mr-1">🏆</span>
+            <Icon icon={TrophyIcon} size="md" className="mr-1" />
             Leaderboard
           </Link>
 
@@ -27,7 +29,7 @@ export function AppBottomNav({ currentRoundId }: AppBottomNavProps) {
               href={`/scores/${currentRoundId}`}
               className="flex-1 flex items-center justify-center text-sm font-medium text-primary hover:bg-neutral-50 transition-colors active:bg-neutral-100 border-l border-r border-neutral-100"
             >
-              <span className="text-lg mr-1">📊</span>
+              <Icon icon={ChartBarIcon} size="md" className="mr-1" />
               Scoring
             </Link>
           ) : (
@@ -36,7 +38,7 @@ export function AppBottomNav({ currentRoundId }: AppBottomNavProps) {
               className="flex-1 flex items-center justify-center text-sm font-medium text-neutral-400 cursor-not-allowed border-l border-r border-neutral-100"
               title="No active round"
             >
-              <span className="text-lg mr-1">📊</span>
+              <Icon icon={ChartBarIcon} size="md" className="mr-1" />
               Scoring
             </button>
           )}
@@ -46,7 +48,7 @@ export function AppBottomNav({ currentRoundId }: AppBottomNavProps) {
             href="/dashboard"
             className="flex-1 flex items-center justify-center text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors active:bg-neutral-100"
           >
-            <span className="text-lg mr-1">📋</span>
+            <Icon icon={ClipboardDocumentListIcon} size="md" className="mr-1" />
             Dashboard
           </Link>
         </div>

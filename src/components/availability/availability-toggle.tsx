@@ -2,6 +2,8 @@
 
 import { declareAvailability } from '@/lib/actions/availability'
 import { useState } from 'react'
+import { Icon } from '@/components/Icon'
+import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface AvailabilityToggleProps {
   roundId: string
@@ -28,24 +30,26 @@ export function AvailabilityToggle({ roundId, currentStatus }: AvailabilityToggl
       <button
         onClick={() => handleToggle('in')}
         disabled={isLoading}
-        className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all disabled:opacity-50 ${
+        className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
           status === 'in'
             ? 'bg-green-600 text-white shadow-md'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
         }`}
       >
-        ✓ I'm In
+        <Icon icon={CheckIcon} size="sm" className={status === 'in' ? 'text-white' : 'text-gray-700'} />
+        I'm In
       </button>
       <button
         onClick={() => handleToggle('out')}
         disabled={isLoading}
-        className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all disabled:opacity-50 ${
+        className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
           status === 'out'
             ? 'bg-red-600 text-white shadow-md'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
         }`}
       >
-        ✗ I'm Out
+        <Icon icon={XMarkIcon} size="sm" className={status === 'out' ? 'text-white' : 'text-gray-700'} />
+        I'm Out
       </button>
     </div>
   )

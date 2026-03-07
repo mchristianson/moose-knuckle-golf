@@ -2,17 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Icon } from "@/components/Icon";
+import {
+  ChartBarIcon,
+  FlagIcon,
+  CalendarIcon,
+  UserIcon,
+  UsersIcon,
+  ClipboardDocumentListIcon,
+  TrophyIcon,
+  BookOpenIcon,
+} from "@heroicons/react/24/outline";
 
 const adminLinks = [
-  { href: "/admin", label: "Dashboard", icon: "📊" },
-  { href: "/admin/teams", label: "Teams", icon: "⛳" },
-  { href: "/admin/rounds", label: "Rounds", icon: "📅" },
-  { href: "/admin/handicaps", label: "Handicaps", icon: "🎯" },
-  { href: "/admin/subs", label: "Subs", icon: "👥" },
-  { href: "/admin/users", label: "Users", icon: "👤" },
-  { href: "/admin/audit-log", label: "Audit Log", icon: "📝" },
-  { href: "/leaderboard", label: "Leaderboard", icon: "🏆" },
-  { href: "/admin-manual", label: "Admin Manual", icon: "📖" },
+  { href: "/admin", label: "Dashboard", icon: ChartBarIcon },
+  { href: "/admin/teams", label: "Teams", icon: FlagIcon },
+  { href: "/admin/rounds", label: "Rounds", icon: CalendarIcon },
+  { href: "/admin/handicaps", label: "Handicaps", icon: FlagIcon },
+  { href: "/admin/subs", label: "Subs", icon: UsersIcon },
+  { href: "/admin/users", label: "Users", icon: UserIcon },
+  { href: "/admin/audit-log", label: "Audit Log", icon: ClipboardDocumentListIcon },
+  { href: "/leaderboard", label: "Leaderboard", icon: TrophyIcon },
+  { href: "/admin-manual", label: "Admin Manual", icon: BookOpenIcon },
 ];
 
 export function AdminSidebar() {
@@ -35,7 +46,7 @@ export function AdminSidebar() {
                 }
               `}
             >
-              <span className="text-lg">{link.icon}</span>
+              <Icon icon={link.icon} size="md" />
               <span className="text-sm">{link.label}</span>
             </Link>
           );

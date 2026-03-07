@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { signout } from '@/lib/actions/auth'
+import { Icon } from '@/components/Icon'
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface NavItem {
   href: string
@@ -85,13 +87,9 @@ export function SiteHeader({ navItems, isLoggedIn, isAdmin }: SiteHeaderProps) {
             aria-label="Toggle menu"
           >
             {menuOpen ? (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon icon={XMarkIcon} size="sm" />
             ) : (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              <Icon icon={Bars3Icon} size="sm" />
             )}
           </button>
         </div>

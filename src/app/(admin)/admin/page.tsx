@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
+import { SparklesIcon } from "@heroicons/react/24/outline";
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
@@ -51,7 +53,10 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h2 className="font-semibold text-blue-900 mb-2">🚀 Getting Started</h2>
+        <h2 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+          <Icon icon={SparklesIcon} size="sm" className="text-blue-900" />
+          Getting Started
+        </h2>
         <ol className="list-decimal list-inside space-y-2 text-blue-800">
           <li>Create 8 teams in the <Link href="/admin/teams" className="underline">Teams</Link> section</li>
           <li>Assign 1-2 golfers to each team</li>

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { formatRoundDate } from "@/lib/utils/date";
+import { Icon } from "@/components/Icon";
+import { FlagIcon, ClipboardDocumentListIcon, CheckIcon, ClockIcon, CalendarIcon, ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 interface DashboardRoundCardProps {
   round: any;
@@ -10,17 +12,18 @@ interface DashboardRoundCardProps {
   canEnterScore: boolean;
 }
 
-const STATUS_BADGE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  in_progress: { bg: "bg-success", text: "text-white", label: "⛳ Playing" },
-  scoring: { bg: "bg-success", text: "text-white", label: "📋 Scoring" },
-  completed: { bg: "bg-blue-500", text: "text-white", label: "✓ Completed" },
+const STATUS_BADGE_STYLES: Record<string, { bg: string; text: string; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }> = {
+  in_progress: { bg: "bg-success", text: "text-white", label: "Playing", icon: FlagIcon },
+  scoring: { bg: "bg-success", text: "text-white", label: "Scoring", icon: ClipboardDocumentListIcon },
+  completed: { bg: "bg-blue-500", text: "text-white", label: "Completed", icon: CheckIcon },
   availability_open: {
     bg: "bg-warning",
     text: "text-neutral-900",
-    label: "⏰ Declare",
+    label: "Declare",
+    icon: ClockIcon,
   },
-  foursomes_set: { bg: "bg-secondary", text: "text-white", label: "✓ Foursomes Set" },
-  scheduled: { bg: "bg-neutral-400", text: "text-white", label: "📅 Scheduled" },
+  foursomes_set: { bg: "bg-secondary", text: "text-white", label: "Foursomes Set", icon: CheckIcon },
+  scheduled: { bg: "bg-neutral-400", text: "text-white", label: "Scheduled", icon: CalendarIcon },
 };
 
 export function DashboardRoundCard({
@@ -42,12 +45,13 @@ export function DashboardRoundCard({
           <p className="text-small text-neutral-700">{roundDate}</p>
         </div>
         <div className="flex flex-wrap gap-2 justify-end">
-          <span className={`inline-flex items-center ${badgeStyle.bg} ${badgeStyle.text} text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap`}>
+          <span className={`inline-flex items-center gap-1 ${badgeStyle.bg} ${badgeStyle.text} text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap`}>
+            <Icon icon={badgeStyle.icon} size="sm" />
             {badgeStyle.label}
           </span>
           {availability && !roundEnded && (
             <span
-              className={`inline-flex items-center text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap ${
+              className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap ${
                 availability.status === "in"
                   ? "bg-success text-white"
                   : availability.status === "out"
@@ -55,11 +59,22 @@ export function DashboardRoundCard({
                   : "bg-warning text-neutral-900"
               }`}
             >
-              {availability.status === "in"
-                ? "✓ In"
-                : availability.status === "out"
-                ? "✗ Out"
-                : "⚠ Undeclared"}
+              {availability.status === "in" ? (
+                <>
+                  <Icon icon={CheckIcon} size="sm" />
+                  In
+                </>
+              ) : availability.status === "out" ? (
+                <>
+                  <Icon icon={XMarkIcon} size="sm" />
+                  Out
+                </>
+              ) : (
+                <>
+                  <Icon icon={ExclamationTriangleIcon} size="sm" />
+                  Undeclared
+                </>
+              )}
             </span>
           )}
         </div>
@@ -81,9 +96,10 @@ export function DashboardRoundCard({
                     {declarations.declared.map((team: any) => (
                       <span
                         key={team.teamId}
-                        className="inline-block bg-success text-white text-xs px-2 py-1 rounded"
+                        className="inline-flex items-center gap-1 bg-success text-white text-xs px-2 py-1 rounded"
                       >
-                        ✓ T{team.teamNumber}: {team.golferName}
+                        <Icon icon={CheckIcon} size="sm" />
+                        T{team.teamNumber}: {team.golferName}
                       </span>
                     ))}
                   </div>
@@ -99,9 +115,10 @@ export function DashboardRoundCard({
                     {declarations.notDeclared.map((team: any) => (
                       <span
                         key={team.teamId}
-                        className="inline-block bg-danger text-white text-xs px-2 py-1 rounded"
+                        className="inline-flex items-center gap-1 bg-danger text-white text-xs px-2 py-1 rounded"
                       >
-                        ✗ T{team.teamNumber}: {team.teamName}
+                        <Icon icon={XMarkIcon} size="sm" />
+                        T{team.teamNumber}: {team.teamName}
                       </span>
                     ))}
                   </div>

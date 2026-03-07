@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { Icon } from '@/components/Icon'
 import { addTeamMember, removeTeamMember, deleteTeam, updateTeam } from '@/lib/actions/teams'
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 interface TeamCardProps {
   team: any
@@ -84,10 +86,10 @@ export function TeamCard({ team, allUsers }: TeamCardProps) {
               <h3 className="text-h4 font-semibold">{team.team_name}</h3>
               <button
                 onClick={() => setIsEditing(true)}
-                className="text-lg hover:opacity-70 transition-opacity"
+                className="hover:opacity-70 transition-opacity p-1"
                 aria-label="Edit team name"
               >
-                ✏️
+                <Icon icon={PencilIcon} size="md" />
               </button>
             </div>
           )}
@@ -95,10 +97,10 @@ export function TeamCard({ team, allUsers }: TeamCardProps) {
         <button
           onClick={handleDelete}
           disabled={isDeleting}
-          className="text-lg hover:opacity-70 transition-opacity disabled:opacity-50"
+          className="hover:opacity-70 transition-opacity disabled:opacity-50 p-1"
           aria-label="Delete team"
         >
-          {isDeleting ? '⏳' : '🗑️'}
+          <Icon icon={TrashIcon} size="md" />
         </button>
       </div>
 

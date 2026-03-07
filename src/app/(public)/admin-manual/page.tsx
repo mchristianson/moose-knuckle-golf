@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { Icon } from '@/components/Icon'
+import { ClipboardDocumentListIcon, LockClosedIcon, ChartBarIcon, FlagIcon, CalendarIcon, FlagIcon as TargetIcon, UsersIcon, UserIcon, ClipboardDocumentListIcon as NotesIcon } from '@heroicons/react/24/outline'
 
 export const metadata = {
   title: 'Admin Manual | Moose Knuckle Golf League',
@@ -10,7 +12,7 @@ export default function AdminManualPage() {
       {/* Header */}
       <div className="mb-10 border-b pb-6">
         <div className="flex items-center gap-3 mb-2">
-          <span className="text-4xl">📋</span>
+          <Icon icon={ClipboardDocumentListIcon} size="lg" className="text-green-700" />
           <div>
             <h1 className="text-3xl font-bold text-green-800">Admin Manual</h1>
             <p className="text-gray-500 text-sm">Moose Knuckle Golf League — League Administration</p>
@@ -45,7 +47,8 @@ export default function AdminManualPage() {
       {/* Section 1: Accessing Admin */}
       <section id="access" className="mb-12">
         <h2 className="text-2xl font-bold text-green-800 mb-4 flex items-center gap-2">
-          <span>🔐</span> Accessing the Admin Panel
+          <Icon icon={LockClosedIcon} size="md" className="text-green-800" />
+          Accessing the Admin Panel
         </h2>
         <p className="text-gray-700 mb-4">
           Admin access is granted per-user. Once your account has the admin flag enabled,
@@ -62,13 +65,34 @@ export default function AdminManualPage() {
           </div>
           <div className="p-4 flex gap-2">
             <aside className="w-40 bg-gray-50 border rounded p-2 text-xs space-y-1">
-              <div className="bg-green-100 text-green-900 px-2 py-1 rounded font-medium">📊 Dashboard</div>
-              <div className="text-gray-600 px-2 py-1">⛳ Teams</div>
-              <div className="text-gray-600 px-2 py-1">📅 Rounds</div>
-              <div className="text-gray-600 px-2 py-1">🎯 Handicaps</div>
-              <div className="text-gray-600 px-2 py-1">👥 Subs</div>
-              <div className="text-gray-600 px-2 py-1">👤 Users</div>
-              <div className="text-gray-600 px-2 py-1">📝 Audit Log</div>
+              <div className="bg-green-100 text-green-900 px-2 py-1 rounded font-medium flex items-center gap-2">
+                <Icon icon={ChartBarIcon} size="sm" className="text-green-900" />
+                Dashboard
+              </div>
+              <div className="text-gray-600 px-2 py-1 flex items-center gap-2">
+                <Icon icon={FlagIcon} size="sm" className="text-gray-600" />
+                Teams
+              </div>
+              <div className="text-gray-600 px-2 py-1 flex items-center gap-2">
+                <Icon icon={CalendarIcon} size="sm" className="text-gray-600" />
+                Rounds
+              </div>
+              <div className="text-gray-600 px-2 py-1 flex items-center gap-2">
+                <Icon icon={TargetIcon} size="sm" className="text-gray-600" />
+                Handicaps
+              </div>
+              <div className="text-gray-600 px-2 py-1 flex items-center gap-2">
+                <Icon icon={UsersIcon} size="sm" className="text-gray-600" />
+                Subs
+              </div>
+              <div className="text-gray-600 px-2 py-1 flex items-center gap-2">
+                <Icon icon={UserIcon} size="sm" className="text-gray-600" />
+                Users
+              </div>
+              <div className="text-gray-600 px-2 py-1 flex items-center gap-2">
+                <Icon icon={NotesIcon} size="sm" className="text-gray-600" />
+                Audit Log
+              </div>
             </aside>
             <div className="flex-1 bg-gray-50 border rounded p-3 text-xs text-gray-500 flex items-center justify-center">
               Admin content area

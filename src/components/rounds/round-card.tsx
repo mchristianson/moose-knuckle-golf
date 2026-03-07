@@ -4,6 +4,8 @@ import { updateRoundStatus, deleteRound } from '@/lib/actions/rounds'
 import { formatRoundDate, formatTeeTime } from '@/lib/utils/date'
 import { useState } from 'react'
 import Link from 'next/link'
+import { Icon } from '@/components/Icon'
+import { ClockIcon, CheckIcon, XMarkIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 const STATUS_COLORS = {
   scheduled: 'bg-gray-100 text-gray-800',
@@ -87,8 +89,9 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
           </div>
           <p className="text-gray-600 mb-2">{formatRoundDate(round.round_date)}</p>
           {round.tee_time && (
-            <p className="text-sm text-gray-600 mb-2">
-              🕐 Tee times: <strong>{formatTeeTime(round.tee_time)}</strong> & <strong>{formatTeeTime(addMinutesToTime(round.tee_time, 10))}</strong>
+            <p className="text-sm text-gray-600 mb-2 flex items-center gap-2">
+              <Icon icon={ClockIcon} size="sm" className="text-gray-600 flex-shrink-0" />
+              <span>Tee times: <strong>{formatTeeTime(round.tee_time)}</strong> & <strong>{formatTeeTime(addMinutesToTime(round.tee_time, 10))}</strong></span>
             </p>
           )}
           {round.notes && (
@@ -100,8 +103,9 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
             <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
               {declarationDetails.declared.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">
-                    ✓ Declared ({declarationDetails.declared.length}/{declarationDetails.declared.length + declarationDetails.notDeclared.length})
+                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1 flex items-center gap-1">
+                    <Icon icon={CheckIcon} size="sm" className="text-green-700" />
+                    Declared ({declarationDetails.declared.length}/{declarationDetails.declared.length + declarationDetails.notDeclared.length})
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {declarationDetails.declared.map((team: any) => (
@@ -114,8 +118,9 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
               )}
               {declarationDetails.notDeclared.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1">
-                    ✗ Not Declared ({declarationDetails.notDeclared.length}/{declarationDetails.declared.length + declarationDetails.notDeclared.length})
+                  <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1 flex items-center gap-1">
+                    <Icon icon={XMarkIcon} size="sm" className="text-red-700" />
+                    Not Declared ({declarationDetails.notDeclared.length}/{declarationDetails.declared.length + declarationDetails.notDeclared.length})
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {declarationDetails.notDeclared.map((team: any) => (
@@ -132,9 +137,10 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
         <button
           onClick={handleDelete}
           disabled={isDeleting}
-          className="text-red-600 hover:text-red-700 text-sm disabled:opacity-50"
+          className="text-red-600 hover:text-red-700 text-sm disabled:opacity-50 flex items-center gap-1 p-1"
         >
-          {isDeleting ? '...' : '🗑️ Delete'}
+          <Icon icon={TrashIcon} size="sm" className="text-red-600" />
+          Delete
         </button>
       </div>
 

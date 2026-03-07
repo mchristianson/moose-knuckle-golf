@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AvailabilityToggle } from "@/components/availability/availability-toggle";
 import { formatRoundDate } from '@/lib/utils/date'
 import { redirect } from "next/navigation";
+import { Icon } from "@/components/Icon";
+import { ClockIcon, CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 export default async function AvailabilityPage({ params }: { params: Promise<{ roundId: string }> }) {
   const supabase = await createClient();
@@ -71,8 +73,9 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ r
 
       {deadline && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <p className="text-sm font-medium text-yellow-800">
-            ⏰ Deadline: {deadline}
+          <p className="text-sm font-medium text-yellow-800 flex items-center gap-2">
+            <Icon icon={ClockIcon} size="sm" className="text-yellow-800" />
+            Deadline: {deadline}
           </p>
         </div>
       )}
@@ -106,9 +109,19 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ r
                   ? 'bg-red-100 text-red-800'
                   : 'bg-gray-100 text-gray-800'
               }`}>
-                {teammateAvailability.status === 'in' ? '✓ Playing' :
-                 teammateAvailability.status === 'out' ? '✗ Not Playing' :
-                 '? Undeclared'}
+                {teammateAvailability.status === 'in' ? (
+                  <>
+                    <Icon icon={CheckIcon} size="sm" />
+                    Playing
+                  </>
+                ) : teammateAvailability.status === 'out' ? (
+                  <>
+                    <Icon icon={XMarkIcon} size="sm" />
+                    Not Playing
+                  </>
+                ) : (
+                  '? Undeclared'
+                )}
               </span>
             </div>
           </div>

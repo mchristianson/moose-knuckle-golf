@@ -101,7 +101,7 @@ export function FoursomesList({ foursomes, teeTime }: FoursomesListProps) {
             <div className="p-4 space-y-4">
               {/* Cart 1 */}
               <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                <h4 className="font-semibold text-blue-900 mb-2">🛒 Cart 1</h4>
+                <h4 className="font-semibold text-blue-900 mb-2">Cart 1</h4>
                 <div className="space-y-2">
                   {cart1Members.map((member) => (
                     <MemberRow key={member.user_id ?? member.sub?.id} member={member} badgeClass="bg-blue-200 text-blue-900" />
@@ -111,7 +111,7 @@ export function FoursomesList({ foursomes, teeTime }: FoursomesListProps) {
 
               {/* Cart 2 */}
               <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                <h4 className="font-semibold text-orange-900 mb-2">🛒 Cart 2</h4>
+                <h4 className="font-semibold text-orange-900 mb-2">Cart 2</h4>
                 <div className="space-y-2">
                   {cart2Members.map((member) => (
                     <MemberRow key={member.user_id ?? member.sub?.id} member={member} badgeClass="bg-orange-200 text-orange-900" />

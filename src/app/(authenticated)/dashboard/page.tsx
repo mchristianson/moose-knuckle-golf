@@ -3,8 +3,10 @@ import Link from "next/link";
 import { formatRoundDate } from '@/lib/utils/date'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { Icon } from '@/components/Icon'
 import { DashboardRoundCard } from '@/components/dashboard/DashboardRoundCard'
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection'
+import { PencilIcon, MapPinIcon, FlagIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline'
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -168,8 +170,8 @@ export default async function DashboardPage() {
               </span>
             )}
           </div>
-          <button className="text-2xl hover:opacity-70 transition-opacity" aria-label="Edit profile">
-            ✏️
+          <button className="hover:opacity-70 transition-opacity p-2" aria-label="Edit profile">
+            <Icon icon={PencilIcon} size="lg" />
           </button>
         </div>
       </Card>
@@ -178,7 +180,7 @@ export default async function DashboardPage() {
       {activeScoringSectionRounds.length > 0 && (
         <div className="mb-lg">
           <h2 className="text-h2 mb-md flex items-center gap-2">
-            <span>📌</span>
+            <Icon icon={MapPinIcon} size="md" />
             <span>Round in Play</span>
           </h2>
           <div className="space-y-md">
@@ -207,8 +209,9 @@ export default async function DashboardPage() {
                     <h3 className="text-h4 mb-xs">Round {round.round_number}</h3>
                     <p className="text-small text-neutral-700">{formatRoundDate(round.round_date)}</p>
                   </div>
-                  <span className="inline-flex items-center bg-success text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
-                    {round.status === 'in_progress' ? '⛳ In Progress' : '📋 Scoring'}
+                  <span className="inline-flex items-center gap-1 bg-success text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
+                    <Icon icon={round.status === 'in_progress' ? FlagIcon : ClipboardDocumentListIcon} size="sm" />
+                    {round.status === 'in_progress' ? 'In Progress' : 'Scoring'}
                   </span>
                 </div>
                 <Button variant="primary" asChild>

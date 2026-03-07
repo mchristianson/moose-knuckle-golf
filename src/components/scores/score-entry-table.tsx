@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { saveScore, lockScore, unlockScore } from '@/lib/actions/scores'
 import { useRouter } from 'next/navigation'
 import { HOLE_PARS } from '@/lib/constants/course'
+import { Icon } from '@/components/Icon'
+import { LockClosedIcon, LockOpenIcon, PencilIcon } from '@heroicons/react/24/outline'
 
 interface ScoreRow {
   scoreId: string | null
@@ -145,11 +147,13 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                   <span className="text-sm text-gray-500">Handicap: {row.handicap}</span>
                   {row.isLocked ? (
                     <span className="flex items-center gap-1 text-sm font-medium text-green-700">
-                      🔒 Locked
+                      <Icon icon={LockClosedIcon} size="sm" className="text-green-700" />
+                      Locked
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 text-sm text-gray-400">
-                      ✎ Editing
+                      <Icon icon={PencilIcon} size="sm" className="text-gray-400" />
+                      Editing
                     </span>
                   )}
                 </div>
@@ -222,7 +226,14 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                       className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40"
                       title={!allHolesEntered ? 'Enter all 9 holes first' : ''}
                     >
-                      {isBusy ? 'Locking…' : '🔒 Lock Score'}
+                      {isBusy ? (
+                        'Locking…'
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <Icon icon={LockClosedIcon} size="sm" />
+                          Lock Score
+                        </span>
+                      )}
                     </button>
                     {!allHolesEntered && row.holeScores.some((h) => h > 0) && (
                       <span className="text-xs text-gray-400">
@@ -237,7 +248,14 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                     disabled={isBusy}
                     className="mt-3 px-3 py-1.5 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40"
                   >
-                    {isBusy ? 'Unlocking…' : '🔓 Unlock to Edit'}
+                    {isBusy ? (
+                      'Unlocking…'
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <Icon icon={LockOpenIcon} size="sm" />
+                        Unlock to Edit
+                      </span>
+                    )}
                   </button>
                 )}
               </div>

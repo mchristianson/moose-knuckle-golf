@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { Icon } from '@/components/Icon'
+import { FlagIcon, TrophyIcon, ChartBarIcon } from '@heroicons/react/24/outline'
 
 export const metadata = {
   title: 'User Manual | Moose Knuckle Golf League',
@@ -10,7 +12,7 @@ export default function UserManualPage() {
       {/* Header */}
       <div className="mb-10 border-b pb-6">
         <div className="flex items-center gap-3 mb-2">
-          <span className="text-4xl">⛳</span>
+          <Icon icon={FlagIcon} size="lg" className="text-green-700" />
           <div>
             <h1 className="text-3xl font-bold text-green-800">Player Manual</h1>
             <p className="text-gray-500 text-sm">Moose Knuckle Golf League</p>
@@ -43,7 +45,8 @@ export default function UserManualPage() {
       {/* Section 1: Overview */}
       <section id="overview" className="mb-12">
         <h2 className="text-2xl font-bold text-green-800 mb-4 flex items-center gap-2">
-          <span>🏆</span> How the League Works
+          <Icon icon={TrophyIcon} size="md" className="text-green-800" />
+          How the League Works
         </h2>
         <p className="text-gray-700 mb-4">
           The Moose Knuckle Golf League is organized into <strong>teams of 1–2 players</strong>. Each round,
@@ -84,7 +87,8 @@ export default function UserManualPage() {
       {/* Section 2: Leaderboard */}
       <section id="leaderboard" className="mb-12">
         <h2 className="text-2xl font-bold text-green-800 mb-4 flex items-center gap-2">
-          <span>📊</span> Leaderboard & Standings
+          <Icon icon={ChartBarIcon} size="md" className="text-green-800" />
+          Leaderboard & Standings
         </h2>
         <p className="text-gray-700 mb-4">
           The <Link href="/leaderboard" className="text-green-700 underline">Leaderboard</Link> is the

@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { HOLE_PARS, STROKE_INDEX } from '@/lib/constants/course'
 import { formatRoundDate, formatTeeTime } from '@/lib/utils/date'
+import { Icon } from '@/components/Icon'
+import { TrophyIcon, ClockIcon, ClipboardDocumentListIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface StandingRow {
   team_id: string
@@ -91,11 +93,11 @@ interface LeaderboardTabsProps {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function medal(idx: number) {
-  if (idx === 0) return '🏆'
-  if (idx === 1) return '🥈'
-  if (idx === 2) return '🥉'
-  return `${idx + 1}`
+function medal(idx: number): React.ReactNode {
+  if (idx === 0) return <Icon icon={TrophyIcon} size="md" />
+  if (idx === 1) return <span className="font-semibold text-sm">2nd</span>
+  if (idx === 2) return <span className="font-semibold text-sm">3rd</span>
+  return <span className="font-semibold text-sm">{idx + 1}</span>
 }
 
 
@@ -332,7 +334,8 @@ export function LeaderboardTabs({
                     href={`/scores/${currentRound.id}`}
                     className="bg-white text-green-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-green-50 transition-colors shadow-sm"
                   >
-                    📋 Enter Scores
+                    <Icon icon={ClipboardDocumentListIcon} size="sm" />
+                    Enter Scores
                   </Link>
                 ) : (
                   <span className="text-xs bg-green-600 border border-green-500 px-3 py-1 rounded-full font-medium capitalize flex items-center gap-1.5">
@@ -384,7 +387,7 @@ export function LeaderboardTabs({
                           <div className="flex items-center gap-3 min-w-0">
                             {/* Position */}
                             <span className="text-sm font-bold text-gray-500 w-5 shrink-0 text-center">
-                              {s.holesPlayed === 0 ? '—' : isLeader ? '🏆' : idx + 1}
+                              {s.holesPlayed === 0 ? '—' : isLeader ? <Icon icon={TrophyIcon} size="sm" /> : idx + 1}
                             </span>
                             <div className="min-w-0">
                               <p className="font-semibold text-gray-900 truncate">{name}</p>
@@ -446,14 +449,18 @@ export function LeaderboardTabs({
                     <p className="text-blue-300 text-xs font-medium uppercase tracking-widest">Round {nextRound.round_number}</p>
                     <p className="font-semibold text-lg">{formatRoundDate(nextRound.round_date)}</p>
                     {nextRound.tee_time && (
-                      <p className="text-blue-200 text-sm mt-1">🕐 Tee time: {formatTeeTime(nextRound.tee_time)}</p>
+                      <p className="text-blue-200 text-sm mt-1 flex items-center gap-2">
+                        <Icon icon={ClockIcon} size="sm" className="text-blue-200" />
+                        Tee time: {formatTeeTime(nextRound.tee_time)}
+                      </p>
                     )}
                   </div>
                   <Link
                     href={`/availability/${nextRound.id}`}
                     className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm whitespace-nowrap shrink-0 ml-4"
                   >
-                    📋 Declare
+                    <Icon icon={ClipboardDocumentListIcon} size="sm" />
+                    Declare
                   </Link>
                 </div>
               </div>
@@ -480,11 +487,17 @@ export function LeaderboardTabs({
                             <h4 className="font-semibold mb-2">Team {team.team_number} — {team.team_name}</h4>
                             <div className="space-y-1 text-sm">
                               <div className="flex items-center gap-2">
-                                <span className="text-green-600 font-semibold">✓ In:</span>
+                                <span className="text-green-600 font-semibold flex items-center gap-1">
+                                  <Icon icon={CheckIcon} size="sm" className="text-green-600" />
+                                  In:
+                                </span>
                                 <span>{inCount}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-red-600 font-semibold">✗ Out:</span>
+                                <span className="text-red-600 font-semibold flex items-center gap-1">
+                                  <Icon icon={XMarkIcon} size="sm" className="text-red-600" />
+                                  Out:
+                                </span>
                                 <span>{outCount}</span>
                               </div>
                             </div>

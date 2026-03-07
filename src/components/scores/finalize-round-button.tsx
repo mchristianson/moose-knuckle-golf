@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { finalizeRound } from '@/lib/actions/scores'
+import { Icon } from '@/components/Icon'
+import { ExclamationTriangleIcon, CheckIcon, FlagIcon } from '@heroicons/react/24/outline'
 
 interface FinalizeRoundButtonProps {
   roundId: string
@@ -46,8 +48,9 @@ export function FinalizeRoundButton({ roundId, lockedCount, totalCount }: Finali
       </p>
       {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
       {confirmed && !loading && (
-        <p className="text-sm text-amber-700 mb-2 font-medium">
-          ⚠ This will calculate points, update handicaps, and mark the round completed. Click again to confirm.
+        <p className="text-sm text-amber-700 mb-2 font-medium flex items-center gap-2">
+          <Icon icon={ExclamationTriangleIcon} size="sm" className="text-amber-700" />
+          This will calculate points, update handicaps, and mark the round completed. Click again to confirm.
         </p>
       )}
       <button
@@ -57,7 +60,19 @@ export function FinalizeRoundButton({ roundId, lockedCount, totalCount }: Finali
           confirmed ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
         }`}
       >
-        {loading ? 'Finalizing…' : confirmed ? '✓ Confirm Finalize' : '🏁 Finalize Round'}
+        {loading ? (
+          'Finalizing…'
+        ) : confirmed ? (
+          <span className="flex items-center gap-2">
+            <Icon icon={CheckIcon} size="sm" />
+            Confirm Finalize
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <Icon icon={FlagIcon} size="sm" />
+            Finalize Round
+          </span>
+        )}
       </button>
     </div>
   )

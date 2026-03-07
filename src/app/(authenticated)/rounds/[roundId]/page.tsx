@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { DeclaredGolferSelector } from "@/components/availability/declared-golfer-selector";
 import { formatRoundDate } from '@/lib/utils/date'
 import { redirect } from "next/navigation";
+import { Icon } from "@/components/Icon";
+import { CheckIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 export default async function RoundDeclarationsPage({
   params,
@@ -102,9 +104,15 @@ export default async function RoundDeclarationsPage({
                   Team {team.team_number} — {team.team_name}
                 </h2>
                 {currentDeclaredGolferId ? (
-                  <p className="text-xs text-green-700 mt-0.5">✓ Declared</p>
+                  <p className="text-xs text-green-700 mt-0.5 flex items-center gap-1">
+                    <Icon icon={CheckIcon} size="sm" />
+                    Declared
+                  </p>
                 ) : (
-                  <p className="text-xs text-yellow-700 mt-0.5">⚠ Not yet declared</p>
+                  <p className="text-xs text-yellow-700 mt-0.5 flex items-center gap-1">
+                    <Icon icon={ExclamationTriangleIcon} size="sm" />
+                    Not yet declared
+                  </p>
                 )}
               </div>
               {members.length === 0 ? (

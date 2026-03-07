@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { submitScoreForFoursome } from '@/lib/actions/scores'
+import { Icon } from '@/components/Icon'
+import { TrophyIcon, LockClosedIcon, FlagIcon, CheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 // Legend's front nine par values
 const HOLE_PARS = [4, 4, 4, 5, 3, 4, 3, 4, 5]
@@ -133,9 +135,10 @@ export function MyScoreCard({
           </div>
           <Link
             href="/leaderboard"
-            className="text-xs font-medium text-white bg-green-600 hover:bg-green-500 px-2.5 py-1.5 rounded-full transition-colors shrink-0"
+            className="text-xs font-medium text-white bg-green-600 hover:bg-green-500 px-2.5 py-1.5 rounded-full transition-colors shrink-0 flex items-center gap-1"
           >
-            🏆
+            <Icon icon={TrophyIcon} size="sm" className="text-white" />
+            Leaderboard
           </Link>
         </div>
 
@@ -146,12 +149,14 @@ export function MyScoreCard({
             <p className="text-base font-bold leading-tight">{teamName || `Team ${teamNumber}`}</p>
           </div>
           {isLocked ? (
-            <span className="text-xs bg-green-600 border border-green-400 px-2 py-1 rounded-full font-medium">
-              🔒 Locked
+            <span className="text-xs bg-green-600 border border-green-400 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+              <Icon icon={LockClosedIcon} size="sm" className="text-white" />
+              Locked
             </span>
           ) : scoringOpen ? (
-            <span className="text-xs bg-green-600 border border-green-400 px-2 py-1 rounded-full font-medium">
-              ⛳ Open
+            <span className="text-xs bg-green-600 border border-green-400 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+              <Icon icon={FlagIcon} size="sm" className="text-white" />
+              Open
             </span>
           ) : null}
         </div>
@@ -186,16 +191,28 @@ export function MyScoreCard({
         <div className="mt-3">
           <div className="flex justify-between text-xs text-green-300 mb-1">
             <span>{touchedCount} of 9</span>
-            <span className="text-green-200 font-medium">
-              {saving
-                ? '⏳ Saving…'
-                : error
-                ? '⚠ Failed'
-                : saved
-                ? '✓ Saved'
-                : allTouched
-                ? '✓ Done'
-                : null}
+            <span className="text-green-200 font-medium flex items-center gap-1">
+              {saving ? (
+                <>
+                  <Icon icon={CheckIcon} size="sm" className="text-green-200 animate-pulse" />
+                  Saving…
+                </>
+              ) : error ? (
+                <>
+                  <Icon icon={ExclamationTriangleIcon} size="sm" className="text-red-300" />
+                  Failed
+                </>
+              ) : saved ? (
+                <>
+                  <Icon icon={CheckIcon} size="sm" className="text-green-200" />
+                  Saved
+                </>
+              ) : allTouched ? (
+                <>
+                  <Icon icon={CheckIcon} size="sm" className="text-green-200" />
+                  Done
+                </>
+              ) : null}
             </span>
           </div>
           <div className="h-1 bg-green-800 rounded-full overflow-hidden">
@@ -242,7 +259,10 @@ export function MyScoreCard({
       {readOnly && isLocked && (
         <div className="px-4 pb-5 pt-1">
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-            <p className="text-green-800 font-medium text-sm">🔒 Score locked by admin — no further changes allowed.</p>
+            <p className="text-green-800 font-medium text-sm flex items-center justify-center gap-2">
+              <Icon icon={LockClosedIcon} size="sm" className="text-green-800" />
+              Score locked by admin — no further changes allowed.
+            </p>
           </div>
         </div>
       )}
