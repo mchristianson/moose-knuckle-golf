@@ -109,37 +109,16 @@ export default async function MyScorePage({
 
   return (
     <div className="max-w-lg mx-auto px-0 sm:px-4">
-      {/* Nav */}
-      <div className="px-4 sm:px-0 mb-4 pt-2">
-        <Link href="/dashboard" className="text-green-600 hover:text-green-700 text-sm">
-          ← Back to Dashboard
-        </Link>
-      </div>
-
-      {/* Round header */}
-      <div className="px-4 sm:px-0 mb-4 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Round {round.round_number}</h1>
-          <p className="text-gray-500 text-sm">{roundDate}</p>
-        </div>
-        <Link
-          href="/leaderboard"
-          className="text-xs font-medium text-green-700 border border-green-300 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-full transition-colors shrink-0 mt-1"
-        >
-          🏆 Leaderboard
-        </Link>
-      </div>
-
       {/* Status banners */}
       {!scoringOpen && (
-        <div className="mx-4 sm:mx-0 mb-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+        <div className="mx-4 sm:mx-0 mb-3 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <p className="text-yellow-800 text-sm">
             Score entry is not open yet. The round must be <strong>In Progress</strong> or <strong>Scoring</strong>.
           </p>
         </div>
       )}
       {!userMembership && (
-        <div className="mx-4 sm:mx-0 mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
+        <div className="mx-4 sm:mx-0 mb-3 bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-red-800 text-sm">You are not listed as a player in this round's foursomes.</p>
         </div>
       )}
@@ -149,6 +128,8 @@ export default async function MyScorePage({
           roundId={roundId}
           currentUserId={user.id}
           players={players}
+          roundNumber={round.round_number}
+          roundDate={roundDate}
           scoringOpen={scoringOpen}
         />
       )}

@@ -13,20 +13,20 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b bg-green-700 text-white">
+      <header className="border-b bg-primary text-white">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-h2">
                 Moose Knuckle Golf
               </h1>
-              <span className="text-sm bg-green-800 px-2 py-1 rounded">Admin</span>
+              <span className="text-xs font-semibold bg-primary-dark px-3 py-1 rounded-full">Admin</span>
             </div>
             <nav className="flex gap-4 items-center">
-              <Link href="/leaderboard" className="hover:text-green-200 text-sm">
+              <Link href="/leaderboard" className="text-sm font-medium hover:text-neutral-100 transition-colors">
                 Public View
               </Link>
-              <Link href="/dashboard" className="hover:text-green-200 text-sm">
+              <Link href="/dashboard" className="text-sm font-medium hover:text-neutral-100 transition-colors">
                 Dashboard
               </Link>
               <SignOutButton />
@@ -36,7 +36,7 @@ export default async function AdminLayout({
       </header>
       <div className="flex flex-1">
         <AdminSidebar />
-        <main className="flex-1 container mx-auto px-4">
+        <main className="flex-1 container mx-auto px-4 py-6">
           {children}
         </main>
       </div>

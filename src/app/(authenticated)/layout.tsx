@@ -11,6 +11,8 @@ export default async function AuthenticatedLayout({
   const { data: { user } } = await supabase.auth.getUser()
 
   let isAdmin = false
+  let currentRoundId: string | undefined
+
   if (user) {
     const { data: profile } = await supabase
       .from('users')
@@ -18,6 +20,18 @@ export default async function AuthenticatedLayout({
       .eq('id', user.id)
       .single()
     isAdmin = profile?.is_admin || false
+
+    // Find the first active round (in_progress or scoring)
+    const { data: activeRounds } = await supabase
+      .from('rounds')
+      .select('id')
+      .in('status', ['in_progress', 'scoring'])
+      .order('round_date', { ascending: false })
+      .limit(1)
+
+    if (activeRounds && activeRounds.length > 0) {
+      currentRoundId = activeRounds[0].id
+    }
   }
 
   const navItems = [
@@ -32,7 +46,7 @@ export default async function AuthenticatedLayout({
       <main className="flex-1 container mx-auto px-4 py-6">
         {children}
       </main>
-      <ActionBar />
+      <ActionBar currentRoundId={currentRoundId} />
     </div>
   )
 }

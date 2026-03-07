@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { submitScoreForFoursome } from '@/lib/actions/scores'
 
 // Legend's front nine par values
@@ -19,6 +20,8 @@ interface MyScoreCardProps {
   existingScoreId: string | null
   grossScore: number | null
   netScore: number | null
+  roundNumber: number
+  roundDate: string
 }
 
 export function MyScoreCard({
@@ -30,6 +33,8 @@ export function MyScoreCard({
   holeScores: initialHoleScores,
   isLocked,
   scoringOpen,
+  roundNumber,
+  roundDate,
 }: MyScoreCardProps) {
   const [holes, setHoles] = useState<number[]>(() =>
     HOLE_PARS.map((par, i) => (initialHoleScores[i] > 0 ? initialHoleScores[i] : par))
@@ -119,11 +124,26 @@ export function MyScoreCard({
     <div className="flex flex-col rounded-xl shadow-lg overflow-hidden bg-white">
 
       {/* ── Score summary bar ── */}
-      <div className="bg-green-700 text-white px-5 py-5">
-        <div className="flex items-start justify-between mb-4">
+      <div className="bg-green-700 text-white px-4 py-4">
+        {/* Round info + leaderboard link */}
+        <div className="flex items-start justify-between mb-3 pb-3 border-b border-green-600">
+          <div>
+            <p className="text-green-300 text-xs font-medium uppercase tracking-wide">Round {roundNumber}</p>
+            <p className="text-sm text-green-100">{roundDate}</p>
+          </div>
+          <Link
+            href="/leaderboard"
+            className="text-xs font-medium text-white bg-green-600 hover:bg-green-500 px-2.5 py-1.5 rounded-full transition-colors shrink-0"
+          >
+            🏆
+          </Link>
+        </div>
+
+        {/* Team + status */}
+        <div className="flex items-start justify-between mb-3">
           <div>
             <p className="text-green-300 text-xs font-medium uppercase tracking-widest">Team {teamNumber}</p>
-            <p className="text-lg font-bold leading-tight">{teamName || `Team ${teamNumber}`}</p>
+            <p className="text-base font-bold leading-tight">{teamName || `Team ${teamNumber}`}</p>
           </div>
           {isLocked ? (
             <span className="text-xs bg-green-600 border border-green-400 px-2 py-1 rounded-full font-medium">
@@ -138,47 +158,47 @@ export function MyScoreCard({
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-green-800/50 rounded-lg py-3 px-2">
-            <p className="text-green-300 text-xs uppercase tracking-wide mb-1">Gross</p>
-            <p className="text-4xl font-black tabular-nums">
-              {touchedCount > 0 ? gross : <span className="text-2xl text-green-400">—</span>}
+          <div className="bg-green-800/50 rounded-lg py-2 px-2">
+            <p className="text-green-300 text-xs uppercase tracking-wide mb-0.5">Gross</p>
+            <p className="text-3xl font-black tabular-nums">
+              {touchedCount > 0 ? gross : <span className="text-xl text-green-400">—</span>}
             </p>
           </div>
-          <div className="bg-green-800/50 rounded-lg py-3 px-2">
-            <p className="text-green-300 text-xs uppercase tracking-wide mb-1">Handicap</p>
-            <p className="text-4xl font-black tabular-nums text-green-200">{handicap}</p>
+          <div className="bg-green-800/50 rounded-lg py-2 px-2">
+            <p className="text-green-300 text-xs uppercase tracking-wide mb-0.5">Handicap</p>
+            <p className="text-3xl font-black tabular-nums text-green-200">{handicap}</p>
           </div>
-          <div className="bg-green-800/50 rounded-lg py-3 px-2">
-            <p className="text-green-300 text-xs uppercase tracking-wide mb-1">
+          <div className="bg-green-800/50 rounded-lg py-2 px-2">
+            <p className="text-green-300 text-xs uppercase tracking-wide mb-0.5">
               {projectedNet !== null ? 'Proj. Net' : 'Net'}
             </p>
-            <p className="text-4xl font-black tabular-nums">
+            <p className="text-3xl font-black tabular-nums">
               {net !== null
                 ? net
                 : projectedNet !== null
                 ? <span className="text-green-100">{projectedNet}</span>
-                : <span className="text-2xl text-green-400">—</span>}
+                : <span className="text-xl text-green-400">—</span>}
             </p>
           </div>
         </div>
 
         {/* Progress bar + auto-save status */}
-        <div className="mt-4">
+        <div className="mt-3">
           <div className="flex justify-between text-xs text-green-300 mb-1">
-            <span>{touchedCount} of 9 holes entered</span>
+            <span>{touchedCount} of 9</span>
             <span className="text-green-200 font-medium">
               {saving
                 ? '⏳ Saving…'
                 : error
-                ? '⚠ Save failed'
+                ? '⚠ Failed'
                 : saved
                 ? '✓ Saved'
                 : allTouched
-                ? '✓ Complete'
+                ? '✓ Done'
                 : null}
             </span>
           </div>
-          <div className="h-1.5 bg-green-800 rounded-full overflow-hidden">
+          <div className="h-1 bg-green-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-green-300 rounded-full transition-all duration-300"
               style={{ width: `${(touchedCount / 9) * 100}%` }}

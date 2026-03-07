@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { Button } from "@/components/Button";
+import { Card } from "@/components/Card";
 import { TeamCard } from "@/components/teams/team-card";
 
 export default async function TeamsPage() {
@@ -24,26 +26,24 @@ export default async function TeamsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Teams</h1>
-        <Link
-          href="/admin/teams/new"
-          className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-        >
-          + Create Team
-        </Link>
+      <div className="flex justify-between items-center mb-lg">
+        <h1 className="text-h1">Teams</h1>
+        <Button variant="primary" asChild>
+          <Link href="/admin/teams/new">
+            + Create Team
+          </Link>
+        </Button>
       </div>
 
       {!teams || teams.length === 0 ? (
-        <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-          <p className="text-gray-600 mb-4">No teams created yet</p>
-          <Link
-            href="/admin/teams/new"
-            className="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-          >
-            Create Your First Team
-          </Link>
-        </div>
+        <Card className="text-center py-lg">
+          <p className="text-neutral-700 mb-md">No teams created yet</p>
+          <Button variant="primary" asChild>
+            <Link href="/admin/teams/new">
+              Create Your First Team
+            </Link>
+          </Button>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {teams.map((team: any) => (

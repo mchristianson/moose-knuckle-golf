@@ -19,24 +19,24 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-gray-50 border-r p-4 hidden md:block">
-      <nav className="space-y-2">
+    <aside className="w-64 bg-neutral-50 border-r border-neutral-100 p-md hidden md:block">
+      <nav className="space-y-xs">
         {adminLinks.map((link) => {
-          const isActive = pathname === link.href;
+          const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
           return (
             <Link
               key={link.href}
               href={link.href}
               className={`
-                flex items-center gap-3 px-4 py-2 rounded-md transition-colors
+                flex items-center gap-3 px-md py-2 rounded-lg transition-all
                 ${isActive
-                  ? 'bg-green-100 text-green-900 font-medium'
-                  : 'hover:bg-gray-100 text-gray-700'
+                  ? 'bg-primary text-white font-semibold border-l-4 border-l-primary'
+                  : 'text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200'
                 }
               `}
             >
-              <span>{link.icon}</span>
-              <span>{link.label}</span>
+              <span className="text-lg">{link.icon}</span>
+              <span className="text-sm">{link.label}</span>
             </Link>
           );
         })}

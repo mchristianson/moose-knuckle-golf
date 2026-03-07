@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/components/Button'
+import { Card } from '@/components/Card'
 import { addTeamMember, removeTeamMember, deleteTeam, updateTeam } from '@/lib/actions/teams'
 
 interface TeamCardProps {
@@ -47,11 +49,11 @@ export function TeamCard({ team, allUsers }: TeamCardProps) {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow border">
-      <div className="flex justify-between items-start mb-4">
+    <Card>
+      <div className="flex justify-between items-start mb-md">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl font-bold text-green-700">
+          <div className="flex items-center gap-2 mb-xs">
+            <span className="text-h3 text-primary">
               Team {team.team_number}
             </span>
           </div>
@@ -61,30 +63,29 @@ export function TeamCard({ team, allUsers }: TeamCardProps) {
                 type="text"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded"
+                className="flex-1 px-2 py-1 border border-neutral-200 rounded"
               />
-              <button
-                onClick={handleUpdateName}
-                className="text-green-600 hover:text-green-700 text-sm"
-              >
+              <Button size="small" variant="primary" onClick={handleUpdateName}>
                 Save
-              </button>
-              <button
+              </Button>
+              <Button
+                size="small"
+                variant="ghost"
                 onClick={() => {
                   setTeamName(team.team_name)
                   setIsEditing(false)
                 }}
-                className="text-gray-600 hover:text-gray-700 text-sm"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <h3 className="text-xl font-semibold">{team.team_name}</h3>
+              <h3 className="text-h4 font-semibold">{team.team_name}</h3>
               <button
                 onClick={() => setIsEditing(true)}
-                className="text-gray-400 hover:text-gray-600 text-sm"
+                className="text-lg hover:opacity-70 transition-opacity"
+                aria-label="Edit team name"
               >
                 ✏️
               </button>
@@ -94,29 +95,31 @@ export function TeamCard({ team, allUsers }: TeamCardProps) {
         <button
           onClick={handleDelete}
           disabled={isDeleting}
-          className="text-red-600 hover:text-red-700 text-sm"
+          className="text-lg hover:opacity-70 transition-opacity disabled:opacity-50"
+          aria-label="Delete team"
         >
-          {isDeleting ? '...' : '🗑️'}
+          {isDeleting ? '⏳' : '🗑️'}
         </button>
       </div>
 
-      <div className="space-y-2 mb-4">
-        <div className="text-sm font-medium text-gray-700">
+      <div className="space-y-2 mb-md">
+        <div className="text-small font-semibold text-neutral-700">
           Members ({members.length}/2)
         </div>
         {members.length === 0 ? (
-          <p className="text-gray-500 text-sm italic">No members assigned</p>
+          <p className="text-neutral-500 text-small italic">No members assigned</p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {members.map((member: any) => (
-              <li key={member.id} className="flex justify-between items-center text-sm">
+              <li key={member.id} className="flex justify-between items-center text-small">
                 <span>{member.users?.full_name}</span>
-                <button
+                <Button
+                  size="small"
+                  variant="danger"
                   onClick={() => handleRemoveMember(member.id)}
-                  className="text-red-600 hover:text-red-700 text-xs"
                 >
                   Remove
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -125,7 +128,7 @@ export function TeamCard({ team, allUsers }: TeamCardProps) {
 
       {members.length < 2 && availableUsers.length > 0 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-small font-semibold text-neutral-700 mb-2">
             Add Member
           </label>
           <select
@@ -135,7 +138,7 @@ export function TeamCard({ team, allUsers }: TeamCardProps) {
                 e.target.value = ''
               }
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            className="w-full px-md py-2 border border-neutral-200 rounded-lg text-small"
           >
             <option value="">Select a golfer...</option>
             {availableUsers.map((user: any) => (
@@ -146,6 +149,6 @@ export function TeamCard({ team, allUsers }: TeamCardProps) {
           </select>
         </div>
       )}
-    </div>
+    </Card>
   )
 }

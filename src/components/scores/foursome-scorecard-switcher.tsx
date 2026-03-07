@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { MyScoreCard } from './my-score-card'
 
 export interface FoursomePlayer {
@@ -22,6 +23,8 @@ interface FoursomeScorecardSwitcherProps {
   roundId: string
   currentUserId: string
   players: FoursomePlayer[]
+  roundNumber: number
+  roundDate: string
   scoringOpen: boolean
 }
 
@@ -29,6 +32,8 @@ export function FoursomeScorecardSwitcher({
   roundId,
   currentUserId,
   players,
+  roundNumber,
+  roundDate,
   scoringOpen,
 }: FoursomeScorecardSwitcherProps) {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(currentUserId)
@@ -41,37 +46,33 @@ export function FoursomeScorecardSwitcher({
     <>
       {/* Player toggle button group */}
       {players.length > 1 && (
-        <div className="sm:px-0 mb-4">
-          <div className="flex w-full">
-            {players.map((player, idx) => {
+        <div className="mb-3 -mx-4 sm:mx-0 px-4 sm:px-0">
+          <div className="grid grid-cols-4 gap-1">
+            {players.map((player) => {
               const isActive = player.userId === selectedUserId
               const isMe = player.userId === currentUserId
-              const isFirst = idx === 0
-              const isLast = idx === players.length - 1
               return (
                 <button
                   key={player.userId}
                   onClick={() => setSelectedUserId(player.userId)}
                   className={[
-                    'relative flex-1 py-2 px-2 text-sm font-medium border transition-colors truncate',
-                    isFirst ? 'rounded-l-lg' : '-ml-px',
-                    isLast ? 'rounded-r-lg' : '',
+                    'py-2 px-1 text-xs font-semibold border-2 rounded transition-all',
                     isActive
-                      ? 'bg-green-700 text-white border-green-700 z-10'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50 hover:text-green-700 hover:z-10',
+                      ? 'bg-green-700 text-white border-green-700'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-green-400 hover:bg-green-50',
                   ].join(' ')}
                 >
-                  <span className="truncate">
-                    {player.displayName}
+                  <div className="text-center truncate">
+                    <div className="truncate">{player.displayName}</div>
                     {isMe && (
-                      <span className={`ml-1 text-xs ${isActive ? 'text-green-200' : 'text-gray-400'}`}>
-                        (me)
+                      <span className={`text-xs ${isActive ? 'text-green-200' : 'text-gray-400'}`}>
+                        you
                       </span>
                     )}
                     {player.isLocked && (
-                      <span className="ml-1 text-xs">🔒</span>
+                      <span className="text-xs">🔒</span>
                     )}
-                  </span>
+                  </div>
                 </button>
               )
             })}
@@ -95,6 +96,8 @@ export function FoursomeScorecardSwitcher({
           existingScoreId={selected.existingScoreId}
           grossScore={selected.grossScore}
           netScore={selected.netScore}
+          roundNumber={roundNumber}
+          roundDate={roundDate}
         />
       ) : (
         <div className="mx-4 sm:mx-0 bg-yellow-50 border border-yellow-200 rounded-xl p-5 text-center">
