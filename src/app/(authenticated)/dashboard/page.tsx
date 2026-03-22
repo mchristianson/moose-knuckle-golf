@@ -29,8 +29,7 @@ export default async function DashboardPage({
     .from('rounds')
     .select('*')
     .gte('round_date', today)
-    .order('round_date', { ascending: true })
-    .limit(3);
+    .order('round_date', { ascending: true });
 
   // Get rounds where scoring is open (in_progress or scoring status)
   const { data: activeRounds } = await supabase

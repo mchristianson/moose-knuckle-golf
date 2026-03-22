@@ -82,7 +82,6 @@ export function DashboardRoundCard({
 
       {/* Declaration Status */}
       {!roundEnded &&
-        ["availability_open", "foursomes_set"].includes(round.status) &&
         declarations && (
           <div className="mb-md pb-md border-b border-neutral-100">
             <div className="space-y-2">
@@ -130,10 +129,17 @@ export function DashboardRoundCard({
 
       {/* Actions */}
       <div className="flex flex-col gap-2 md:flex-row">
-        {availability && availability.status === "undeclared" && !roundEnded && (
+        {availability && !roundEnded && availability.status === "undeclared" && (
           <Button variant="secondary" asChild className="flex-1">
             <Link href={`/availability/${round.id}`}>
               Declare Availability
+            </Link>
+          </Button>
+        )}
+        {availability && !roundEnded && (availability.status === "in" || availability.status === "out") && (
+          <Button variant="ghost" asChild className="flex-1">
+            <Link href={`/availability/${round.id}`}>
+              Change Availability
             </Link>
           </Button>
         )}

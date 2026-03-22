@@ -99,7 +99,7 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
           )}
 
           {/* Declaration Status */}
-          {round.status === 'availability_open' && declarationDetails && (
+          {['scheduled', 'availability_open', 'foursomes_set'].includes(round.status) && declarationDetails && (
             <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
               {declarationDetails.declared.length > 0 && (
                 <div>
@@ -145,15 +145,7 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {round.status === 'scheduled' && (
-          <button
-            onClick={() => handleStatusChange('availability_open')}
-            className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded hover:bg-blue-200"
-          >
-            Open Availability
-          </button>
-        )}
-        {round.status === 'availability_open' && (
+        {['scheduled', 'availability_open'].includes(round.status) && (
           <button
             onClick={() => handleStatusChange('foursomes_set')}
             disabled={!allDeclared}
