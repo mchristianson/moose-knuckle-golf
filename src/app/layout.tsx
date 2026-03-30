@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: "Manage your golf league with ease",
   icons: {
     icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 };
 
