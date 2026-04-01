@@ -33,6 +33,19 @@ export async function sendPhoneOtp(prevState: { error: string | null }, formData
     return { error: 'Phone number not registered in this league.' }
   }
 
+  // Ensure auth.users has the phone number set for this user's existing account.
+  // Without this, signInWithOtp tries to create a new auth user, which fails
+  // because the handle_new_user trigger requires a non-null email.
+  const userId = data[0].id
+  const { error: phoneUpdateError } = await admin.auth.admin.updateUserById(userId, {
+    phone: e164Phone,
+  })
+
+  if (phoneUpdateError) {
+    console.error('Auth phone update error:', phoneUpdateError)
+    return { error: 'Unable to set up phone login. Please contact an admin.' }
+  }
+
   const supabase = await createClient()
   const { error: otpError } = await supabase.auth.signInWithOtp({ phone: e164Phone })
 
