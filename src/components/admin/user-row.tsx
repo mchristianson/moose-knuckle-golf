@@ -1,6 +1,6 @@
 'use client'
 
-import { toggleAdmin, deactivateUser, activateUser } from '@/lib/actions/admin'
+import { toggleAdmin, deactivateUser, activateUser, updateUserPhone } from '@/lib/actions/admin'
 import { useState } from 'react'
 
 interface UserRowProps {
@@ -10,6 +10,11 @@ interface UserRowProps {
 
 export function UserRow({ user, isCurrentUser }: UserRowProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [editingPhone, setEditingPhone] = useState(false)
+  const [phoneInput, setPhoneInput] = useState(
+    user.phone ? user.phone.replace('+1', '') : ''
+  )
+  const [phoneError, setPhoneError] = useState<string | null>(null)
 
   const handleToggleAdmin = async () => {
     setIsLoading(true)
@@ -36,6 +41,33 @@ export function UserRow({ user, isCurrentUser }: UserRowProps) {
     setIsLoading(false)
   }
 
+  const handleSavePhone = async () => {
+    setPhoneError(null)
+    const digits = phoneInput.replace(/\D/g, '')
+    if (digits.length !== 0 && digits.length !== 10) {
+      setPhoneError('Must be 10 digits or empty')
+      return
+    }
+    setIsLoading(true)
+    const result = await updateUserPhone(user.id, digits)
+    if (result?.error) {
+      setPhoneError(result.error)
+    } else {
+      setEditingPhone(false)
+    }
+    setIsLoading(false)
+  }
+
+  const handleCancelPhone = () => {
+    setPhoneInput(user.phone ? user.phone.replace('+1', '') : '')
+    setPhoneError(null)
+    setEditingPhone(false)
+  }
+
+  const displayPhone = user.phone
+    ? user.phone.replace('+1', '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')
+    : '—'
+
   return (
     <tr>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -51,6 +83,47 @@ export function UserRow({ user, isCurrentUser }: UserRowProps) {
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="text-sm text-gray-900">{user.email}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {editingPhone ? (
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-gray-500">+1</span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={phoneInput}
+              onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="3334445555"
+              className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+            />
+            <button
+              onClick={handleSavePhone}
+              disabled={isLoading}
+              className="text-xs text-green-600 hover:text-green-800 font-medium disabled:opacity-50"
+            >
+              Save
+            </button>
+            <button
+              onClick={handleCancelPhone}
+              className="text-xs text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-900">{displayPhone}</span>
+            <button
+              onClick={() => setEditingPhone(true)}
+              className="text-xs text-indigo-600 hover:text-indigo-800"
+            >
+              Edit
+            </button>
+          </div>
+        )}
+        {phoneError && (
+          <p className="text-xs text-red-600 mt-1">{phoneError}</p>
+        )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         {user.is_active ? (

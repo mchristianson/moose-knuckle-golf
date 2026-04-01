@@ -1,11 +1,13 @@
-import Link from "next/link";
-import { LoginForm } from "@/components/auth/login-form";
+import Image from "next/image";
+import { PhoneLoginForm } from "@/components/auth/phone-login-form";
 import { GoogleSignInButton } from "@/components/auth/google-signin-button";
 
 export default function LoginPage() {
   return (
     <div className="bg-white p-8 rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
+      <div className="flex justify-center mb-6">
+        <Image src="/logo.png" alt="Moose Knuckle Golf League" width={120} height={120} />
+      </div>
 
       <GoogleSignInButton />
 
@@ -14,18 +16,11 @@ export default function LoginPage() {
           <div className="w-full border-t border-gray-300"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+          <span className="px-2 bg-white text-gray-500">Or continue with phone</span>
         </div>
       </div>
 
-      <LoginForm />
-
-      <p className="mt-4 text-center text-sm text-gray-600">
-        Don't have an account?{" "}
-        <Link href="/register" className="text-green-600 hover:text-green-700 font-medium">
-          Register
-        </Link>
-      </p>
+      <PhoneLoginForm />
     </div>
   );
 }

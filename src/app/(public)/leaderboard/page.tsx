@@ -5,6 +5,8 @@ export default async function LeaderboardPage() {
   const supabase = await createClient()
   const currentYear = new Date().getFullYear()
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   // ── Season standings ──────────────────────────────────────────────────────
   const { data: standings } = await supabase
     .rpc('get_season_leaderboard', { p_season_year: currentYear })
@@ -61,11 +63,46 @@ export default async function LeaderboardPage() {
   // ── Current round (in_progress or scoring) ───────────────────────────────
   const { data: currentRound } = await supabase
     .from('rounds')
-    .select('id, round_number, round_date, status')
+    .select('id, round_number, round_date, status, tee_time')
     .in('status', ['in_progress', 'scoring'])
     .order('round_date', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  // ── Foursomes for the current round ─────────────────────────────────────
+  let currentRoundFoursomes: any[] = []
+  if (currentRound) {
+    const { data: foursomesData } = await supabase
+      .from('foursomes')
+      .select(`
+        *,
+        members:foursome_members (
+          user_id,
+          cart_number,
+          is_sub,
+          sub_id,
+          user:user_id ( full_name, display_name, id ),
+          sub:sub_id ( full_name ),
+          team:team_id ( team_number, team_name, id )
+        )
+      `)
+      .eq('round_id', currentRound.id)
+      .order('tee_time_slot')
+
+    currentRoundFoursomes = (foursomesData ?? []).map((f: any) => ({
+      id: f.id,
+      tee_time_slot: f.tee_time_slot,
+      tee_time: f.tee_time ?? null,
+      members: (f.members ?? []).map((m: any) => ({
+        user_id: m.user_id,
+        cart_number: m.cart_number,
+        is_sub: m.is_sub,
+        full_name: m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? 'Unknown',
+        team_name: m.team?.team_name ?? '',
+        team_number: m.team?.team_number ?? 0,
+      }))
+    }))
+  }
 
   // ── Scores for the current round ─────────────────────────────────────────
   let currentRoundScores: any[] = []
@@ -102,26 +139,15 @@ export default async function LeaderboardPage() {
   let nextRoundAvailability: any[] = []
   let nextRoundFoursomes: any[] = []
   if (!currentRound) {
-    // Get the last completed round to determine the next round number
-    const { data: lastCompletedRound } = await supabase
-      .from('rounds')
-      .select('round_number')
-      .eq('season_year', currentYear)
-      .eq('status', 'completed')
-      .eq('round_type', 'regular')
-      .order('round_number', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const nextRoundNumber = (lastCompletedRound?.round_number ?? 0) + 1
-
-    // Fetch the next round by round number
+    // Fetch the next upcoming round by date
     const { data: nextRoundData } = await supabase
       .from('rounds')
       .select('id, round_number, round_date, status, tee_time')
       .eq('season_year', currentYear)
-      .eq('round_number', nextRoundNumber)
       .eq('round_type', 'regular')
+      .in('status', ['scheduled', 'availability_open', 'foursomes_set'])
+      .order('round_date', { ascending: true })
+      .limit(1)
       .maybeSingle()
 
     if (nextRoundData) {
@@ -154,6 +180,7 @@ export default async function LeaderboardPage() {
           *,
           members:foursome_members (
             user_id,
+            cart_number,
             is_sub,
             sub_id,
             user:user_id ( full_name, display_name, id ),
@@ -167,8 +194,10 @@ export default async function LeaderboardPage() {
       nextRoundFoursomes = (foursomesData ?? []).map((f: any) => ({
         id: f.id,
         tee_time_slot: f.tee_time_slot,
+        tee_time: f.tee_time ?? null,
         members: (f.members ?? []).map((m: any) => ({
           user_id: m.user_id,
+          cart_number: m.cart_number,
           is_sub: m.is_sub,
           full_name: m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? 'Unknown',
           team_name: m.team?.team_name ?? '',
@@ -178,16 +207,27 @@ export default async function LeaderboardPage() {
     }
   }
 
+  // ── Current user's declaration status for next round ────────────────────
+  const currentUserId = user?.id ?? null
+  const userHasDeclared = currentUserId
+    ? nextRoundAvailability.some((a) => a.user_id === currentUserId)
+    : false
+  const userInFoursome = currentUserId
+    ? nextRoundFoursomes.some((f) => f.members.some((m: any) => m.user_id === currentUserId))
+    : false
+
   return (
     <LeaderboardTabs
       standings={(standings ?? []) as any}
       recentRounds={(recentRounds ?? []) as any}
       currentRound={currentRound ?? null}
       currentRoundScores={currentRoundScores}
+      currentRoundFoursomes={currentRoundFoursomes}
       nextRound={nextRound}
       nextRoundAvailability={nextRoundAvailability}
       nextRoundFoursomes={nextRoundFoursomes}
       currentYear={currentYear}
+      userHasDeclared={userHasDeclared || userInFoursome}
     />
   )
 }

@@ -45,7 +45,6 @@ export async function middleware(request: NextRequest) {
                         path === '/'
 
   const isAuthRoute = path.startsWith('/login') ||
-                      path.startsWith('/register') ||
                       path.startsWith('/callback')
 
   const isAuthenticatedRoute = path.startsWith('/dashboard') ||

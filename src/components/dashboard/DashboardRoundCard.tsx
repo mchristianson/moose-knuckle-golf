@@ -10,6 +10,11 @@ interface DashboardRoundCardProps {
   availability?: any;
   declarations?: any;
   canEnterScore: boolean;
+  foursomes?: any[];
+}
+
+function getMemberName(m: any): string {
+  return m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? '—'
 }
 
 const STATUS_BADGE_STYLES: Record<string, { bg: string; text: string; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }> = {
@@ -31,6 +36,7 @@ export function DashboardRoundCard({
   availability,
   declarations,
   canEnterScore,
+  foursomes,
 }: DashboardRoundCardProps) {
   const roundDate = formatRoundDate(round.round_date);
   const badgeStyle = STATUS_BADGE_STYLES[round.status] || STATUS_BADGE_STYLES.scheduled;
@@ -158,6 +164,44 @@ export function DashboardRoundCard({
           </Button>
         )}
       </div>
+
+      {/* Foursomes */}
+      {foursomes && foursomes.length > 0 && (
+        <div className="mt-md pt-md border-t border-neutral-100">
+          <p className="text-xs font-semibold text-neutral-700 uppercase tracking-wide mb-md">Foursomes</p>
+          <div className="space-y-md">
+            {foursomes.map((foursome: any) => {
+              const cart1 = foursome.members.filter((m: any) => m.cart_number === 1)
+              const cart2 = foursome.members.filter((m: any) => m.cart_number === 2)
+              return (
+                <div key={foursome.id}>
+                  <p className="text-xs font-medium text-neutral-600 mb-xs">Tee Time Slot {foursome.tee_time_slot}</p>
+                  <div className="grid grid-cols-2 gap-xs">
+                    <div className="bg-neutral-50 rounded p-xs border border-neutral-100">
+                      <p className="text-xs font-semibold text-neutral-600 mb-1">Cart 1</p>
+                      {cart1.map((m: any) => (
+                        <div key={m.user_id ?? m.sub?.id} className="text-sm leading-snug">
+                          <span className="font-medium">{getMemberName(m)}</span>
+                          <span className="text-xs text-neutral-500 ml-1">T{m.team?.team_number}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="bg-neutral-50 rounded p-xs border border-neutral-100">
+                      <p className="text-xs font-semibold text-neutral-600 mb-1">Cart 2</p>
+                      {cart2.map((m: any) => (
+                        <div key={m.user_id ?? m.sub?.id} className="text-sm leading-snug">
+                          <span className="font-medium">{getMemberName(m)}</span>
+                          <span className="text-xs text-neutral-500 ml-1">T{m.team?.team_number}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

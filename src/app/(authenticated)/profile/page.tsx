@@ -40,7 +40,7 @@ export default function ProfilePage() {
     return <div className="p-4">Not authenticated</div>
   }
 
-  const hasPassword = user.identities?.some((id: any) => id.provider === 'password')
+  const hasPhone = user.identities?.some((id: any) => id.provider === 'phone')
   const hasGoogle = user.identities?.some((id: any) => id.provider === 'google')
 
   const handleLinkGoogle = async () => {
@@ -86,15 +86,15 @@ export default function ProfilePage() {
       <Card variant="elevated" className="mb-6">
         <h2 className="text-lg font-semibold mb-4">Sign-in Methods</h2>
 
-        {/* Password */}
+        {/* Phone */}
         <div className="flex items-center justify-between py-3 border-b border-gray-200">
           <div>
-            <p className="font-medium">Password</p>
+            <p className="font-medium">Phone (SMS)</p>
             <p className="text-sm text-gray-600">
-              {hasPassword ? '✓ Active' : 'Not set up'}
+              {hasPhone ? '✓ Active' : 'Not set up'}
             </p>
           </div>
-          {hasPassword && <span className="text-green-600">✓</span>}
+          {hasPhone && <span className="text-green-600">✓</span>}
         </div>
 
         {/* Google */}
@@ -130,7 +130,7 @@ export default function ProfilePage() {
           <Button
             onClick={handleUnlinkGoogle}
             variant="danger"
-            disabled={unlinking || !hasPassword}
+            disabled={unlinking || !hasPhone}
             className="w-full"
           >
             {unlinking ? 'Unlinking...' : 'Unlink Google Account'}
@@ -138,9 +138,9 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {hasGoogle && !hasPassword && (
+      {hasGoogle && !hasPhone && (
         <p className="text-xs text-gray-600 mt-4 text-center">
-          You can't unlink your only sign-in method. Set up a password first.
+          You can't unlink your only sign-in method.
         </p>
       )}
     </div>

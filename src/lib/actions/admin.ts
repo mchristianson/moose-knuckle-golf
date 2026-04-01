@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 async function getAdminUser() {
   const supabase = await createClient()
@@ -77,6 +78,40 @@ export async function deactivateUser(userId: string) {
     entity_type: 'user',
     entity_id: userId,
   })
+
+  revalidatePath('/admin/users')
+  return { success: true }
+}
+
+export async function updateUserPhone(userId: string, phone: string) {
+  await getAdminUser() // verify caller is admin
+
+  // Convert 10-digit input to E.164, or null to clear
+  const digits = phone.replace(/\D/g, '').slice(-10)
+  const e164 = digits.length === 10 ? `+1${digits}` : null
+
+  const admin = createAdminClient()
+
+  // 1. Update public.users.phone (used by sendPhoneOtp gate check)
+  const { error: profileError } = await admin
+    .from('users')
+    .update({ phone: e164 })
+    .eq('id', userId)
+
+  if (profileError) {
+    return { error: profileError.message }
+  }
+
+  // 2. Update auth.users.phone so Supabase OTP finds the existing user
+  //    instead of trying to create a new one (which would fire the trigger
+  //    and fail with "Database error saving new user").
+  const { error: authError } = await admin.auth.admin.updateUserById(userId, {
+    phone: e164 ?? '',
+  })
+
+  if (authError) {
+    return { error: `Auth update failed: ${authError.message}` }
+  }
 
   revalidatePath('/admin/users')
   return { success: true }

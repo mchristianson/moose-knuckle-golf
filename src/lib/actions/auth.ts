@@ -4,61 +4,66 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { loginSchema, registerSchema } from '@/lib/validators/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { phoneSchema, otpSchema } from '@/lib/validators/auth'
 
-export async function login(prevState: any, formData: FormData) {
-  const supabase = await createClient()
-
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  }
-
-  const validation = loginSchema.safeParse(data)
+export async function sendPhoneOtp(prevState: { error: string | null }, formData: FormData) {
+  const validation = phoneSchema.safeParse({ phone: formData.get('phone') as string })
   if (!validation.success) {
     return { error: validation.error.issues[0].message }
   }
 
-  const { error } = await supabase.auth.signInWithPassword(data)
+  const e164Phone = `+1${validation.data.phone}`
 
-  if (error) {
-    return { error: error.message }
+  // Gate: only send OTP to pre-registered league members.
+  // Admin client required — anon role cannot read public.users.
+  const admin = createAdminClient()
+  const { data, error: lookupError } = await admin
+    .from('users')
+    .select('id')
+    .eq('phone', e164Phone)
+    .limit(1)
+
+  if (lookupError) {
+    console.error('Phone lookup error:', lookupError)
+    return { error: 'Unable to verify phone number. Please try again.' }
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  if (!data || data.length === 0) {
+    return { error: 'Phone number not registered in this league.' }
+  }
+
+  const supabase = await createClient()
+  const { error: otpError } = await supabase.auth.signInWithOtp({ phone: e164Phone })
+
+  if (otpError) {
+    console.error('OTP send error:', otpError)
+    return { error: 'Failed to send verification code. Please try again.' }
+  }
+
+  return { error: null } // null = success signal to client state machine
 }
 
-export async function signup(prevState: any, formData: FormData) {
-  const supabase = await createClient()
-
-  const data = {
-    fullName: formData.get('fullName') as string,
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-    confirmPassword: formData.get('confirmPassword') as string,
-  }
-
-  const validation = registerSchema.safeParse(data)
+export async function verifyPhoneOtp(prevState: { error: string | null }, formData: FormData) {
+  const validation = otpSchema.safeParse({
+    phone: formData.get('phone') as string,
+    token: formData.get('token') as string,
+  })
   if (!validation.success) {
     return { error: validation.error.issues[0].message }
   }
 
-  const { error } = await supabase.auth.signUp({
-    email: data.email,
-    password: data.password,
-    options: {
-      data: {
-        full_name: data.fullName,
-      },
-    },
+  const supabase = await createClient()
+  const { error } = await supabase.auth.verifyOtp({
+    phone: `+1${validation.data.phone}`,
+    token: validation.data.token,
+    type: 'sms',
   })
 
   if (error) {
     return { error: error.message }
   }
 
-  // User profile is automatically created by database trigger
   revalidatePath('/', 'layout')
   redirect('/dashboard')
 }
@@ -129,8 +134,6 @@ export async function unlinkGoogleAccount() {
     return { error: 'Google account not linked' }
   }
 
-  // Supabase requires using unlinkIdentity (which will be available in newer versions)
-  // For now, we'll need to use the identity data to unlink
   const { error } = await supabase.auth.unlinkIdentity(googleIdentity)
 
   if (error) {

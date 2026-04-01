@@ -49,6 +49,7 @@ interface CurrentRound {
   round_number: number
   round_date: string
   status: string
+  tee_time?: string | null
 }
 
 interface NextRoundAvailability {
@@ -63,8 +64,10 @@ interface NextRoundAvailability {
 interface NextRoundFoursome {
   id: string
   tee_time_slot: number
+  tee_time: string | null
   members: {
     user_id: string
+    cart_number: number
     is_sub: boolean
     full_name: string
     team_name: string
@@ -85,10 +88,12 @@ interface LeaderboardTabsProps {
   recentRounds: RecentRound[]
   currentRound: CurrentRound | null
   currentRoundScores: CurrentRoundScore[]
+  currentRoundFoursomes: NextRoundFoursome[]
   nextRound: NextRound | null
   nextRoundAvailability: NextRoundAvailability[]
   nextRoundFoursomes: NextRoundFoursome[]
   currentYear: number
+  userHasDeclared: boolean
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,6 +152,15 @@ function formatScoreToPar(score: number | null, holesPlayed: number): string {
   return score > 0 ? `+${score}` : `${score}`
 }
 
+/** Add `offsetMinutes` to a HH:MM time string */
+function addMinutes(timeStr: string, offsetMinutes: number): string {
+  const [h, m] = timeStr.split(':').map(Number)
+  const total = h * 60 + m + offsetMinutes
+  const hh = Math.floor(total / 60) % 24
+  const mm = total % 60
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
+
 function scoreColor(score: number | null): string {
   if (score === null) return 'text-gray-400'
   if (score < 0) return 'text-red-600'   // under par = red (good, traditional golf)
@@ -161,10 +175,12 @@ export function LeaderboardTabs({
   recentRounds,
   currentRound,
   currentRoundScores,
+  currentRoundFoursomes,
   nextRound,
   nextRoundAvailability,
   nextRoundFoursomes,
   currentYear,
+  userHasDeclared,
 }: LeaderboardTabsProps) {
   const [activeTab, setActiveTab] = useState<'season' | 'current' | 'next'>(
     nextRound ? 'next' : currentRound ? 'current' : 'season'
@@ -196,9 +212,9 @@ export function LeaderboardTabs({
   })
 
   return (
-    <div className="max-w-4xl mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-1 px-4">Leaderboard</h1>
-      <p className="text-gray-500 mb-6 px-4">{currentYear} Season</p>
+    <div className="max-w-4xl mx-auto pt-1 pb-8">
+      <h1 className="text-3xl font-bold mb-0.5 px-4">Leaderboard</h1>
+      <p className="text-gray-500 mb-4 px-4">{currentYear} Season</p>
 
       {/* Tab bar */}
       <div className="flex border-b border-gray-200 mb-6 px-4">
@@ -225,7 +241,7 @@ export function LeaderboardTabs({
       {/* ── Season tab ── */}
       {activeTab === 'season' && (
         <div className="space-y-8">
-          <div className="bg-white sm:rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-xl shadow overflow-hidden">
             <div className="bg-green-600 text-white px-6 py-4">
               <h2 className="text-xl font-semibold">Season Standings</h2>
             </div>
@@ -268,7 +284,7 @@ export function LeaderboardTabs({
                     (a, b) => a.finish_position - b.finish_position
                   )
                   return (
-                    <div key={round.id} className="bg-white sm:rounded-lg shadow overflow-hidden">
+                    <div key={round.id} className="bg-white rounded-xl shadow overflow-hidden">
                       <div className="bg-gray-700 text-white px-4 py-3">
                         <h3 className="font-semibold">Round {round.round_number}</h3>
                         <p className="text-gray-300 text-sm">{formatRoundDate(round.round_date)}</p>
@@ -317,12 +333,12 @@ export function LeaderboardTabs({
       {activeTab === 'current' && (
         <div>
           {!currentRound ? (
-            <div className="bg-white sm:rounded-lg shadow px-6 py-12 text-center text-gray-500">
+            <div className="bg-white rounded-xl shadow px-6 py-12 text-center text-gray-500">
               <p className="text-lg">No round is currently in progress.</p>
               <p className="text-sm mt-1">Check back once a round has started.</p>
             </div>
           ) : (
-            <div className="bg-white sm:rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-xl shadow overflow-hidden">
               {/* Round header */}
               <div className="bg-green-700 text-white px-4 py-4 flex items-center justify-between">
                 <div>
@@ -430,6 +446,55 @@ export function LeaderboardTabs({
               )}
             </div>
           )}
+
+          {/* Foursomes for current round */}
+          {currentRound && currentRoundFoursomes.length > 0 && (
+            <div className="space-y-4 mt-6">
+              <h3 className="text-xl font-bold px-4 sm:px-0">Foursomes</h3>
+              {currentRoundFoursomes.map((foursome) => {
+                const cart1 = foursome.members.filter((m) => m.cart_number === 1)
+                const cart2 = foursome.members.filter((m) => m.cart_number === 2)
+                const roundTime = currentRound.tee_time
+                const slotTime = foursome.tee_time
+                  ?? (roundTime
+                      ? addMinutes(roundTime, (foursome.tee_time_slot - 1) * 10)
+                      : null)
+                const teeLabel = slotTime ? formatTeeTime(slotTime) : `Group ${foursome.tee_time_slot}`
+                return (
+                  <div key={foursome.id} className="bg-white rounded-xl shadow overflow-hidden">
+                    <div className="bg-green-700 text-white px-4 py-3 flex items-center gap-2">
+                      <Icon icon={ClockIcon} size="sm" className="text-gray-300" />
+                      <span className="font-semibold">{teeLabel}</span>
+                    </div>
+                    <div className="grid grid-cols-2 divide-x divide-gray-100">
+                      {[{ num: 1, members: cart1 }, { num: 2, members: cart2 }].map(({ num, members: cartMembers }) => (
+                        <div key={num} className="p-4">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                            Cart {num}
+                          </p>
+                          <div className="space-y-3">
+                            {cartMembers.map((member) => (
+                              <div key={member.user_id} className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-sm text-gray-900 leading-tight">{member.full_name}</p>
+                                  <p className="text-xs text-gray-500 mt-0.5">Team {member.team_number} · {member.team_name}</p>
+                                </div>
+                                {member.is_sub && (
+                                  <span className="shrink-0 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                                    Sub
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -437,37 +502,109 @@ export function LeaderboardTabs({
       {activeTab === 'next' && (
         <div>
           {!nextRound ? (
-            <div className="bg-white sm:rounded-lg shadow px-6 py-12 text-center text-gray-500">
+            <div className="bg-white rounded-xl shadow px-6 py-12 text-center text-gray-500">
               <p className="text-lg">No upcoming rounds scheduled.</p>
             </div>
           ) : (
-            <div className="space-y-8">
-              {/* Next Round Header */}
-              <div className="bg-white sm:rounded-lg shadow overflow-hidden">
-                <div className="bg-blue-600 text-white px-4 py-4 flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-blue-300 text-xs font-medium uppercase tracking-widest">Round {nextRound.round_number}</p>
-                    <p className="font-semibold text-lg">{formatRoundDate(nextRound.round_date)}</p>
-                    {nextRound.tee_time && (
-                      <p className="text-blue-200 text-sm mt-1 flex items-center gap-2">
-                        <Icon icon={ClockIcon} size="sm" className="text-blue-200" />
-                        Tee time: {formatTeeTime(nextRound.tee_time)}
-                      </p>
-                    )}
+            <div className="space-y-6">
+              {/* Next Round Header — only shown prominently when user hasn't declared yet */}
+              {!userHasDeclared && (
+                <div className="bg-white rounded-xl shadow overflow-hidden">
+                  <div className="bg-blue-600 text-white px-4 py-4 flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-blue-300 text-xs font-medium uppercase tracking-widest">Round {nextRound.round_number}</p>
+                      <p className="font-semibold text-lg">{formatRoundDate(nextRound.round_date)}</p>
+                      {nextRound.tee_time && (
+                        <p className="text-blue-200 text-sm mt-1 flex items-center gap-2">
+                          <Icon icon={ClockIcon} size="sm" className="text-blue-200" />
+                          Tee time: {formatTeeTime(nextRound.tee_time)}
+                        </p>
+                      )}
+                    </div>
+                    <Link
+                      href={`/availability/${nextRound.id}`}
+                      className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm whitespace-nowrap shrink-0 ml-4"
+                    >
+                      <Icon icon={ClipboardDocumentListIcon} size="sm" />
+                      Declare
+                    </Link>
                   </div>
-                  <Link
-                    href={`/availability/${nextRound.id}`}
-                    className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm whitespace-nowrap shrink-0 ml-4"
-                  >
-                    <Icon icon={ClipboardDocumentListIcon} size="sm" />
-                    Declare
-                  </Link>
                 </div>
-              </div>
+              )}
+
+              {/* Round info header when user has already declared (compact) */}
+              {userHasDeclared && (
+                <div className="px-1">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Round {nextRound.round_number}</p>
+                  <p className="font-bold text-xl text-gray-900">{formatRoundDate(nextRound.round_date)}</p>
+                  {nextRound.tee_time && (
+                    <p className="text-gray-500 text-sm mt-0.5 flex items-center gap-1.5">
+                      <Icon icon={ClockIcon} size="sm" className="text-gray-400" />
+                      First tee: {formatTeeTime(nextRound.tee_time)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Foursomes */}
+              {nextRoundFoursomes.length > 0 ? (
+                <div className="space-y-4">
+                  <h3 className="text-xl font-bold px-4 sm:px-0">Foursomes</h3>
+                  {nextRoundFoursomes.map((foursome) => {
+                    const cart1 = foursome.members.filter((m) => m.cart_number === 1)
+                    const cart2 = foursome.members.filter((m) => m.cart_number === 2)
+                    const roundTime = nextRound.tee_time
+                    const slotTime = foursome.tee_time
+                      ?? (roundTime
+                          ? addMinutes(roundTime, (foursome.tee_time_slot - 1) * 10)
+                          : null)
+                    const teeLabel = slotTime ? formatTeeTime(slotTime) : `Group ${foursome.tee_time_slot}`
+                    return (
+                      <div key={foursome.id} className="bg-white rounded-xl shadow overflow-hidden">
+                        {/* Tee time header */}
+                        <div className="bg-green-700 text-white px-4 py-3 flex items-center gap-2">
+                          <Icon icon={ClockIcon} size="sm" className="text-gray-300" />
+                          <span className="font-semibold">{teeLabel}</span>
+                        </div>
+
+                        {/* Cart columns */}
+                        <div className="grid grid-cols-2 divide-x divide-gray-100">
+                          {[{ num: 1, members: cart1 }, { num: 2, members: cart2 }].map(({ num, members: cartMembers }) => (
+                            <div key={num} className="p-4">
+                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                                Cart {num}
+                              </p>
+                              <div className="space-y-3">
+                                {cartMembers.map((member) => (
+                                  <div key={member.user_id} className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="font-semibold text-sm text-gray-900 leading-tight">{member.full_name}</p>
+                                      <p className="text-xs text-gray-500 mt-0.5">Team {member.team_number} · {member.team_name}</p>
+                                    </div>
+                                    {member.is_sub && (
+                                      <span className="shrink-0 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                                        Sub
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow px-6 py-8 text-center text-gray-500">
+                  <p className="text-sm">Foursomes have not been generated yet.</p>
+                </div>
+              )}
 
               {/* Availability Summary */}
               {nextRoundAvailability.length > 0 && (
-                <div className="bg-white sm:rounded-lg shadow overflow-hidden">
+                <div className="bg-white rounded-xl shadow overflow-hidden">
                   <div className="bg-gray-700 text-white px-4 py-3">
                     <h3 className="font-semibold">Availability</h3>
                   </div>
@@ -508,37 +645,15 @@ export function LeaderboardTabs({
                 </div>
               )}
 
-              {/* Foursomes */}
-              {nextRoundFoursomes.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="text-xl font-bold px-4 sm:px-0">Foursomes</h3>
-                  {nextRoundFoursomes.map((foursome) => (
-                    <div key={foursome.id} className="bg-white sm:rounded-lg shadow overflow-hidden">
-                      <div className="bg-gray-700 text-white px-4 py-2">
-                        <p className="font-semibold text-sm">Tee Time {foursome.tee_time_slot + 1}</p>
-                      </div>
-                      <div className="p-4 space-y-2">
-                        {foursome.members.map((member) => (
-                          <div key={member.user_id} className="flex justify-between items-center text-sm">
-                            <div>
-                              <p className="font-medium">{member.full_name}</p>
-                              <p className="text-xs text-gray-500">Team {member.team_number} — {member.team_name}</p>
-                            </div>
-                            {member.is_sub && (
-                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded">
-                                Sub
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-white sm:rounded-lg shadow px-6 py-8 text-center text-gray-500">
-                  <p className="text-sm">Foursomes have not been generated yet.</p>
-                </div>
+              {/* Declare button — shown at bottom when user has already declared */}
+              {userHasDeclared && (
+                <Link
+                  href={`/availability/${nextRound.id}`}
+                  className="flex items-center justify-center gap-2 w-full py-3 border-2 border-blue-200 text-blue-600 rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors"
+                >
+                  <Icon icon={ClipboardDocumentListIcon} size="sm" />
+                  Update Declaration
+                </Link>
               )}
             </div>
           )}

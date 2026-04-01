@@ -64,6 +64,31 @@ export default async function DashboardPage({
     }
   }
 
+  // Fetch foursomes for active rounds to display on dashboard
+  let foursomesByRound: Record<string, any[]> = {}
+  if (activeRounds && activeRounds.length > 0) {
+    const { data: activeFoursomes } = await supabase
+      .from('foursomes')
+      .select(`
+        *,
+        members:foursome_members (
+          *,
+          user:user_id ( id, full_name, display_name ),
+          sub:sub_id ( id, full_name ),
+          team:team_id ( id, team_name, team_number )
+        )
+      `)
+      .in('round_id', activeRounds.map((r) => r.id))
+      .order('tee_time_slot')
+
+    if (activeFoursomes) {
+      for (const f of activeFoursomes) {
+        if (!foursomesByRound[f.round_id]) foursomesByRound[f.round_id] = []
+        foursomesByRound[f.round_id].push(f)
+      }
+    }
+  }
+
   // Get my availability for upcoming rounds
   const { data: myAvailability } = await supabase
     .from('round_availability')
@@ -205,6 +230,7 @@ export default async function DashboardPage({
                 availability={myAvailability?.find(a => a.round_id === round.id)}
                 declarations={declarationsByRound[round.id]}
                 canEnterScore={scoringRoundIds.has(round.id)}
+                foursomes={foursomesByRound[round.id]}
               />
             ))}
           </div>
