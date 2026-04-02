@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { HOLE_PARS, STROKE_INDEX } from '@/lib/constants/course'
 import { formatRoundDate, formatTeeTime } from '@/lib/utils/date'
 import { Icon } from '@/components/Icon'
-import { TrophyIcon, ClockIcon, ClipboardDocumentListIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { TrophyIcon, ClockIcon, ClipboardDocumentListIcon, CheckIcon, XMarkIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 
 interface StandingRow {
   team_id: string
@@ -83,6 +83,14 @@ interface NextRound {
   tee_time: string
 }
 
+interface TeamMember {
+  user_id: string
+  team_id: string
+  full_name: string
+  team_name: string
+  team_number: number
+}
+
 interface LeaderboardTabsProps {
   standings: StandingRow[]
   recentRounds: RecentRound[]
@@ -91,6 +99,7 @@ interface LeaderboardTabsProps {
   currentRoundFoursomes: NextRoundFoursome[]
   nextRound: NextRound | null
   nextRoundAvailability: NextRoundAvailability[]
+  nextRoundTeamMembers: TeamMember[]
   nextRoundFoursomes: NextRoundFoursome[]
   currentYear: number
   userHasDeclared: boolean
@@ -178,6 +187,7 @@ export function LeaderboardTabs({
   currentRoundFoursomes,
   nextRound,
   nextRoundAvailability,
+  nextRoundTeamMembers,
   nextRoundFoursomes,
   currentYear,
   userHasDeclared,
@@ -603,40 +613,53 @@ export function LeaderboardTabs({
               )}
 
               {/* Availability Summary */}
-              {nextRoundAvailability.length > 0 && (
+              {nextRoundTeamMembers.length > 0 && (
                 <div className="bg-white rounded-xl shadow overflow-hidden">
                   <div className="bg-gray-700 text-white px-4 py-3">
                     <h3 className="font-semibold">Availability</h3>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-                    {/* Group by team */}
                     {Array.from(
-                      new Set(nextRoundAvailability.map((a) => a.team_id))
+                      new Set(nextRoundTeamMembers.map((m) => m.team_id))
                     )
+                      .sort((a, b) => {
+                        const ta = nextRoundTeamMembers.find((m) => m.team_id === a)!
+                        const tb = nextRoundTeamMembers.find((m) => m.team_id === b)!
+                        return ta.team_number - tb.team_number
+                      })
                       .map((teamId) => {
-                        const team = nextRoundAvailability.find((a) => a.team_id === teamId)!
-                        const teamAvailability = nextRoundAvailability.filter((a) => a.team_id === teamId)
-                        const inCount = teamAvailability.filter((a) => a.status === 'in').length
-                        const outCount = teamAvailability.filter((a) => a.status === 'out').length
+                        const team = nextRoundTeamMembers.find((m) => m.team_id === teamId)!
+                        const members = nextRoundTeamMembers.filter((m) => m.team_id === teamId)
 
                         return (
                           <div key={teamId} className="border rounded-lg p-3">
                             <h4 className="font-semibold mb-2">Team {team.team_number} — {team.team_name}</h4>
                             <div className="space-y-1 text-sm">
-                              <div className="flex items-center gap-2">
-                                <span className="text-green-600 font-semibold flex items-center gap-1">
-                                  <Icon icon={CheckIcon} size="sm" className="text-green-600" />
-                                  In:
-                                </span>
-                                <span>{inCount}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-red-600 font-semibold flex items-center gap-1">
-                                  <Icon icon={XMarkIcon} size="sm" className="text-red-600" />
-                                  Out:
-                                </span>
-                                <span>{outCount}</span>
-                              </div>
+                              {members.map((m) => {
+                                const declaration = nextRoundAvailability.find((a) => a.user_id === m.user_id)
+                                if (declaration?.status === 'in') {
+                                  return (
+                                    <div key={m.user_id} className="flex items-center gap-1.5">
+                                      <Icon icon={CheckIcon} size="sm" className="text-green-600 shrink-0" />
+                                      <span className="text-green-600 font-medium">{m.full_name}</span>
+                                    </div>
+                                  )
+                                }
+                                if (declaration?.status === 'out') {
+                                  return (
+                                    <div key={m.user_id} className="flex items-center gap-1.5">
+                                      <Icon icon={XMarkIcon} size="sm" className="text-red-500 shrink-0" />
+                                      <span className="text-red-500 font-medium">{m.full_name}</span>
+                                    </div>
+                                  )
+                                }
+                                return (
+                                  <div key={m.user_id} className="flex items-center gap-1.5">
+                                    <Icon icon={QuestionMarkCircleIcon} size="sm" className="text-gray-400 shrink-0" />
+                                    <span className="text-gray-400 font-medium">{m.full_name}</span>
+                                  </div>
+                                )
+                              })}
                             </div>
                           </div>
                         )

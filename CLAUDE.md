@@ -12,6 +12,8 @@ npm run lint     # ESLint validation
 
 No test suite is configured.
 
+Do not run `npm run build` to verify compilation. The user will do that manually.
+
 ## Architecture
 
 This is a **Next.js 15 App Router** application for managing a competitive golf league. It uses React Server Components + Server Actions as the primary data layer (no REST API routes). The database is **PostgreSQL via Supabase**.

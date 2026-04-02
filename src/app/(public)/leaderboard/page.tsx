@@ -138,6 +138,7 @@ export default async function LeaderboardPage() {
   let nextRound: any = null
   let nextRoundAvailability: any[] = []
   let nextRoundFoursomes: any[] = []
+  let nextRoundTeamMembers: any[] = []
   if (!currentRound) {
     // Fetch the next upcoming round by date
     const { data: nextRoundData } = await supabase
@@ -172,6 +173,30 @@ export default async function LeaderboardPage() {
         team_name: a.team?.team_name ?? '',
         team_number: a.team?.team_number ?? 0,
       }))
+
+      // Get all team members so we can show undeclared players
+      const { data: teamsData } = await supabase
+        .from('teams')
+        .select(`
+          id,
+          team_number,
+          team_name,
+          team_members (
+            user_id,
+            user:user_id ( full_name, display_name, id )
+          )
+        `)
+        .eq('season_year', currentYear)
+
+      nextRoundTeamMembers = (teamsData ?? []).flatMap((t: any) =>
+        (t.team_members ?? []).map((m: any) => ({
+          user_id: m.user_id,
+          team_id: t.id,
+          full_name: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
+          team_name: t.team_name,
+          team_number: t.team_number,
+        }))
+      )
 
       // Get foursomes for next round (if they exist)
       const { data: foursomesData } = await supabase
@@ -225,6 +250,7 @@ export default async function LeaderboardPage() {
       currentRoundFoursomes={currentRoundFoursomes}
       nextRound={nextRound}
       nextRoundAvailability={nextRoundAvailability}
+      nextRoundTeamMembers={nextRoundTeamMembers}
       nextRoundFoursomes={nextRoundFoursomes}
       currentYear={currentYear}
       userHasDeclared={userHasDeclared || userInFoursome}
