@@ -6,6 +6,7 @@ import { Card } from '@/components/Card'
 import { Icon } from '@/components/Icon'
 import { DashboardRoundCard } from '@/components/dashboard/DashboardRoundCard'
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection'
+import { RoundAvailabilityGrid } from '@/components/RoundAvailabilityGrid'
 import { PencilIcon, MapPinIcon, FlagIcon, ClipboardDocumentListIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 
 export default async function DashboardPage({
@@ -89,85 +90,49 @@ export default async function DashboardPage({
     }
   }
 
-  // Get my availability for upcoming rounds
+  // Get my availability for upcoming rounds (for the per-round availability badge)
   const { data: myAvailability } = await supabase
     .from('round_availability')
-    .select(`
-      *,
-      round:round_id (
-        round_number,
-        round_date,
-        status
-      )
-    `)
+    .select('round_id, status')
     .eq('user_id', user?.id)
     .in('round_id', upcomingRounds?.map(r => r.id) || []);
 
-  // Get all teams info for comparison
+  // Get all teams with members
   const { data: allTeams } = await supabase
     .from('teams')
-    .select('id, team_number, team_name')
+    .select(`
+      id, team_number, team_name,
+      team_members (
+        user_id,
+        user:user_id ( full_name, display_name, id )
+      )
+    `)
     .order('team_number');
 
-  const totalTeams = allTeams?.length || 0;
+  // Get all availability for upcoming rounds (all players)
+  const allRoundIds = upcomingRounds?.map(r => r.id) ?? []
+  const { data: allAvailability } = await supabase
+    .from('round_availability')
+    .select('round_id, user_id, status')
+    .in('round_id', allRoundIds)
 
-  // Get declarations for upcoming rounds
-  let declarationsByRound: Record<string, any> = {};
-  if (upcomingRounds && upcomingRounds.length > 0 && allTeams && allTeams.length > 0) {
-    // First, initialize all rounds with all teams in notDeclared
-    upcomingRounds.forEach((round: any) => {
-      declarationsByRound[round.id] = {
-        declared: [],
-        notDeclared: allTeams.map((team: any) => ({
-          teamId: team.id,
-          teamNumber: team.team_number,
-          teamName: team.team_name,
-        }))
-      };
-    });
-
-    // Then fetch declarations and move teams from notDeclared to declared
-    const { data: allDeclarations } = await supabase
-      .from('round_team_declarations')
-      .select(`
-        round_id,
-        team_id,
-        declared_golfer_id,
-        team:team_id ( team_number, team_name ),
-        user:declared_golfer_id ( full_name, display_name )
-      `)
-      .in('round_id', upcomingRounds.map((r: any) => r.id));
-
-    if (allDeclarations) {
-      allDeclarations.forEach((d: any) => {
-        const team = d.team || {};
-        const golfer = d.user || {};
-        
-        // Move from notDeclared to declared
-        const notDeclaredIndex = declarationsByRound[d.round_id].notDeclared.findIndex((t: any) => t.teamId === d.team_id);
-        if (notDeclaredIndex !== -1) {
-          declarationsByRound[d.round_id].notDeclared.splice(notDeclaredIndex, 1);
-        }
-        
-        declarationsByRound[d.round_id].declared.push({
-          teamId: d.team_id,
-          teamNumber: team.team_number,
-          teamName: team.team_name,
-          golferName: golfer.display_name || golfer.full_name || 'Unknown',
-        });
-      });
-    }
+  // Group availability by round
+  const availabilityByRound: Record<string, { user_id: string; status: 'in' | 'out' }[]> = {}
+  for (const a of allAvailability ?? []) {
+    if (!availabilityByRound[a.round_id]) availabilityByRound[a.round_id] = []
+    availabilityByRound[a.round_id].push({ user_id: a.user_id, status: a.status })
   }
 
-  // Initialize empty declarations for all rounds even if no teams
-  if (!declarationsByRound || Object.keys(declarationsByRound).length === 0) {
-    upcomingRounds?.forEach((round: any) => {
-      declarationsByRound[round.id] = {
-        declared: [],
-        notDeclared: []
-      };
-    });
-  }
+  // Normalize teams for RoundAvailabilityGrid
+  const availabilityTeams = (allTeams ?? []).map((t: any) => ({
+    id: t.id,
+    team_number: t.team_number,
+    team_name: t.team_name,
+    members: (t.team_members ?? []).map((m: any) => ({
+      user_id: m.user_id,
+      full_name: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
+    })),
+  }))
 
   // Scoring-open rounds that are NOT already in upcomingRounds (they may be today or past)
   const upcomingIds = new Set(upcomingRounds?.map((r) => r.id) ?? [])
@@ -228,7 +193,6 @@ export default async function DashboardPage({
                 key={round.id}
                 round={round}
                 availability={myAvailability?.find(a => a.round_id === round.id)}
-                declarations={declarationsByRound[round.id]}
                 canEnterScore={scoringRoundIds.has(round.id)}
                 foursomes={foursomesByRound[round.id]}
               />
@@ -270,17 +234,21 @@ export default async function DashboardPage({
         <CollapsibleSection
           title="Upcoming Rounds"
           count={futureUpcomingRounds.length}
-          defaultOpen={futureUpcomingRounds.length === 1}
+          defaultOpen={true}
         >
-          <div className="space-y-md">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-md">
             {futureUpcomingRounds.map((round: any) => (
-              <DashboardRoundCard
-                key={round.id}
-                round={round}
-                availability={myAvailability?.find(a => a.round_id === round.id)}
-                declarations={declarationsByRound[round.id]}
-                canEnterScore={scoringRoundIds.has(round.id)}
-              />
+              <div key={round.id} className="border border-neutral-200 rounded-xl bg-neutral-100 overflow-hidden space-y-sm p-sm">
+                <DashboardRoundCard
+                  round={round}
+                  availability={myAvailability?.find(a => a.round_id === round.id)}
+                  canEnterScore={scoringRoundIds.has(round.id)}
+                />
+                <RoundAvailabilityGrid
+                  teams={availabilityTeams}
+                  availability={availabilityByRound[round.id] ?? []}
+                />
+              </div>
             ))}
           </div>
         </CollapsibleSection>
@@ -299,7 +267,6 @@ export default async function DashboardPage({
                 key={round.id}
                 round={round}
                 availability={myAvailability?.find(a => a.round_id === round.id)}
-                declarations={declarationsByRound[round.id]}
                 canEnterScore={false}
               />
             ))}

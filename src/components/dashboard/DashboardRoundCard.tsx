@@ -8,7 +8,6 @@ import { FlagIcon, ClipboardDocumentListIcon, CheckIcon, ClockIcon, CalendarIcon
 interface DashboardRoundCardProps {
   round: any;
   availability?: any;
-  declarations?: any;
   canEnterScore: boolean;
   foursomes?: any[];
 }
@@ -34,7 +33,6 @@ const STATUS_BADGE_STYLES: Record<string, { bg: string; text: string; label: str
 export function DashboardRoundCard({
   round,
   availability,
-  declarations,
   canEnterScore,
   foursomes,
 }: DashboardRoundCardProps) {
@@ -85,53 +83,6 @@ export function DashboardRoundCard({
           )}
         </div>
       </div>
-
-      {/* Declaration Status */}
-      {!roundEnded &&
-        declarations && (
-          <div className="mb-md pb-md border-b border-neutral-100">
-            <div className="space-y-2">
-              {declarations.declared.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-neutral-700 uppercase tracking-wide mb-2">
-                    Declared ({declarations.declared.length}/
-                    {declarations.declared.length + declarations.notDeclared.length})
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {declarations.declared.map((team: any) => (
-                      <span
-                        key={team.teamId}
-                        className="inline-flex items-center gap-1 bg-success text-white text-xs px-2 py-1 rounded"
-                      >
-                        <Icon icon={CheckIcon} size="sm" />
-                        T{team.teamNumber}: {team.golferName}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {declarations.notDeclared.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-neutral-700 uppercase tracking-wide mb-2">
-                    Not Declared ({declarations.notDeclared.length}/
-                    {declarations.declared.length + declarations.notDeclared.length})
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {declarations.notDeclared.map((team: any) => (
-                      <span
-                        key={team.teamId}
-                        className="inline-flex items-center gap-1 bg-danger text-white text-xs px-2 py-1 rounded"
-                      >
-                        <Icon icon={XMarkIcon} size="sm" />
-                        T{team.teamNumber}: {team.teamName}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
       {/* Actions */}
       <div className="flex flex-col gap-2 md:flex-row">
