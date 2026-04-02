@@ -26,6 +26,7 @@ export async function createRound(prevState: any, formData: FormData) {
   const roundNumber = parseInt(formData.get('roundNumber') as string)
   const roundDate = formData.get('roundDate') as string
   const roundType = formData.get('roundType') as string || 'regular'
+  const course = formData.get('course') as string
   const notes = formData.get('notes') as string
   const seasonYear = parseInt(formData.get('seasonYear') as string) || new Date().getFullYear()
 
@@ -47,6 +48,7 @@ export async function createRound(prevState: any, formData: FormData) {
       round_type: roundType,
       season_year: seasonYear,
       availability_deadline: availabilityDeadline.toISOString(),
+      course: course || null,
       notes: notes || null,
       status: 'scheduled',
     })
@@ -164,6 +166,23 @@ export async function updateTeeTime(roundId: string, teeTime: string) {
     old_value: { tee_time: oldRound?.tee_time },
     new_value: { tee_time: teeTime },
   })
+
+  revalidatePath('/admin/rounds')
+  revalidatePath(`/admin/rounds/${roundId}`)
+  return { success: true }
+}
+
+export async function updateCourse(roundId: string, course: string) {
+  const { supabase } = await getAdminUser()
+
+  const { error } = await supabase
+    .from('rounds')
+    .update({ course: course || null })
+    .eq('id', roundId)
+
+  if (error) {
+    return { error: error.message }
+  }
 
   revalidatePath('/admin/rounds')
   revalidatePath(`/admin/rounds/${roundId}`)

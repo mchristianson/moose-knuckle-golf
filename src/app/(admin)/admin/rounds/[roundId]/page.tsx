@@ -3,6 +3,7 @@ import Link from "next/link";
 import { formatRoundDate } from "@/lib/utils/date";
 import { AvailabilitySummary } from "@/components/availability/availability-summary";
 import { TeeTimeEditor } from "@/components/rounds/tee-time-editor";
+import { CourseEditor } from "@/components/rounds/course-editor";
 import { GenerateFoursomesButton } from "@/components/foursomes/generate-foursomes-button";
 import { DraggableFoursomes } from "@/components/foursomes/draggable-foursomes";
 
@@ -147,6 +148,7 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
               <span className="font-medium">{availableCount} / 8</span>
             </span>
             <TeeTimeEditor roundId={roundId} currentTeeTime={round.tee_time} />
+            <CourseEditor roundId={roundId} currentCourse={round.course} />
           </div>
         </div>
         <Link

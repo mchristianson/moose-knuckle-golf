@@ -84,6 +84,19 @@ export function CreateRoundForm() {
       </div>
 
       <div>
+        <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">
+          Course / Location (Optional)
+        </label>
+        <input
+          id="course"
+          name="course"
+          type="text"
+          placeholder="e.g. Pebble Beach Golf Links"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+      </div>
+
+      <div>
         <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
           Notes (Optional)
         </label>
