@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { LeaderboardTabs } from '@/components/leaderboard/leaderboard-tabs'
+import { CalendarSubscribe } from '@/components/leaderboard/CalendarSubscribe'
 
 export default async function LeaderboardPage() {
   const supabase = await createClient()
@@ -244,30 +245,11 @@ export default async function LeaderboardPage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   const calendarUrl = `${siteUrl}/api/calendar`
   const webcalUrl = calendarUrl.replace(/^https?:\/\//, 'webcal://')
-  const googleCalUrl = `https://calendar.google.com/calendar/r/settings/addbyurl?url=${encodeURIComponent(calendarUrl)}`
 
   return (
     <div>
       <div className="flex justify-end px-4 pt-3 pb-1">
-        <div className="flex items-center gap-2">
-          <a
-            href={webcalUrl}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 border border-green-300 rounded-md hover:bg-green-50 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-            </svg>
-            Subscribe to Calendar
-          </a>
-          <a
-            href={googleCalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            Google Cal
-          </a>
-        </div>
+        <CalendarSubscribe webcalUrl={webcalUrl} calendarUrl={calendarUrl} />
       </div>
       <LeaderboardTabs
         standings={(standings ?? []) as any}

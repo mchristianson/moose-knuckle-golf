@@ -58,8 +58,8 @@ export async function GET() {
       dtEndLine = `DTEND;VALUE=DATE:${dtstart}`
     } else {
       const dtend = addHoursToICalDate(dtstart, 4)
-      dtStartLine = `DTSTART:${dtstart}`
-      dtEndLine = `DTEND:${dtend}`
+      dtStartLine = `DTSTART;TZID=America/Chicago:${dtstart}`
+      dtEndLine = `DTEND;TZID=America/Chicago:${dtend}`
     }
 
     const summary = `MKG Round ${round.round_number} (${round.season_year})`
@@ -89,6 +89,7 @@ export async function GET() {
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'X-WR-CALNAME:Moose Knuckle Golf',
+    'X-WR-TIMEZONE:America/Chicago',
     ...events,
     'END:VCALENDAR',
   ].join('\r\n')
