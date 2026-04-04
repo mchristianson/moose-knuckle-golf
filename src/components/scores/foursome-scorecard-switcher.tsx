@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Image from 'next/image'
 import { MyScoreCard } from './my-score-card'
 
 export interface FoursomePlayer {
@@ -17,6 +17,7 @@ export interface FoursomePlayer {
   existingScoreId: string | null
   grossScore: number | null
   netScore: number | null
+  avatarUrl?: string | null
 }
 
 interface FoursomeScorecardSwitcherProps {
@@ -26,6 +27,10 @@ interface FoursomeScorecardSwitcherProps {
   roundNumber: number
   roundDate: string
   scoringOpen: boolean
+}
+
+function getInitials(name: string): string {
+  return name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 }
 
 export function FoursomeScorecardSwitcher({
@@ -44,35 +49,65 @@ export function FoursomeScorecardSwitcher({
 
   return (
     <>
-      {/* Player toggle button group */}
+      {/* Player avatar selector */}
       {players.length > 1 && (
-        <div className="mb-3 -mx-4 sm:mx-0 px-4 sm:px-0">
-          <div className="grid grid-cols-4 gap-1">
+        <div className="mb-4 px-2">
+          <div className="flex justify-around">
             {players.map((player) => {
               const isActive = player.userId === selectedUserId
               const isMe = player.userId === currentUserId
+              const label = player.displayName.split(' ')[0].toUpperCase() + (isMe ? ' (Me)' : '')
+
               return (
                 <button
-                  key={player.userId}
+                  key={player.userId ?? player.displayName}
                   onClick={() => setSelectedUserId(player.userId)}
-                  className={[
-                    'py-2 px-1 text-xs font-semibold border-2 rounded transition-all',
-                    isActive
-                      ? 'bg-green-700 text-white border-green-700'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-green-400 hover:bg-green-50',
-                  ].join(' ')}
+                  className="flex flex-col items-center gap-1.5 px-1 min-w-0"
                 >
-                  <div className="text-center truncate">
-                    <div className="truncate">{player.displayName}</div>
-                    {isMe && (
-                      <span className={`text-xs ${isActive ? 'text-green-200' : 'text-gray-400'}`}>
-                        you
-                      </span>
-                    )}
-                    {player.isLocked && (
-                      <span className="text-xs">🔒</span>
+                  {/* Avatar circle */}
+                  <div
+                    className={`w-16 h-16 rounded-full overflow-hidden shrink-0 transition-all ${
+                      isActive
+                        ? 'ring-2 ring-green-500 ring-offset-2 ring-offset-zinc-900'
+                        : 'ring-2 ring-zinc-700'
+                    }`}
+                  >
+                    {player.avatarUrl ? (
+                      <Image
+                        src={player.avatarUrl}
+                        alt={player.displayName}
+                        width={64}
+                        height={64}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-zinc-700 flex items-center justify-center">
+                        <span className="text-white text-lg font-bold">
+                          {getInitials(player.displayName)}
+                        </span>
+                      </div>
                     )}
                   </div>
+
+                  {/* Name label */}
+                  <span
+                    className={`text-xs font-semibold text-center leading-tight max-w-[72px] truncate ${
+                      isActive ? 'text-green-400' : 'text-zinc-400'
+                    }`}
+                  >
+                    {label}
+                  </span>
+
+                  {/* Lock indicator */}
+                  {player.isLocked && (
+                    <span className="text-xs text-zinc-500">🔒</span>
+                  )}
+
+                  {/* Active underline */}
+                  <div className={`h-0.5 w-8 rounded-full transition-all ${
+                    isActive ? 'bg-green-500' : 'bg-transparent'
+                  }`} />
                 </button>
               )
             })}
@@ -80,7 +115,7 @@ export function FoursomeScorecardSwitcher({
         </div>
       )}
 
-      {/* Scorecard for selected player — key resets state when switching */}
+      {/* Scorecard for selected player */}
       {selected.userId ? (
         <MyScoreCard
           key={selected.userId ?? selected.displayName}
@@ -100,8 +135,8 @@ export function FoursomeScorecardSwitcher({
           roundDate={roundDate}
         />
       ) : (
-        <div className="mx-4 sm:mx-0 bg-yellow-50 border border-yellow-200 rounded-xl p-5 text-center">
-          <p className="text-yellow-800 font-medium text-sm">
+        <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5 text-center">
+          <p className="text-zinc-300 font-medium text-sm">
             {selected.displayName} is an external sub — an admin must enter their score.
           </p>
         </div>

@@ -41,9 +41,9 @@ export default async function AuthenticatedLayout({
   ]
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-zinc-950">
       <SiteHeader navItems={navItems} isLoggedIn={!!user} isAdmin={isAdmin} />
-      <main className="flex-1 container mx-auto px-4 py-6">
+      <main className="flex-1 container mx-auto px-4 py-0">
         {children}
       </main>
       <AppBottomNav currentRoundId={currentRoundId} />

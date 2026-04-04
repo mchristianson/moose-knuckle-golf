@@ -18,25 +18,23 @@ export function CollapsibleSection({
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
   return (
-    <div className="mb-lg">
+    <div className="mb-6">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between gap-md p-md rounded-lg hover:bg-neutral-50 transition-colors active:bg-neutral-100"
+        className="w-full flex items-center justify-between gap-3 py-2 rounded-lg transition-colors"
         aria-expanded={isOpen}
       >
-        <h2 className="text-h2 flex items-center gap-2">
-          <span>{isOpen ? '▼' : '▶'}</span>
+        <h2 className="text-white text-base font-semibold flex items-center gap-2">
+          <span className="text-zinc-500">{isOpen ? '▼' : '▶'}</span>
           <span>{title}</span>
           {count > 0 && (
-            <span className="text-small font-normal text-neutral-700">
-              ({count})
-            </span>
+            <span className="text-zinc-400 text-sm font-normal">({count})</span>
           )}
         </h2>
       </button>
 
       {isOpen && (
-        <div className="mt-md space-y-md animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="mt-2 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
           {children}
         </div>
       )}

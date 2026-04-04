@@ -18,12 +18,12 @@ export function CalendarSubscribe({ webcalUrl, calendarUrl }: CalendarSubscribeP
   }
 
   return (
-    <div className="relative flex items-center gap-2">
+    <div className="relative flex items-center gap-3">
       <a
         href={webcalUrl}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 border border-green-300 rounded-md hover:bg-green-50 transition-colors"
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-zinc-800 border border-zinc-700 rounded-full hover:bg-zinc-700 transition-colors"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
         </svg>
         Subscribe to Calendar
@@ -31,23 +31,23 @@ export function CalendarSubscribe({ webcalUrl, calendarUrl }: CalendarSubscribeP
 
       <button
         onClick={() => setShowCopy(!showCopy)}
-        className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
       >
         Google Cal
       </button>
 
       {showCopy && (
-        <div className="absolute right-0 top-8 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-80">
-          <p className="text-xs text-gray-500 mb-2">
-            In Google Calendar, go to <strong>Settings → Add calendar → From URL</strong> and paste:
+        <div className="absolute right-0 top-10 z-10 bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl p-4 w-80">
+          <p className="text-xs text-zinc-400 mb-3">
+            In Google Calendar, go to <strong className="text-zinc-200">Settings → Add calendar → From URL</strong> and paste:
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-xs bg-gray-100 px-2 py-1.5 rounded truncate text-gray-700">
+            <code className="flex-1 text-xs bg-zinc-900 border border-zinc-700 px-2 py-1.5 rounded-lg truncate text-zinc-300">
               {calendarUrl}
             </code>
             <button
               onClick={handleCopy}
-              className="shrink-0 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              className="shrink-0 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors font-medium"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>

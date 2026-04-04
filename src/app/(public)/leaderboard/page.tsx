@@ -248,7 +248,7 @@ export default async function LeaderboardPage() {
 
   return (
     <div>
-      <div className="flex justify-end px-4 pt-3 pb-1">
+      <div className="flex justify-end px-4 pt-4 pb-1">
         <CalendarSubscribe webcalUrl={webcalUrl} calendarUrl={calendarUrl} />
       </div>
       <LeaderboardTabs

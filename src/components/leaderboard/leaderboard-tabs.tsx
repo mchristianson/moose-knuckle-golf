@@ -5,8 +5,13 @@ import Link from 'next/link'
 import { HOLE_PARS, STROKE_INDEX } from '@/lib/constants/course'
 import { formatRoundDate, formatTeeTime } from '@/lib/utils/date'
 import { Icon } from '@/components/Icon'
-import { TrophyIcon, ClockIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline'
-import { RoundAvailabilityGrid } from '@/components/RoundAvailabilityGrid'
+import {
+  TrophyIcon,
+  ClipboardDocumentListIcon,
+  PencilSquareIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+} from '@heroicons/react/24/outline'
 
 interface StandingRow {
   team_id: string
@@ -106,23 +111,7 @@ interface LeaderboardTabsProps {
   userHasDeclared: boolean
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function medal(idx: number): React.ReactNode {
-  if (idx === 0) return <Icon icon={TrophyIcon} size="md" />
-  if (idx === 1) return <span className="font-semibold text-sm">2nd</span>
-  if (idx === 2) return <span className="font-semibold text-sm">3rd</span>
-  return <span className="font-semibold text-sm">{idx + 1}</span>
-}
-
-
-/** Short first name + last initial: "Matthew Christianson" → "Matt C" */
-function shortName(full: string): string {
-  const parts = full.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0]
-  return `${parts[0]} ${parts[parts.length - 1][0]}`
-}
-
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function strokesPerHoleForHandicap(handicap: number): number[] {
   return HOLE_PARS.map((_, i) => {
@@ -135,50 +124,118 @@ function strokesPerHoleForHandicap(handicap: number): number[] {
 function scoreToPar(holeScores: number[], handicap: number): number | null {
   const played = holeScores.map((s, i) => ({ score: s, hole: i })).filter(h => h.score > 0)
   if (played.length === 0) return null
-
   const strokes = strokesPerHoleForHandicap(handicap)
   let total = 0
-  for (const { score, hole } of played) {
-    total += (score - strokes[hole]) - HOLE_PARS[hole]
-  }
+  for (const { score, hole } of played) total += (score - strokes[hole]) - HOLE_PARS[hole]
   return total
 }
 
 function grossToPar(holeScores: number[]): number | null {
   const played = holeScores.map((s, i) => ({ score: s, hole: i })).filter(h => h.score > 0)
   if (played.length === 0) return null
-
   let total = 0
-  for (const { score, hole } of played) {
-    total += score - HOLE_PARS[hole]
-  }
+  for (const { score, hole } of played) total += score - HOLE_PARS[hole]
   return total
 }
 
-
-function formatScoreToPar(score: number | null, holesPlayed: number): string {
-  if (score === null || holesPlayed === 0) return '—'
+function fmt(score: number | null, holes: number): string {
+  if (score === null || holes === 0) return '—'
   if (score === 0) return 'E'
   return score > 0 ? `+${score}` : `${score}`
 }
 
-/** Add `offsetMinutes` to a HH:MM time string */
-function addMinutes(timeStr: string, offsetMinutes: number): string {
+function addMinutes(timeStr: string, offset: number): string {
   const [h, m] = timeStr.split(':').map(Number)
-  const total = h * 60 + m + offsetMinutes
-  const hh = Math.floor(total / 60) % 24
-  const mm = total % 60
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+  const total = h * 60 + m + offset
+  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-function scoreColor(score: number | null): string {
-  if (score === null) return 'text-gray-400'
-  if (score < 0) return 'text-red-600'   // under par = red (good, traditional golf)
-  if (score === 0) return 'text-green-700'
-  return 'text-gray-900'                 // over par
+function netColor(score: number | null): string {
+  if (score === null) return 'text-zinc-500'
+  if (score < 0) return 'text-red-500'
+  if (score === 0) return 'text-zinc-400'
+  return 'text-zinc-200'
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+function grossColor(score: number | null): string {
+  if (score === null) return 'text-zinc-500'
+  return 'text-zinc-400'
+}
+
+// ── Foursomes ─────────────────────────────────────────────────────────────────
+
+function FoursomesList({
+  foursomes,
+  roundTeeTime,
+}: {
+  foursomes: NextRoundFoursome[]
+  roundTeeTime?: string | null
+}) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(foursomes.slice(0, 1).map(f => f.id))
+  )
+
+  const toggle = (id: string) =>
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+
+  return (
+    <div className="space-y-2">
+      {foursomes.map((foursome) => {
+        const expanded = expandedIds.has(foursome.id)
+        const cart1 = foursome.members.filter(m => m.cart_number === 1)
+        const cart2 = foursome.members.filter(m => m.cart_number === 2)
+        const slotTime =
+          foursome.tee_time ??
+          (roundTeeTime ? addMinutes(roundTeeTime, (foursome.tee_time_slot - 1) * 10) : null)
+        const label = slotTime ? formatTeeTime(slotTime) : `Group ${foursome.tee_time_slot}`
+
+        return (
+          <div key={foursome.id} className="rounded-xl overflow-hidden">
+            <button
+              onClick={() => toggle(foursome.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 font-semibold text-base transition-colors ${
+                expanded ? 'bg-green-500 text-white' : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+              }`}
+            >
+              <Icon icon={expanded ? ChevronUpIcon : ChevronDownIcon} size="sm" />
+              {label}
+            </button>
+            {expanded && (
+              <div className="bg-zinc-900 grid grid-cols-2 divide-x divide-zinc-800">
+                {[{ num: 1, members: cart1 }, { num: 2, members: cart2 }].map(({ num, members: cm }) => (
+                  <div key={num} className="p-4">
+                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3">Cart {num}</p>
+                    <div className="space-y-3">
+                      {cm.map(member => (
+                        <div key={member.user_id ?? member.full_name}>
+                          <p className="font-semibold text-white text-sm">{member.full_name}</p>
+                          <p className="text-xs text-green-500 mt-0.5">
+                            Team {member.team_number} · {member.team_name}
+                          </p>
+                          {member.is_sub && (
+                            <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-900/50 text-blue-400 text-xs font-semibold rounded">
+                              Sub
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export function LeaderboardTabs({
   standings,
@@ -194,91 +251,98 @@ export function LeaderboardTabs({
   userHasDeclared,
 }: LeaderboardTabsProps) {
   const [activeTab, setActiveTab] = useState<'season' | 'current' | 'next'>(
-    nextRound ? 'next' : currentRound ? 'current' : 'season'
+    currentRound ? 'current' : nextRound ? 'next' : 'season'
   )
 
-  const tabClass = (tab: 'season' | 'current' | 'next') =>
-    `px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
-      activeTab === tab
-        ? 'border-green-600 text-green-700'
-        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-    }`
+  const tabBtn = (tab: 'season' | 'current' | 'next', label: React.ReactNode) => (
+    <button
+      onClick={() => setActiveTab(tab)}
+      className={`px-5 py-2 text-sm font-semibold rounded-full transition-colors ${
+        activeTab === tab
+          ? 'bg-green-500 text-white'
+          : 'border border-zinc-700 text-zinc-400 hover:text-zinc-200'
+      }`}
+    >
+      {label}
+    </button>
+  )
 
-  // Compute score-to-par and running net score for each player and sort
-  const scoredPlayers = currentRoundScores.map((s) => {
-    const holesPlayed = s.hole_scores.filter(h => h > 0).length
-    const toPar = scoreToPar(s.hole_scores, s.handicap_at_time ?? 0)
-    const gross = grossToPar(s.hole_scores)
-    return { ...s, holesPlayed, toPar, gross }
-  }).sort((a, b) => {
-    // Players with more holes played sort before those with none
-    if (a.holesPlayed === 0 && b.holesPlayed > 0) return 1
-    if (b.holesPlayed === 0 && a.holesPlayed > 0) return -1
-    // Sort by score to par (lowest = best)
-    const aScore = a.toPar ?? Infinity
-    const bScore = b.toPar ?? Infinity
-    if (aScore !== bScore) return aScore - bScore
-    // Tiebreak: more holes played ranks higher (they've done more)
-    return b.holesPlayed - a.holesPlayed
-  })
+  const scoredPlayers = currentRoundScores
+    .map(s => {
+      const holesPlayed = s.hole_scores.filter(h => h > 0).length
+      const toPar = scoreToPar(s.hole_scores, s.handicap_at_time ?? 0)
+      const gross = grossToPar(s.hole_scores)
+      return { ...s, holesPlayed, toPar, gross }
+    })
+    .sort((a, b) => {
+      if (a.holesPlayed === 0 && b.holesPlayed > 0) return 1
+      if (b.holesPlayed === 0 && a.holesPlayed > 0) return -1
+      const as = a.toPar ?? Infinity
+      const bs = b.toPar ?? Infinity
+      if (as !== bs) return as - bs
+      return b.holesPlayed - a.holesPlayed
+    })
 
   return (
-    <div className="max-w-4xl mx-auto pt-1 pb-8">
-      <h1 className="text-3xl font-bold mb-0.5 px-4">Leaderboard</h1>
-      <p className="text-gray-500 mb-4 px-4">{currentYear} Season</p>
+    <div className="max-w-4xl mx-auto pb-8">
+      {/* Title */}
+      <div className="px-4 pt-3 pb-4">
+        <h1 className="text-3xl font-bold text-white">Leaderboard</h1>
+        <p className="text-zinc-400 text-sm mt-0.5">{currentYear} Season</p>
+      </div>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-gray-200 mb-6 px-4">
-        <button className={tabClass('season')} onClick={() => setActiveTab('season')}>
-          Season Standings
-        </button>
-        {currentRound && (
-          <button className={tabClass('current')} onClick={() => setActiveTab('current')}>
+      {/* Tabs */}
+      <div className="px-4 flex gap-2 flex-wrap mb-4">
+        {tabBtn('season', 'Season Standings')}
+        {currentRound &&
+          tabBtn(
+            'current',
             <span className="flex items-center gap-2">
               Current Round
               {currentRound.status === 'in_progress' && (
-                <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
               )}
             </span>
-          </button>
-        )}
-        {nextRound && (
-          <button className={tabClass('next')} onClick={() => setActiveTab('next')}>
-            Next Round
-          </button>
-        )}
+          )}
+        {nextRound && tabBtn('next', 'Next Round')}
       </div>
 
       {/* ── Season tab ── */}
       {activeTab === 'season' && (
-        <div className="space-y-8">
-          <div className="bg-white rounded-xl shadow overflow-hidden">
-            <div className="bg-green-600 text-white px-6 py-4">
-              <h2 className="text-xl font-semibold">Season Standings</h2>
+        <div className="space-y-4">
+          {/* Standings table */}
+          <div className="mx-4 bg-zinc-800 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-zinc-700">
+              <h2 className="text-white font-semibold">Season Standings</h2>
             </div>
             {!standings || standings.length === 0 ? (
-              <div className="px-6 py-8 text-center text-gray-500">No completed rounds yet.</div>
+              <div className="px-4 py-8 text-center text-zinc-500">No completed rounds yet.</div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="text-left px-6 py-3 font-medium text-gray-600 w-16">Rank</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-600">Team</th>
-                    <th className="text-center px-6 py-3 font-medium text-gray-600">Rounds</th>
-                    <th className="text-center px-6 py-3 font-medium text-gray-600">Avg Net</th>
-                    <th className="text-center px-6 py-3 font-medium text-gray-600">Points</th>
+                <thead>
+                  <tr className="border-b border-zinc-700">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide w-12">Rank</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Team</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Rds</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Avg</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Pts</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-zinc-700/50">
                   {standings.map((row, idx) => (
-                    <tr key={row.team_id} className={idx === 0 ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
-                      <td className="px-6 py-4 font-bold text-lg text-center">{medal(idx)}</td>
-                      <td className="px-6 py-4 font-semibold">{row.team_name}</td>
-                      <td className="px-6 py-4 text-center text-gray-600">{row.rounds_played}</td>
-                      <td className="px-6 py-4 text-center text-gray-600">
+                    <tr key={row.team_id} className="hover:bg-zinc-700/30">
+                      <td className="px-4 py-3 text-center">
+                        {idx === 0
+                          ? <Icon icon={TrophyIcon} size="sm" className="text-yellow-400 mx-auto" />
+                          : <span className="text-zinc-400 font-semibold">{idx + 1}</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3 text-white font-semibold">{row.team_name}</td>
+                      <td className="px-4 py-3 text-center text-zinc-400">{row.rounds_played}</td>
+                      <td className="px-4 py-3 text-center text-zinc-400">
                         {row.avg_net_score != null ? row.avg_net_score : '—'}
                       </td>
-                      <td className="px-6 py-4 text-center font-bold text-green-700 text-lg">{row.total_points}</td>
+                      <td className="px-4 py-3 text-center font-bold text-green-400 text-lg">{row.total_points}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -286,221 +350,47 @@ export function LeaderboardTabs({
             )}
           </div>
 
+          {/* Recent rounds */}
           {recentRounds && recentRounds.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold mb-4 px-4 sm:px-0">Recent Results</h2>
-              <div className="space-y-4">
-                {recentRounds.map((round) => {
-                  const sorted = [...(round.round_points ?? [])].sort(
-                    (a, b) => a.finish_position - b.finish_position
-                  )
-                  return (
-                    <div key={round.id} className="bg-white rounded-xl shadow overflow-hidden">
-                      <div className="bg-gray-700 text-white px-4 py-3">
-                        <h3 className="font-semibold">Round {round.round_number}</h3>
-                        <p className="text-gray-300 text-sm">{formatRoundDate(round.round_date)}</p>
-                      </div>
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50 border-b">
-                          <tr>
-                            <th className="text-left px-4 py-2 font-medium text-gray-600 w-12">Pos</th>
-                            <th className="text-left px-4 py-2 font-medium text-gray-600">Golfer</th>
-                            <th className="text-center px-4 py-2 font-medium text-gray-600">Net</th>
-                            <th className="text-center px-4 py-2 font-medium text-gray-600">Pts</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {sorted.map((p: any) => {
-                            const team = Array.isArray(p.team) ? p.team[0] : p.team
-                            const golfer = p.golfer
-                            const golferName = golfer?.full_name ?? '—'
-                            const keyValue = `${p.finish_position}-${golferName}-${team?.team_number}`
-                            return (
-                              <tr key={keyValue} className="hover:bg-gray-50">
-                                <td className="px-4 py-2.5 font-semibold text-gray-700">
-                                  {p.finish_position}{p.is_tied ? 'T' : ''}
-                                </td>
-                                <td className="px-4 py-2.5 font-medium">
-                                  <div>{golferName}</div>
-                                  <div className="text-xs text-gray-500">{team?.team_name ?? '—'}</div>
-                                </td>
-                                <td className="px-4 py-2.5 text-center text-gray-600">{p.net_score}</td>
-                                <td className="px-4 py-2.5 text-center font-bold text-green-700">{p.points_earned}</td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Current round tab ── */}
-      {activeTab === 'current' && (
-        <div>
-          {!currentRound ? (
-            <div className="bg-white rounded-xl shadow px-6 py-12 text-center text-gray-500">
-              <p className="text-lg">No round is currently in progress.</p>
-              <p className="text-sm mt-1">Check back once a round has started.</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow overflow-hidden">
-              {/* Round header */}
-              <div className="bg-green-700 text-white px-4 py-4 flex items-center justify-between">
-                <div>
-                  <p className="text-green-300 text-xs font-medium uppercase tracking-widest">Round {currentRound.round_number}</p>
-                  <p className="font-semibold">{formatRoundDate(currentRound.round_date)}</p>
-                </div>
-                {currentRound.status === 'scoring' ? (
-                  <Link
-                    href={`/scores/${currentRound.id}`}
-                    className="bg-white text-green-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-green-50 transition-colors shadow-sm"
-                  >
-                    <Icon icon={ClipboardDocumentListIcon} size="sm" />
-                    Enter Scores
-                  </Link>
-                ) : (
-                  <span className="text-xs bg-green-600 border border-green-500 px-3 py-1 rounded-full font-medium capitalize flex items-center gap-1.5">
-                    {currentRound.status === 'in_progress' && (
-                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    )}
-                    {currentRound.status.replace('_', ' ')}
-                  </span>
-                )}
-              </div>
-
-              {/* Par row */}
-              <div className="bg-gray-50 border-b px-4 py-2 flex items-center justify-between text-xs text-gray-500">
-                <span className="font-medium">Par 36 · Legend&apos;s Golf Club · Front 9</span>
-                <span>4&nbsp;4&nbsp;4&nbsp;5&nbsp;3&nbsp;4&nbsp;3&nbsp;4&nbsp;5</span>
-              </div>
-
-              {scoredPlayers.length === 0 ? (
-                <div className="px-6 py-10 text-center text-gray-500">
-                  No scores have been entered yet.
-                </div>
-              ) : (
-                <>
-                  {/* Column headers */}
-                  <div className="grid grid-cols-[1fr_auto_auto_auto] items-center px-4 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    <span>Golfer</span>
-                    <span className="w-14 text-center">Gross</span>
-                    <span className="w-14 text-center">Net</span>
-                    <span className="w-12 text-center">Thru</span>
-                  </div>
-
-                  {/* Player rows */}
-                  <div className="divide-y">
-                    {scoredPlayers.map((s, idx) => {
-                      const netStr = formatScoreToPar(s.toPar, s.holesPlayed)
-                      const grossStr = formatScoreToPar(s.gross, s.holesPlayed)
-                      const thruStr = s.holesPlayed === 0 ? '—' : s.holesPlayed === 9 ? 'F' : `${s.holesPlayed}`
-                      const isLeader = idx === 0 && s.holesPlayed > 0
-                      const name = shortName(s.full_name)
-
-                      return (
-                        <div
-                          key={s.user_id}
-                          className={`grid grid-cols-[1fr_auto_auto_auto] items-center px-4 py-3.5 ${
-                            isLeader ? 'bg-yellow-50' : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          {/* Golfer info */}
-                          <div className="flex items-center gap-3 min-w-0">
-                            {/* Position */}
-                            <span className="text-sm font-bold text-gray-500 w-5 shrink-0 text-center">
-                              {s.holesPlayed === 0 ? '—' : isLeader ? <Icon icon={TrophyIcon} size="sm" /> : idx + 1}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-gray-900 truncate">{name}</p>
-                              <p className="text-xs text-gray-400 truncate">{s.team_name}</p>
-                            </div>
-                          </div>
-
-                          {/* Gross score to par */}
-                          <div className={`w-14 text-center font-semibold text-sm tabular-nums ${scoreColor(s.gross)}`}>
-                            {grossStr}
-                          </div>
-
-                          {/* Net score to par */}
-                          <div className={`w-14 text-center font-black text-xl tabular-nums ${scoreColor(s.toPar)}`}>
-                            {netStr}
-                          </div>
-
-                          {/* Through */}
-                          <div className="w-12 text-center">
-                            <span className={`text-sm font-semibold tabular-nums ${
-                              s.holesPlayed === 9 ? 'text-green-700' :
-                              s.holesPlayed > 0 ? 'text-gray-700' : 'text-gray-300'
-                            }`}>
-                              {thruStr}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Legend */}
-                  <div className="px-4 py-3 bg-gray-50 border-t flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                    <span><span className="font-semibold text-red-600">−#</span> Under par</span>
-                    <span><span className="font-semibold text-green-700">E</span> Even</span>
-                    <span><span className="font-semibold text-gray-900">+#</span> Over par</span>
-                    <span className="ml-auto"><span className="font-semibold">F</span> = Finished · Net adjusted for handicap</span>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Foursomes for current round */}
-          {currentRound && currentRoundFoursomes.length > 0 && (
-            <div className="space-y-4 mt-6">
-              <h3 className="text-xl font-bold px-4 sm:px-0">Foursomes</h3>
-              {currentRoundFoursomes.map((foursome) => {
-                const cart1 = foursome.members.filter((m) => m.cart_number === 1)
-                const cart2 = foursome.members.filter((m) => m.cart_number === 2)
-                const roundTime = currentRound.tee_time
-                const slotTime = foursome.tee_time
-                  ?? (roundTime
-                      ? addMinutes(roundTime, (foursome.tee_time_slot - 1) * 10)
-                      : null)
-                const teeLabel = slotTime ? formatTeeTime(slotTime) : `Group ${foursome.tee_time_slot}`
+            <div className="px-4 space-y-3">
+              <h2 className="text-white text-lg font-bold">Recent Results</h2>
+              {recentRounds.map(round => {
+                const sorted = [...(round.round_points ?? [])].sort((a, b) => a.finish_position - b.finish_position)
                 return (
-                  <div key={foursome.id} className="bg-white rounded-xl shadow overflow-hidden">
-                    <div className="bg-green-700 text-white px-4 py-3 flex items-center gap-2">
-                      <Icon icon={ClockIcon} size="sm" className="text-gray-300" />
-                      <span className="font-semibold">{teeLabel}</span>
+                  <div key={round.id} className="bg-zinc-800 rounded-xl overflow-hidden">
+                    <div className="bg-zinc-700 px-4 py-3">
+                      <p className="text-white font-semibold">Round {round.round_number}</p>
+                      <p className="text-zinc-400 text-sm">{formatRoundDate(round.round_date)}</p>
                     </div>
-                    <div className="grid grid-cols-2 divide-x divide-gray-100">
-                      {[{ num: 1, members: cart1 }, { num: 2, members: cart2 }].map(({ num, members: cartMembers }) => (
-                        <div key={num} className="p-4">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
-                            Cart {num}
-                          </p>
-                          <div className="space-y-3">
-                            {cartMembers.map((member) => (
-                              <div key={member.user_id} className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-sm text-gray-900 leading-tight">{member.full_name}</p>
-                                  <p className="text-xs text-gray-500 mt-0.5">Team {member.team_number} · {member.team_name}</p>
-                                </div>
-                                {member.is_sub && (
-                                  <span className="shrink-0 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                                    Sub
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-zinc-700">
+                          <th className="text-left px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide w-10">Pos</th>
+                          <th className="text-left px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Golfer</th>
+                          <th className="text-center px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Net</th>
+                          <th className="text-center px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-700/50">
+                        {sorted.map((p: any) => {
+                          const team = Array.isArray(p.team) ? p.team[0] : p.team
+                          const golfer = p.golfer
+                          return (
+                            <tr key={`${p.finish_position}-${team?.team_number}`} className="hover:bg-zinc-700/30">
+                              <td className="px-4 py-2.5 text-zinc-400 font-semibold">
+                                {p.finish_position}{p.is_tied ? 'T' : ''}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <p className="text-white font-medium">{golfer?.full_name ?? '—'}</p>
+                                <p className="text-xs text-green-500">{team?.team_name ?? '—'}</p>
+                              </td>
+                              <td className="px-4 py-2.5 text-center text-zinc-300">{p.net_score}</td>
+                              <td className="px-4 py-2.5 text-center font-bold text-green-400">{p.points_earned}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )
               })}
@@ -509,145 +399,247 @@ export function LeaderboardTabs({
         </div>
       )}
 
-      {/* ── Next round tab ── */}
-      {activeTab === 'next' && (
-        <div>
-          {!nextRound ? (
-            <div className="bg-white rounded-xl shadow px-6 py-12 text-center text-gray-500">
-              <p className="text-lg">No upcoming rounds scheduled.</p>
+      {/* ── Current round tab ── */}
+      {activeTab === 'current' && (
+        <div className="space-y-3">
+          {!currentRound ? (
+            <div className="mx-4 bg-zinc-800 rounded-xl px-4 py-12 text-center text-zinc-500">
+              No round is currently in progress.
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Next Round Header — only shown prominently when user hasn't declared yet */}
-              {!userHasDeclared && (
-                <div className="bg-white rounded-xl shadow overflow-hidden">
-                  <div className="bg-blue-600 text-white px-4 py-4 flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-blue-300 text-xs font-medium uppercase tracking-widest">Round {nextRound.round_number}</p>
-                      <p className="font-semibold text-lg">{formatRoundDate(nextRound.round_date)}</p>
-                      {nextRound.tee_time && (
-                        <p className="text-blue-200 text-sm mt-1 flex items-center gap-2">
-                          <Icon icon={ClockIcon} size="sm" className="text-blue-200" />
-                          Tee time: {formatTeeTime(nextRound.tee_time)}
-                        </p>
-                      )}
-                    </div>
-                    <Link
-                      href={`/availability/${nextRound.id}`}
-                      className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm whitespace-nowrap shrink-0 ml-4"
+            <>
+              {/* Round header card */}
+              <div className="mx-4 bg-green-600 rounded-xl px-4 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-green-200 text-xs font-semibold uppercase tracking-widest">
+                    Round {currentRound.round_number}
+                  </p>
+                  <p className="text-white font-bold text-xl mt-0.5">
+                    {formatRoundDate(currentRound.round_date)}
+                  </p>
+                </div>
+                {currentRound.status === 'scoring' && (
+                  <Link
+                    href={`/scores/${currentRound.id}`}
+                    className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shrink-0"
+                  >
+                    <Icon icon={PencilSquareIcon} size="sm" />
+                    Enter Scores
+                  </Link>
+                )}
+              </div>
+
+              {/* Course + par row */}
+              <div className="mx-4 bg-zinc-800 rounded-xl px-4 py-3">
+                <p className="text-zinc-400 text-xs mb-2">Par 36 · Legend&apos;s Golf Club · Front 9</p>
+                <div className="flex gap-1.5">
+                  {HOLE_PARS.map((par, i) => (
+                    <div
+                      key={i}
+                      className="w-7 h-7 rounded bg-zinc-700 flex items-center justify-center text-xs font-semibold text-zinc-300"
                     >
-                      <Icon icon={ClipboardDocumentListIcon} size="sm" />
-                      Declare
-                    </Link>
+                      {par}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {scoredPlayers.length === 0 ? (
+                <div className="mx-4 bg-zinc-800 rounded-xl px-4 py-10 text-center text-zinc-500">
+                  No scores entered yet.
+                </div>
+              ) : (
+                <div>
+                  {/* Column headers */}
+                  <div className="flex items-center px-4 pb-1.5">
+                    <div className="w-9 mr-3 shrink-0" />
+                    <div className="flex-1">
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Golfer</span>
+                    </div>
+                    <div className="w-12 text-center">
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Gross</span>
+                    </div>
+                    <div className="w-14 text-center">
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Net</span>
+                    </div>
+                    <div className="w-10 text-center">
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Thru</span>
+                    </div>
+                  </div>
+
+                  {/* Player row cards */}
+                  <div className="space-y-2 px-4">
+                    {scoredPlayers.map((s, idx) => {
+                      const netStr = fmt(s.toPar, s.holesPlayed)
+                      const grossStr = fmt(s.gross, s.holesPlayed)
+                      const thruStr = s.holesPlayed === 0 ? '—' : s.holesPlayed === 9 ? 'F' : `${s.holesPlayed}`
+                      const isLeader = idx === 0 && s.holesPlayed > 0
+
+                      return (
+                        <div
+                          key={s.user_id}
+                          className="flex items-center bg-zinc-800 rounded-xl px-3 py-3"
+                        >
+                          {/* Rank badge */}
+                          <div
+                            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 mr-3 ${
+                              isLeader ? 'bg-yellow-500/20' : 'bg-zinc-700'
+                            }`}
+                          >
+                            {s.holesPlayed === 0 ? (
+                              <span className="text-zinc-600 text-xs">—</span>
+                            ) : isLeader ? (
+                              <Icon icon={TrophyIcon} size="sm" className="text-yellow-400" />
+                            ) : (
+                              <span className="text-zinc-300 text-sm font-bold">{idx + 1}</span>
+                            )}
+                          </div>
+
+                          {/* Name + team */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-semibold truncate">{s.full_name}</p>
+                            <p className="text-green-500 text-xs truncate">{s.team_name}</p>
+                          </div>
+
+                          {/* Gross */}
+                          <div className={`w-12 text-center text-sm font-medium tabular-nums ${grossColor(s.gross)}`}>
+                            {grossStr}
+                          </div>
+
+                          {/* Net — large + colored */}
+                          <div className={`w-14 text-center font-black text-2xl tabular-nums leading-none ${netColor(s.toPar)}`}>
+                            {netStr}
+                          </div>
+
+                          {/* Thru */}
+                          <div className={`w-10 text-center text-sm font-semibold tabular-nums ${
+                            s.holesPlayed === 9 ? 'text-green-400' :
+                            s.holesPlayed > 0 ? 'text-zinc-300' : 'text-zinc-600'
+                          }`}>
+                            {thruStr}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex gap-x-4 flex-wrap px-4 pt-3 text-xs text-zinc-500">
+                    <span><span className="font-semibold text-red-500">−#</span> Under par</span>
+                    <span><span className="font-semibold text-zinc-400">E</span> Even</span>
+                    <span><span className="font-semibold text-zinc-300">+#</span> Over par</span>
                   </div>
                 </div>
               )}
 
-              {/* Round info header when user has already declared (compact) */}
-              {userHasDeclared && (
-                <div className="px-1">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Round {nextRound.round_number}</p>
-                  <p className="font-bold text-xl text-gray-900">{formatRoundDate(nextRound.round_date)}</p>
-                  {nextRound.tee_time && (
-                    <p className="text-gray-500 text-sm mt-0.5 flex items-center gap-1.5">
-                      <Icon icon={ClockIcon} size="sm" className="text-gray-400" />
-                      First tee: {formatTeeTime(nextRound.tee_time)}
-                    </p>
-                  )}
+              {/* Foursomes */}
+              {currentRoundFoursomes.length > 0 && (
+                <div className="px-4 pt-2">
+                  <h3 className="text-white text-lg font-bold mb-3">Foursomes</h3>
+                  <FoursomesList foursomes={currentRoundFoursomes} roundTeeTime={currentRound.tee_time} />
                 </div>
               )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Next round tab ── */}
+      {activeTab === 'next' && (
+        <div className="space-y-3 px-4">
+          {!nextRound ? (
+            <div className="bg-zinc-800 rounded-xl px-4 py-12 text-center text-zinc-500">
+              No upcoming rounds scheduled.
+            </div>
+          ) : (
+            <>
+              {/* Round header */}
+              <div className="bg-green-600 rounded-xl px-4 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-green-200 text-xs font-semibold uppercase tracking-widest">
+                    Round {nextRound.round_number}
+                  </p>
+                  <p className="text-white font-bold text-xl mt-0.5">{formatRoundDate(nextRound.round_date)}</p>
+                  {nextRound.tee_time && (
+                    <p className="text-green-200 text-sm mt-0.5">Tee time: {formatTeeTime(nextRound.tee_time)}</p>
+                  )}
+                </div>
+                {!userHasDeclared && (
+                  <Link
+                    href={`/availability/${nextRound.id}`}
+                    className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 ml-4"
+                  >
+                    <Icon icon={ClipboardDocumentListIcon} size="sm" />
+                    Declare
+                  </Link>
+                )}
+              </div>
 
               {/* Foursomes */}
               {nextRoundFoursomes.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="text-xl font-bold px-4 sm:px-0">Foursomes</h3>
-                  {nextRoundFoursomes.map((foursome) => {
-                    const cart1 = foursome.members.filter((m) => m.cart_number === 1)
-                    const cart2 = foursome.members.filter((m) => m.cart_number === 2)
-                    const roundTime = nextRound.tee_time
-                    const slotTime = foursome.tee_time
-                      ?? (roundTime
-                          ? addMinutes(roundTime, (foursome.tee_time_slot - 1) * 10)
-                          : null)
-                    const teeLabel = slotTime ? formatTeeTime(slotTime) : `Group ${foursome.tee_time_slot}`
-                    return (
-                      <div key={foursome.id} className="bg-white rounded-xl shadow overflow-hidden">
-                        {/* Tee time header */}
-                        <div className="bg-green-700 text-white px-4 py-3 flex items-center gap-2">
-                          <Icon icon={ClockIcon} size="sm" className="text-gray-300" />
-                          <span className="font-semibold">{teeLabel}</span>
-                        </div>
-
-                        {/* Cart columns */}
-                        <div className="grid grid-cols-2 divide-x divide-gray-100">
-                          {[{ num: 1, members: cart1 }, { num: 2, members: cart2 }].map(({ num, members: cartMembers }) => (
-                            <div key={num} className="p-4">
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
-                                Cart {num}
-                              </p>
-                              <div className="space-y-3">
-                                {cartMembers.map((member) => (
-                                  <div key={member.user_id} className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0">
-                                      <p className="font-semibold text-sm text-gray-900 leading-tight">{member.full_name}</p>
-                                      <p className="text-xs text-gray-500 mt-0.5">Team {member.team_number} · {member.team_name}</p>
-                                    </div>
-                                    {member.is_sub && (
-                                      <span className="shrink-0 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                                        Sub
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div>
+                  <h3 className="text-white text-lg font-bold mb-3">Foursomes</h3>
+                  <FoursomesList foursomes={nextRoundFoursomes} roundTeeTime={nextRound.tee_time} />
                 </div>
               ) : (
-                <div className="bg-white rounded-xl shadow px-6 py-8 text-center text-gray-500">
-                  <p className="text-sm">Foursomes have not been generated yet.</p>
+                <div className="bg-zinc-800 rounded-xl px-4 py-8 text-center text-zinc-500">
+                  Foursomes have not been generated yet.
                 </div>
               )}
 
-              {/* Availability Summary */}
+              {/* Availability summary */}
               {nextRoundTeamMembers.length > 0 && (
-                <RoundAvailabilityGrid
-                  teams={Array.from(new Set(nextRoundTeamMembers.map((m) => m.team_id)))
-                    .sort((a, b) => {
-                      const ta = nextRoundTeamMembers.find((m) => m.team_id === a)!
-                      const tb = nextRoundTeamMembers.find((m) => m.team_id === b)!
-                      return ta.team_number - tb.team_number
-                    })
-                    .map((teamId) => {
-                      const rep = nextRoundTeamMembers.find((m) => m.team_id === teamId)!
-                      return {
-                        id: teamId,
-                        team_number: rep.team_number,
-                        team_name: rep.team_name,
-                        members: nextRoundTeamMembers
-                          .filter((m) => m.team_id === teamId)
-                          .map((m) => ({ user_id: m.user_id, full_name: m.full_name })),
-                      }
-                    })}
-                  availability={nextRoundAvailability}
-                />
+                <div className="bg-zinc-800 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-zinc-700">
+                    <h3 className="text-white font-semibold">Availability</h3>
+                  </div>
+                  <div className="p-4 grid grid-cols-2 gap-3">
+                    {Array.from(new Set(nextRoundTeamMembers.map(m => m.team_id)))
+                      .sort((a, b) => {
+                        const ta = nextRoundTeamMembers.find(m => m.team_id === a)!
+                        const tb = nextRoundTeamMembers.find(m => m.team_id === b)!
+                        return ta.team_number - tb.team_number
+                      })
+                      .map(teamId => {
+                        const members = nextRoundTeamMembers.filter(m => m.team_id === teamId)
+                        const rep = members[0]
+                        return (
+                          <div key={teamId} className="bg-zinc-900 rounded-lg p-3">
+                            <p className="text-xs font-semibold text-zinc-400 mb-2">T{rep.team_number}</p>
+                            <div className="space-y-1">
+                              {members.map(member => {
+                                const avail = nextRoundAvailability.find(a => a.user_id === member.user_id)
+                                const isIn = avail?.status === 'in'
+                                const isOut = avail?.status === 'out'
+                                return (
+                                  <div key={member.user_id} className="flex items-center gap-1.5">
+                                    <span className={`text-base leading-none ${isIn ? 'text-green-500' : isOut ? 'text-red-500' : 'text-zinc-600'}`}>
+                                      {isIn ? '✓' : isOut ? '✗' : '?'}
+                                    </span>
+                                    <span className={`text-xs truncate ${isIn ? 'text-green-400' : isOut ? 'text-red-400' : 'text-zinc-500'}`}>
+                                      {member.full_name}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </div>
               )}
 
-              {/* Declare button — shown at bottom when user has already declared */}
               {userHasDeclared && (
                 <Link
                   href={`/availability/${nextRound.id}`}
-                  className="flex items-center justify-center gap-2 w-full py-3 border-2 border-blue-200 text-blue-600 rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full py-3 border border-zinc-700 text-zinc-300 rounded-xl text-sm font-semibold hover:bg-zinc-800 transition-colors"
                 >
                   <Icon icon={ClipboardDocumentListIcon} size="sm" />
                   Update Declaration
                 </Link>
               )}
-            </div>
+            </>
           )}
         </div>
       )}

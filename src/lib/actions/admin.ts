@@ -117,6 +117,63 @@ export async function updateUserPhone(userId: string, phone: string) {
   return { success: true }
 }
 
+const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024
+
+export async function updateUserAvatarAsAdmin(
+  userId: string,
+  formData: FormData
+): Promise<{ error?: string; url?: string }> {
+  await getAdminUser()
+
+  const file = formData.get('avatar') as File | null
+  if (!file || file.size === 0) return { error: 'No file selected' }
+  if (!ALLOWED_AVATAR_TYPES.includes(file.type)) return { error: 'Only JPEG, PNG, WebP, or GIF allowed' }
+  if (file.size > MAX_AVATAR_SIZE) return { error: 'Image must be under 5 MB' }
+
+  const admin = createAdminClient()
+  const ext = file.type.split('/')[1].replace('jpeg', 'jpg')
+  const path = `${userId}/avatar.${ext}`
+
+  const { error: uploadError } = await admin.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true, contentType: file.type })
+
+  if (uploadError) return { error: uploadError.message }
+
+  const { data: { publicUrl } } = admin.storage.from('avatars').getPublicUrl(path)
+  const urlWithBust = `${publicUrl}?t=${Date.now()}`
+
+  const { error: updateError } = await admin
+    .from('users')
+    .update({ avatar_url: urlWithBust })
+    .eq('id', userId)
+
+  if (updateError) return { error: updateError.message }
+
+  revalidatePath('/admin/users')
+  return { url: urlWithBust }
+}
+
+export async function removeUserAvatarAsAdmin(userId: string): Promise<{ error?: string }> {
+  await getAdminUser()
+
+  const admin = createAdminClient()
+  for (const ext of ['jpg', 'png', 'webp', 'gif']) {
+    await admin.storage.from('avatars').remove([`${userId}/avatar.${ext}`])
+  }
+
+  const { error } = await admin
+    .from('users')
+    .update({ avatar_url: null })
+    .eq('id', userId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/users')
+  return {}
+}
+
 export async function activateUser(userId: string) {
   const { supabase, user } = await getAdminUser()
 

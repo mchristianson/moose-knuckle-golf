@@ -1,7 +1,8 @@
 'use client'
 
-import { toggleAdmin, deactivateUser, activateUser, updateUserPhone } from '@/lib/actions/admin'
-import { useState } from 'react'
+import { toggleAdmin, deactivateUser, activateUser, updateUserPhone, updateUserAvatarAsAdmin, removeUserAvatarAsAdmin } from '@/lib/actions/admin'
+import { useState, useRef } from 'react'
+import Image from 'next/image'
 
 interface UserRowProps {
   user: any
@@ -10,6 +11,9 @@ interface UserRowProps {
 
 export function UserRow({ user, isCurrentUser }: UserRowProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatar_url ?? null)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [editingPhone, setEditingPhone] = useState(false)
   const [phoneInput, setPhoneInput] = useState(
     user.phone ? user.phone.replace('+1', '') : ''
@@ -58,6 +62,35 @@ export function UserRow({ user, isCurrentUser }: UserRowProps) {
     setIsLoading(false)
   }
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarError(null)
+    setIsLoading(true)
+    const fd = new FormData()
+    fd.append('avatar', file)
+    const result = await updateUserAvatarAsAdmin(user.id, fd)
+    if (result.error) {
+      setAvatarError(result.error)
+    } else if (result.url) {
+      setAvatarUrl(result.url)
+    }
+    setIsLoading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleRemoveAvatar = async () => {
+    setAvatarError(null)
+    setIsLoading(true)
+    const result = await removeUserAvatarAsAdmin(user.id)
+    if (result.error) {
+      setAvatarError(result.error)
+    } else {
+      setAvatarUrl(null)
+    }
+    setIsLoading(false)
+  }
+
   const handleCancelPhone = () => {
     setPhoneInput(user.phone ? user.phone.replace('+1', '') : '')
     setPhoneError(null)
@@ -71,15 +104,62 @@ export function UserRow({ user, isCurrentUser }: UserRowProps) {
   return (
     <tr>
       <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm font-medium text-gray-900">
-          {user.full_name}
-          {isCurrentUser && (
-            <span className="ml-2 text-xs text-gray-500">(You)</span>
-          )}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-shrink-0">
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={user.full_name ?? 'Avatar'}
+                width={40}
+                height={40}
+                className="rounded-full object-cover w-10 h-10"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm font-medium">
+                {(user.full_name ?? '?')[0].toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-900">
+              {user.full_name}
+              {isCurrentUser && (
+                <span className="ml-2 text-xs text-gray-500">(You)</span>
+              )}
+            </div>
+            {user.display_name && (
+              <div className="text-sm text-gray-500">{user.display_name}</div>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                className="text-xs text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+              >
+                {avatarUrl ? 'Change' : 'Upload'} photo
+              </button>
+              {avatarUrl && (
+                <button
+                  onClick={handleRemoveAvatar}
+                  disabled={isLoading}
+                  className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </div>
+            {avatarError && (
+              <p className="text-xs text-red-600 mt-0.5">{avatarError}</p>
+            )}
+          </div>
         </div>
-        {user.display_name && (
-          <div className="text-sm text-gray-500">{user.display_name}</div>
-        )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="text-sm text-gray-900">{user.email}</div>

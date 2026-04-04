@@ -50,7 +50,7 @@ export default async function MyScorePage({
           user_id,
           team_id,
           is_sub,
-          user:user_id ( id, full_name, display_name ),
+          user:user_id ( id, full_name, display_name, avatar_url ),
           sub:sub_id ( id, full_name ),
           team:team_id ( id, team_name, team_number )
         `)
@@ -96,6 +96,7 @@ export default async function MyScorePage({
       teamNumber: m.team?.team_number ?? 0,
       isSub: m.is_sub,
       displayName: m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? 'Unknown',
+      avatarUrl: m.user?.avatar_url ?? null,
       handicap,
       holeScores: existing?.hole_scores ?? Array(9).fill(0),
       isLocked: existing?.is_locked ?? false,

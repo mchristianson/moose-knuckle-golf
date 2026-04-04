@@ -6,8 +6,12 @@ import { Card } from '@/components/Card'
 import { Icon } from '@/components/Icon'
 import { DashboardRoundCard } from '@/components/dashboard/DashboardRoundCard'
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection'
-import { RoundAvailabilityGrid } from '@/components/RoundAvailabilityGrid'
-import { PencilIcon, MapPinIcon, FlagIcon, ClipboardDocumentListIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
+import { CalendarIcon, Cog6ToothIcon, MapPinIcon, FlagIcon, ClipboardDocumentListIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
+
+function getInitials(name?: string | null): string {
+  if (!name) return '?'
+  return name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -123,7 +127,7 @@ export default async function DashboardPage({
     availabilityByRound[a.round_id].push({ user_id: a.user_id, status: a.status })
   }
 
-  // Normalize teams for RoundAvailabilityGrid
+  // Normalize teams for team availability grid
   const availabilityTeams = (allTeams ?? []).map((t: any) => ({
     id: t.id,
     team_number: t.team_number,
@@ -149,45 +153,51 @@ export default async function DashboardPage({
   )
   const pastRounds = (upcomingRounds ?? []).filter((r) => r.status === 'completed')
 
+  const displayName = profile?.display_name ?? profile?.full_name ?? 'Golfer'
+
   return (
     <div>
       {/* Success Message */}
       {declared && (
-        <Card variant="elevated" className="mb-lg border-l-4 border-l-success bg-green-50">
-          <div className="flex items-center gap-2">
-            <Icon icon={CheckCircleIcon} size="md" className="text-success" />
-            <p className="text-success font-medium">Availability declared successfully!</p>
-          </div>
-        </Card>
+        <div className="mx-4 mt-4">
+          <Card variant="elevated" className="border-l-4 border-l-success bg-green-50">
+            <div className="flex items-center gap-2">
+              <Icon icon={CheckCircleIcon} size="md" className="text-success" />
+              <p className="text-success font-medium">Availability declared successfully!</p>
+            </div>
+          </Card>
+        </div>
       )}
 
-      {/* Welcome Section - Compact */}
-      <Card className="mb-lg">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-h2 mb-xs">
-              Welcome, {(profile?.display_name ?? profile?.full_name) || 'Golfer'}!
-            </h1>
+      {/* Welcome Section */}
+      <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+        <div className="w-14 h-14 rounded-full bg-green-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
+          {getInitials(displayName)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-white text-xl font-bold">Welcome back, {displayName}!</h1>
+          <div className="flex items-center gap-2 mt-1">
             {profile?.is_admin && (
-              <span className="inline-flex items-center bg-primary text-white text-xs font-medium px-3 py-1 rounded-full mt-2">
+              <span className="bg-green-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
                 Admin
               </span>
             )}
+            <span className="text-zinc-400 text-sm">Season 2026</span>
           </div>
-          <button className="hover:opacity-70 transition-opacity p-2" aria-label="Edit profile">
-            <Icon icon={PencilIcon} size="lg" />
-          </button>
         </div>
-      </Card>
+        <Link href="/profile" className="text-zinc-400 hover:text-white p-1 transition-colors">
+          <Icon icon={Cog6ToothIcon} size="md" />
+        </Link>
+      </div>
 
       {/* Active/Scoring Rounds - Highest Priority */}
       {activeScoringSectionRounds.length > 0 && (
-        <div className="mb-lg">
-          <h2 className="text-h2 mb-md flex items-center gap-2">
+        <div className="mb-3">
+          <h2 className="text-white text-base font-semibold mb-2 flex items-center gap-2">
             <Icon icon={MapPinIcon} size="md" />
             <span>Round in Play</span>
           </h2>
-          <div className="space-y-md">
+          <div className="space-y-3">
             {activeScoringSectionRounds.map((round: any) => (
               <DashboardRoundCard
                 key={round.id}
@@ -195,6 +205,9 @@ export default async function DashboardPage({
                 availability={myAvailability?.find(a => a.round_id === round.id)}
                 canEnterScore={scoringRoundIds.has(round.id)}
                 foursomes={foursomesByRound[round.id]}
+                teams={availabilityTeams}
+                roundAvailability={availabilityByRound[round.id] ?? []}
+                defaultExpanded={true}
               />
             ))}
           </div>
@@ -203,87 +216,92 @@ export default async function DashboardPage({
 
       {/* Extra Active Rounds (today's scoring that wasn't in upcoming) */}
       {extraActiveRounds.length > 0 && !activeScoringSectionRounds.some((r) => extraActiveRounds.some((e) => e.id === r.id)) && (
-        <div className="mb-lg">
-          <h2 className="text-h2 mb-md">Score Entry Open</h2>
-          <div className="space-y-md">
+        <div className="mb-3">
+          <h2 className="text-white text-base font-semibold mb-3">Score Entry Open</h2>
+          <div className="space-y-3">
             {extraActiveRounds.map((round: any) => (
-              <Card key={round.id} variant="elevated" className="border-l-4 border-l-success">
-                <div className="flex justify-between items-start gap-md mb-md">
+              <div key={round.id} className="bg-zinc-800 rounded-xl p-4 border-l-4 border-l-green-500">
+                <div className="flex justify-between items-start gap-3 mb-3">
                   <div>
-                    <h3 className="text-h4 mb-xs">Round {round.round_number}</h3>
-                    <p className="text-small text-neutral-700">{formatRoundDate(round.round_date)}</p>
+                    <h3 className="text-white font-semibold">Round {round.round_number}</h3>
+                    <p className="text-zinc-400 text-sm">{formatRoundDate(round.round_date)}</p>
                   </div>
-                  <span className="inline-flex items-center gap-1 bg-success text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1 bg-green-600 text-white text-xs font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap">
                     <Icon icon={round.status === 'in_progress' ? FlagIcon : ClipboardDocumentListIcon} size="sm" />
                     {round.status === 'in_progress' ? 'In Progress' : 'Scoring'}
                   </span>
                 </div>
-                <Button variant="primary" asChild>
-                  <Link href={`/scores/${round.id}`}>
-                    Enter My Score
-                  </Link>
+                <Button variant="primary" asChild className="w-full">
+                  <Link href={`/scores/${round.id}`}>Enter My Score</Link>
                 </Button>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Upcoming Rounds - Collapsible */}
-      {futureUpcomingRounds.length > 0 ? (
-        <CollapsibleSection
-          title="Upcoming Rounds"
-          count={futureUpcomingRounds.length}
-          defaultOpen={true}
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-md">
-            {futureUpcomingRounds.map((round: any) => (
-              <div key={round.id} className="border border-neutral-200 rounded-xl bg-neutral-100 overflow-hidden space-y-sm p-sm">
-                <DashboardRoundCard
-                  round={round}
-                  availability={myAvailability?.find(a => a.round_id === round.id)}
-                  canEnterScore={scoringRoundIds.has(round.id)}
-                />
-                <RoundAvailabilityGrid
-                  teams={availabilityTeams}
-                  availability={availabilityByRound[round.id] ?? []}
-                />
-              </div>
-            ))}
+      {/* Upcoming Rounds */}
+      {futureUpcomingRounds.length > 0 && (
+        <div className="mb-3">
+          {/* Section header */}
+          <div className="flex items-center justify-between px-4 mb-2">
+            <div className="flex items-center gap-2 text-white">
+              <Icon icon={CalendarIcon} size="md" />
+              <span className="text-base font-semibold">Upcoming Rounds</span>
+              <span className="text-zinc-400 text-sm">({futureUpcomingRounds.length})</span>
+            </div>
+            <Link href="/dashboard" className="text-green-500 text-sm font-medium">
+              View All ›
+            </Link>
           </div>
-        </CollapsibleSection>
-      ) : null}
-
-      {/* Past Rounds - Collapsible */}
-      {pastRounds.length > 0 && (
-        <CollapsibleSection
-          title="Past Rounds"
-          count={pastRounds.length}
-          defaultOpen={false}
-        >
-          <div className="space-y-md">
-            {pastRounds.map((round: any) => (
+          <div className="px-4 space-y-3">
+            {futureUpcomingRounds.map((round: any, index: number) => (
               <DashboardRoundCard
                 key={round.id}
                 round={round}
                 availability={myAvailability?.find(a => a.round_id === round.id)}
-                canEnterScore={false}
+                canEnterScore={scoringRoundIds.has(round.id)}
+                teams={availabilityTeams}
+                roundAvailability={availabilityByRound[round.id] ?? []}
+                defaultExpanded={index === 0}
               />
             ))}
           </div>
-        </CollapsibleSection>
+        </div>
+      )}
+
+      {/* Past Rounds - Collapsible */}
+      {pastRounds.length > 0 && (
+        <div className="px-4">
+          <CollapsibleSection
+            title="Past Rounds"
+            count={pastRounds.length}
+            defaultOpen={false}
+          >
+            <div className="space-y-3">
+              {pastRounds.map((round: any) => (
+                <DashboardRoundCard
+                  key={round.id}
+                  round={round}
+                  availability={myAvailability?.find(a => a.round_id === round.id)}
+                  canEnterScore={false}
+                />
+              ))}
+            </div>
+          </CollapsibleSection>
+        </div>
       )}
 
       {/* Empty State */}
       {upcomingRounds?.length === 0 && activeRounds?.length === 0 && (
-        <Card className="text-center py-lg">
-          <p className="text-neutral-700 mb-md">No upcoming rounds scheduled yet</p>
+        <div className="px-4 py-8 text-center">
+          <p className="text-zinc-400 mb-4">No upcoming rounds scheduled yet</p>
           {profile?.is_admin && (
             <Button variant="primary" asChild>
               <Link href="/admin/rounds">Create a Round</Link>
             </Button>
           )}
-        </Card>
+        </div>
       )}
     </div>
   );

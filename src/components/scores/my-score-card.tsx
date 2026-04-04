@@ -49,7 +49,6 @@ export function MyScoreCard({
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
-  // Track whether the user has made a change in this session
   const userChangedRef = useRef(false)
 
   const readOnly = isLocked || !scoringOpen
@@ -63,7 +62,6 @@ export function MyScoreCard({
     ? Math.round((gross / touchedCount * 9 - handicap) * 10) / 10
     : null
 
-  // Auto-save: debounce 800ms after the last user-initiated change
   useEffect(() => {
     if (!userChangedRef.current || readOnly || !touched.some(Boolean)) return
 
@@ -123,19 +121,19 @@ export function MyScoreCard({
   }
 
   return (
-    <div className="flex flex-col rounded-xl shadow-lg overflow-hidden bg-white">
+    <div className="flex flex-col rounded-xl overflow-hidden bg-zinc-900">
 
       {/* ── Score summary bar ── */}
-      <div className="bg-green-700 text-white px-4 py-4">
+      <div className="bg-green-800 text-white px-4 py-4">
         {/* Round info + leaderboard link */}
-        <div className="flex items-start justify-between mb-3 pb-3 border-b border-green-600">
+        <div className="flex items-start justify-between mb-3 pb-3 border-b border-green-700">
           <div>
             <p className="text-green-300 text-xs font-medium uppercase tracking-wide">Round {roundNumber}</p>
             <p className="text-sm text-green-100">{roundDate}</p>
           </div>
           <Link
             href="/leaderboard"
-            className="text-xs font-medium text-white bg-green-600 hover:bg-green-500 px-2.5 py-1.5 rounded-full transition-colors shrink-0 flex items-center gap-1"
+            className="text-xs font-medium text-white bg-green-700 hover:bg-green-600 px-2.5 py-1.5 rounded-full transition-colors shrink-0 flex items-center gap-1"
           >
             <Icon icon={TrophyIcon} size="sm" className="text-white" />
             Leaderboard
@@ -149,12 +147,12 @@ export function MyScoreCard({
             <p className="text-base font-bold leading-tight">{teamName || `Team ${teamNumber}`}</p>
           </div>
           {isLocked ? (
-            <span className="text-xs bg-green-600 border border-green-400 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+            <span className="text-xs bg-green-700 border border-green-500 px-2 py-1 rounded-full font-medium flex items-center gap-1">
               <Icon icon={LockClosedIcon} size="sm" className="text-white" />
               Locked
             </span>
           ) : scoringOpen ? (
-            <span className="text-xs bg-green-600 border border-green-400 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+            <span className="text-xs bg-green-700 border border-green-500 px-2 py-1 rounded-full font-medium flex items-center gap-1">
               <Icon icon={FlagIcon} size="sm" className="text-white" />
               Open
             </span>
@@ -163,17 +161,17 @@ export function MyScoreCard({
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-green-800/50 rounded-lg py-2 px-2">
+          <div className="bg-green-900/60 rounded-lg py-2 px-2">
             <p className="text-green-300 text-xs uppercase tracking-wide mb-0.5">Gross</p>
             <p className="text-3xl font-black tabular-nums">
-              {touchedCount > 0 ? gross : <span className="text-xl text-green-400">—</span>}
+              {touchedCount > 0 ? gross : <span className="text-xl text-green-500">—</span>}
             </p>
           </div>
-          <div className="bg-green-800/50 rounded-lg py-2 px-2">
+          <div className="bg-green-900/60 rounded-lg py-2 px-2">
             <p className="text-green-300 text-xs uppercase tracking-wide mb-0.5">Handicap</p>
             <p className="text-3xl font-black tabular-nums text-green-200">{handicap}</p>
           </div>
-          <div className="bg-green-800/50 rounded-lg py-2 px-2">
+          <div className="bg-green-900/60 rounded-lg py-2 px-2">
             <p className="text-green-300 text-xs uppercase tracking-wide mb-0.5">
               {projectedNet !== null ? 'Proj. Net' : 'Net'}
             </p>
@@ -182,7 +180,7 @@ export function MyScoreCard({
                 ? net
                 : projectedNet !== null
                 ? <span className="text-green-100">{projectedNet}</span>
-                : <span className="text-xl text-green-400">—</span>}
+                : <span className="text-xl text-green-500">—</span>}
             </p>
           </div>
         </div>
@@ -215,7 +213,7 @@ export function MyScoreCard({
               ) : null}
             </span>
           </div>
-          <div className="h-1 bg-green-800 rounded-full overflow-hidden">
+          <div className="h-1 bg-green-900 rounded-full overflow-hidden">
             <div
               className="h-full bg-green-300 rounded-full transition-all duration-300"
               style={{ width: `${(touchedCount / 9) * 100}%` }}
@@ -225,9 +223,9 @@ export function MyScoreCard({
       </div>
 
       {/* ── Hole grid ── */}
-      <div className="p-4">
+      <div className="bg-zinc-900">
         {!readOnly && (
-          <p className="text-xs text-gray-400 text-center mb-3">
+          <p className="text-xs text-zinc-500 text-center mb-3">
             Tap a hole to set par — use + or − to adjust
           </p>
         )}
@@ -249,18 +247,18 @@ export function MyScoreCard({
 
       {/* ── Status / error ── */}
       {!readOnly && error && (
-        <div className="px-4 pb-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2">
-            <p className="text-sm text-red-700">{error}</p>
+        <div className="px-4 pb-4 bg-zinc-900">
+          <div className="bg-red-900/30 border border-red-700 rounded-lg px-4 py-2">
+            <p className="text-sm text-red-400">{error}</p>
           </div>
         </div>
       )}
 
       {readOnly && isLocked && (
-        <div className="px-4 pb-5 pt-1">
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-            <p className="text-green-800 font-medium text-sm flex items-center justify-center gap-2">
-              <Icon icon={LockClosedIcon} size="sm" className="text-green-800" />
+        <div className="px-4 pb-5 pt-1 bg-zinc-900">
+          <div className="bg-green-900/30 border border-green-700 rounded-xl p-4 text-center">
+            <p className="text-green-400 font-medium text-sm flex items-center justify-center gap-2">
+              <Icon icon={LockClosedIcon} size="sm" className="text-green-400" />
               Score locked by admin — no further changes allowed.
             </p>
           </div>
@@ -282,14 +280,13 @@ interface HoleCellProps {
   onSetPar: () => void
 }
 
-/** Label relative to par */
 function relLabel(diff: number): { text: string; color: string } {
-  if (diff <= -2) return { text: 'Eagle', color: 'text-yellow-500' }
-  if (diff === -1) return { text: 'Birdie', color: 'text-red-500' }
-  if (diff === 0)  return { text: 'Par',    color: 'text-green-600' }
-  if (diff === 1)  return { text: 'Bogey',  color: 'text-gray-500' }
-  if (diff === 2)  return { text: 'Double', color: 'text-orange-500' }
-  return { text: `+${diff}`, color: 'text-red-700' }
+  if (diff <= -2) return { text: 'Eagle',  color: 'text-yellow-400' }
+  if (diff === -1) return { text: 'Birdie', color: 'text-red-400' }
+  if (diff === 0)  return { text: 'Par',    color: 'text-green-400' }
+  if (diff === 1)  return { text: 'Bogey',  color: 'text-zinc-400' }
+  if (diff === 2)  return { text: 'Double', color: 'text-orange-400' }
+  return { text: `+${diff}`,               color: 'text-red-500' }
 }
 
 function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: HoleCellProps) {
@@ -297,69 +294,72 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: H
   const rel = relLabel(diff)
 
   const headerBg = !touched
-    ? 'bg-gray-200 text-gray-500'
+    ? 'bg-zinc-700'
     : diff < 0
-    ? 'bg-red-400 text-white'
+    ? 'bg-red-700'
     : diff === 0
-    ? 'bg-green-500 text-white'
-    : diff === 1
-    ? 'bg-gray-400 text-white'
-    : 'bg-orange-400 text-white'
+    ? 'bg-green-700'
+    : 'bg-zinc-700'
+
+  const headerText = !touched
+    ? 'text-zinc-400'
+    : diff < 0
+    ? 'text-white'
+    : diff === 0
+    ? 'text-white'
+    : 'text-zinc-300'
 
   const borderColor = !touched
-    ? 'border-gray-200'
+    ? 'border-zinc-700'
     : diff < 0
-    ? 'border-red-300'
+    ? 'border-red-500'
     : diff === 0
-    ? 'border-green-400'
-    : diff === 1
-    ? 'border-gray-300'
-    : 'border-orange-300'
+    ? 'border-green-500'
+    : 'border-zinc-600'
 
   return (
-    <div className={`rounded-xl border-2 overflow-hidden transition-all ${borderColor} ${
-      !touched ? 'bg-gray-50' : 'bg-white'
-    }`}>
+    <div className={`rounded-xl border-2 overflow-hidden bg-zinc-800 ${borderColor}`}>
       {/* Hole label + par */}
-      <div className={`flex items-center justify-between px-2 py-1 text-xs font-semibold ${headerBg}`}>
+      <div className={`flex items-center justify-between px-2 py-1.5 text-xs font-semibold uppercase tracking-wider ${headerBg} ${headerText}`}>
         <span>Hole {hole}</span>
-        <span className="opacity-80">Par {par}</span>
+        <span>Par {par}</span>
       </div>
 
       {/* Score display — tap to set par */}
       <button
         onClick={!readOnly ? onSetPar : undefined}
         disabled={readOnly}
-        className={`w-full text-center py-3 relative ${
-          !readOnly ? 'cursor-pointer active:bg-gray-100' : 'cursor-default'
+        className={`w-full flex flex-col items-center justify-center py-4 ${
+          !readOnly ? 'active:bg-zinc-700' : 'cursor-default'
         }`}
         aria-label={`Set hole ${hole} to par ${par}`}
       >
-        <span className={`text-4xl font-black tabular-nums transition-all ${
-          touched ? 'text-gray-900 opacity-100' : 'text-gray-300 opacity-40'
-        }`}>
-          {value}
-        </span>
-        <div className="h-4 mt-0.5">
-          {touched && (
-            <span className={`text-xs font-semibold ${rel.color}`}>
+        {touched ? (
+          <>
+            <span className="text-5xl font-black text-white tabular-nums leading-none">
+              {value}
+            </span>
+            <span className={`text-xs font-semibold mt-1.5 ${rel.color}`}>
               {rel.text}
             </span>
-          )}
-        </div>
+          </>
+        ) : (
+          <div className="w-8 h-0.5 bg-zinc-600 rounded-full my-3" />
+        )}
       </button>
 
       {/* +/− controls */}
       {!readOnly && (
-        <div className="flex border-t border-gray-200">
+        <div className="flex items-center justify-center gap-3 pb-3 px-2">
           <button
             onClick={() => onAdjust(-1)}
             disabled={touched && value <= 1}
             aria-label={`Decrease hole ${hole}`}
-            className="flex-1 py-3 text-xl font-bold text-gray-600
-                       hover:bg-red-50 hover:text-red-600 active:bg-red-100
+            className="w-11 h-11 rounded-xl bg-zinc-700 text-white text-2xl font-bold
+                       flex items-center justify-center
+                       active:bg-zinc-600
                        disabled:opacity-30 disabled:cursor-not-allowed
-                       transition-colors border-r border-gray-200"
+                       transition-colors"
           >
             −
           </button>
@@ -367,8 +367,9 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: H
             onClick={() => onAdjust(1)}
             disabled={touched && value >= 20}
             aria-label={`Increase hole ${hole}`}
-            className="flex-1 py-3 text-xl font-bold text-gray-600
-                       hover:bg-green-50 hover:text-green-600 active:bg-green-100
+            className="w-11 h-11 rounded-xl bg-zinc-700 text-white text-2xl font-bold
+                       flex items-center justify-center
+                       active:bg-zinc-600
                        disabled:opacity-30 disabled:cursor-not-allowed
                        transition-colors"
           >
