@@ -171,8 +171,12 @@ export default async function DashboardPage({
 
       {/* Welcome Section */}
       <div className="flex items-center gap-3 px-4 pt-3 pb-2">
-        <div className="w-14 h-14 rounded-full bg-green-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
-          {getInitials(displayName)}
+        <div className="w-14 h-14 rounded-full bg-green-600 flex items-center justify-center text-white text-lg font-bold shrink-0 overflow-hidden">
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+          ) : (
+            getInitials(displayName)
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-white text-xl font-bold">Welcome back, {displayName}!</h1>
