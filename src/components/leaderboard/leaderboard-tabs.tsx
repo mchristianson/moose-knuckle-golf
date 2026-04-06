@@ -41,6 +41,7 @@ interface RecentRound {
 interface CurrentRoundScore {
   user_id: string
   full_name: string
+  avatar_url: string | null
   team_name: string
   team_number: number
   gross_score: number | null
@@ -480,18 +481,16 @@ export function LeaderboardTabs({
                           key={s.user_id}
                           className="flex items-center bg-zinc-800 rounded-xl px-3 py-3"
                         >
-                          {/* Rank badge */}
-                          <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 mr-3 ${
-                              isLeader ? 'bg-yellow-500/20' : 'bg-zinc-700'
-                            }`}
-                          >
-                            {s.holesPlayed === 0 ? (
-                              <span className="text-zinc-600 text-xs">—</span>
-                            ) : isLeader ? (
-                              <Icon icon={TrophyIcon} size="sm" className="text-yellow-400" />
+                          {/* Avatar */}
+                          <div className={`w-9 h-9 rounded-full shrink-0 mr-3 overflow-hidden flex items-center justify-center ${
+                            isLeader ? 'ring-2 ring-yellow-400' : ''
+                          } ${s.avatar_url ? '' : 'bg-green-700'}`}>
+                            {s.avatar_url ? (
+                              <img src={s.avatar_url} alt={s.full_name} className="w-full h-full object-cover" />
                             ) : (
-                              <span className="text-zinc-300 text-sm font-bold">{idx + 1}</span>
+                              <span className="text-white text-xs font-bold">
+                                {s.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
+                              </span>
                             )}
                           </div>
 

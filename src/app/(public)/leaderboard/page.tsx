@@ -117,7 +117,7 @@ export default async function LeaderboardPage() {
         handicap_at_time,
         hole_scores,
         is_locked,
-        user:user_id ( full_name, display_name ),
+        user:user_id ( full_name, display_name, avatar_url ),
         team:team_id ( team_name, team_number )
       `)
       .eq('round_id', currentRound.id)
@@ -125,6 +125,7 @@ export default async function LeaderboardPage() {
     currentRoundScores = (scores ?? []).map((s: any) => ({
       user_id: s.user_id,
       full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown',
+      avatar_url: s.user?.avatar_url ?? null,
       team_name: s.team?.team_name ?? '',
       team_number: s.team?.team_number ?? 0,
       gross_score: s.gross_score,
