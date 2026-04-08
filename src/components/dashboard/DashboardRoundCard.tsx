@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
 import { formatRoundDate } from '@/lib/utils/date'
+import { setMyAvailability } from '@/lib/actions/availability'
 import type { AvailabilityTeam, AvailabilityRecord } from '@/components/RoundAvailabilityGrid'
 import {
   FlagIcon,
@@ -21,17 +23,18 @@ import {
 
 interface DashboardRoundCardProps {
   round: any
-  availability?: { round_id: string; status: 'in' | 'out' | 'undeclared' }
+  availability?: { id: string; round_id: string; status: 'in' | 'out' | 'undeclared' }
   canEnterScore: boolean
   foursomes?: any[]
   teams?: AvailabilityTeam[]
   roundAvailability?: AvailabilityRecord[]
   defaultExpanded?: boolean
+  isAdmin?: boolean
 }
 
-function getDayOfWeek(dateString: string): string {
+function getMonth(dateString: string): string {
   const [y, m, d] = dateString.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
 }
 
 function getDayNumber(dateString: string): string {
@@ -54,17 +57,36 @@ export function DashboardRoundCard({
   teams,
   roundAvailability = [],
   defaultExpanded = false,
+  isAdmin = false,
 }: DashboardRoundCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  const [localStatus, setLocalStatus] = useState(availability?.status ?? 'undeclared')
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+
+  const handleAdminDeclare = async (status: 'in' | 'out') => {
+    if (isLoading) return
+    const prev = localStatus
+    setLocalStatus(status)
+    setIsLoading(true)
+    const result = await setMyAvailability(round.id, status)
+    setIsLoading(false)
+    if (result?.error) {
+      setLocalStatus(prev)
+      alert(result.error)
+    } else {
+      router.refresh()
+    }
+  }
 
   const roundEnded = round.status === 'completed'
   const badgeStyle = STATUS_BADGE_STYLES[round.status] || STATUS_BADGE_STYLES.scheduled
 
   // For expanded state, show user's availability badge using status badge styles only when
   // availability is declared and the round is ongoing
-  const userIsIn = availability?.status === 'in'
-  const userIsOut = availability?.status === 'out'
-  const userUndeclared = !availability || availability.status === 'undeclared'
+  const userIsIn = localStatus === 'in'
+  const userIsOut = localStatus === 'out'
+  const userUndeclared = localStatus === 'undeclared' || !availability
 
   return (
     <div className="bg-zinc-800 rounded-xl overflow-hidden transition-shadow hover:shadow-lg hover:shadow-black/20">
@@ -77,7 +99,7 @@ export function DashboardRoundCard({
         {/* Date sidebar */}
         <div className="bg-zinc-700 flex flex-col items-center justify-center px-4 py-3 min-w-[56px] shrink-0">
           <span className="text-zinc-400 text-xs font-medium leading-none">
-            {getDayOfWeek(round.round_date)}
+            {getMonth(round.round_date)}
           </span>
           <span className="text-white text-2xl font-bold leading-tight mt-0.5">
             {getDayNumber(round.round_date)}
@@ -126,38 +148,73 @@ export function DashboardRoundCard({
         <div className="border-t border-zinc-700 px-4 pt-3.5 pb-5 space-y-3">
           {/* Action buttons */}
           <div className="flex flex-col gap-1.5">
-            <div className="flex flex-row gap-1.5">
-              {!roundEnded && availability && (userIsIn || userIsOut) && (
-                <Button
-                  variant="ghost"
-                  size="small"
-                  asChild
-                  className="flex-1 border-zinc-600 text-zinc-100 hover:bg-zinc-700"
-                >
-                  <Link href={`/availability/${round.id}`}>Change Avail.</Link>
-                </Button>
-              )}
-              {!roundEnded && availability && userUndeclared && (
-                <Button
-                  variant="secondary"
-                  size="small"
-                  asChild
-                  className="flex-1"
-                >
-                  <Link href={`/availability/${round.id}`}>Declare Avail.</Link>
-                </Button>
-              )}
-              {!roundEnded && (
-                <Button
-                  variant="primary"
-                  size="small"
-                  asChild
-                  className="flex-1"
-                >
+            {!roundEnded && isAdmin ? (
+              <>
+                {/* Admin: inline In/Out + Declare Golfers */}
+                <div className="flex flex-row gap-1.5">
+                  <button
+                    onClick={() => handleAdminDeclare('in')}
+                    disabled={isLoading}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 ${
+                      userIsIn
+                        ? 'bg-green-600 text-white'
+                        : 'bg-zinc-700 text-zinc-200 hover:bg-green-700 hover:text-white'
+                    }`}
+                  >
+                    <Icon icon={CheckIcon} size="sm" />
+                    I'm In
+                  </button>
+                  <button
+                    onClick={() => handleAdminDeclare('out')}
+                    disabled={isLoading}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 ${
+                      userIsOut
+                        ? 'bg-red-600 text-white'
+                        : 'bg-zinc-700 text-zinc-200 hover:bg-red-700 hover:text-white'
+                    }`}
+                  >
+                    <Icon icon={XMarkIcon} size="sm" />
+                    I'm Out
+                  </button>
+                </div>
+                <Button variant="primary" size="small" asChild className="w-full">
                   <Link href={`/rounds/${round.id}`}>Declare Golfers</Link>
                 </Button>
-              )}
-            </div>
+              </>
+            ) : (
+              <div className="flex flex-row gap-1.5">
+                {!roundEnded && availability && (userIsIn || userIsOut) && (
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    asChild
+                    className="flex-1 border-zinc-600 text-zinc-100 hover:bg-zinc-700"
+                  >
+                    <Link href={`/availability/${round.id}`}>Change Avail.</Link>
+                  </Button>
+                )}
+                {!roundEnded && availability && userUndeclared && (
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    asChild
+                    className="flex-1"
+                  >
+                    <Link href={`/availability/${round.id}`}>Declare Avail.</Link>
+                  </Button>
+                )}
+                {!roundEnded && (
+                  <Button
+                    variant="primary"
+                    size="small"
+                    asChild
+                    className="flex-1"
+                  >
+                    <Link href={`/rounds/${round.id}`}>Declare Golfers</Link>
+                  </Button>
+                )}
+              </div>
+            )}
             {canEnterScore && (
               <Button variant="danger" size="small" asChild className="w-full">
                 <Link href={`/scores/${round.id}`}>Enter Score</Link>

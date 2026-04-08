@@ -97,7 +97,7 @@ export default async function DashboardPage({
   // Get my availability for upcoming rounds (for the per-round availability badge)
   const { data: myAvailability } = await supabase
     .from('round_availability')
-    .select('round_id, status')
+    .select('id, round_id, status')
     .eq('user_id', user?.id)
     .in('round_id', upcomingRounds?.map(r => r.id) || []);
 
@@ -212,6 +212,7 @@ export default async function DashboardPage({
                 teams={availabilityTeams}
                 roundAvailability={availabilityByRound[round.id] ?? []}
                 defaultExpanded={true}
+                isAdmin={!!profile?.is_admin}
               />
             ))}
           </div>
@@ -268,6 +269,7 @@ export default async function DashboardPage({
                 teams={availabilityTeams}
                 roundAvailability={availabilityByRound[round.id] ?? []}
                 defaultExpanded={index === 0}
+                isAdmin={!!profile?.is_admin}
               />
             ))}
           </div>
@@ -289,6 +291,7 @@ export default async function DashboardPage({
                   round={round}
                   availability={myAvailability?.find(a => a.round_id === round.id)}
                   canEnterScore={false}
+                  isAdmin={!!profile?.is_admin}
                 />
               ))}
             </div>

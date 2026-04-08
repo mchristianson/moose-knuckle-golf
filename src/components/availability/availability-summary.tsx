@@ -1,5 +1,6 @@
 import { DeclaredGolferSelector } from './declared-golfer-selector'
 import { SubAssignmentPanel } from './sub-assignment-panel'
+import { AdminAvailabilityOverride } from './admin-availability-override'
 
 interface RoundSubInfo {
   subId: string
@@ -87,17 +88,24 @@ export function AvailabilitySummary({
                 {members.map((member: any) => (
                   <div key={member.id} className="flex justify-between items-center text-sm">
                     <span className="text-gray-700">{member.user.full_name}</span>
-                    <span className={`px-2 py-0.5 rounded text-xs ${
-                      member.status === 'in'
-                        ? 'bg-green-100 text-green-800'
-                        : member.status === 'out'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {member.status === 'in' ? 'In' :
-                       member.status === 'out' ? 'Out' :
-                       'Undeclared'}
-                    </span>
+                    {isAdmin ? (
+                      <AdminAvailabilityOverride
+                        availabilityId={member.id}
+                        currentStatus={member.status}
+                      />
+                    ) : (
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        member.status === 'in'
+                          ? 'bg-green-100 text-green-800'
+                          : member.status === 'out'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {member.status === 'in' ? 'In' :
+                         member.status === 'out' ? 'Out' :
+                         'Undeclared'}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

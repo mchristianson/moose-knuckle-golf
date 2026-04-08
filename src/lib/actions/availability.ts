@@ -142,6 +142,71 @@ export async function declareAvailability(roundId: string, status: 'in' | 'out')
   redirect('/dashboard?declared=true')
 }
 
+export async function setMyAvailability(roundId: string, status: 'in' | 'out') {
+  const { supabase, user } = await getAuthenticatedUser()
+
+  let { data: availability } = await supabase
+    .from('round_availability')
+    .select('*')
+    .eq('round_id', roundId)
+    .eq('user_id', user.id)
+    .single()
+
+  // Record may not exist if user was added to a team after the round was created
+  if (!availability) {
+    const { data: membership } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!membership) {
+      return { error: 'You are not a member of any team' }
+    }
+
+    const { data: created, error: insertError } = await supabase
+      .from('round_availability')
+      .insert({ round_id: roundId, user_id: user.id, team_id: membership.team_id, status: 'undeclared' })
+      .select()
+      .single()
+
+    if (insertError) return { error: insertError.message }
+    availability = created
+  }
+
+  const { error } = await supabase
+    .from('round_availability')
+    .update({ status, declared_at: new Date().toISOString(), declared_by: user.id })
+    .eq('id', availability.id)
+
+  if (error) return { error: error.message }
+
+  if (status === 'in') {
+    await supabase.from('round_team_declarations').upsert(
+      {
+        round_id: roundId,
+        team_id: availability.team_id,
+        declared_golfer_id: user.id,
+        declared_by: user.id,
+        declared_at: new Date().toISOString(),
+      },
+      { onConflict: 'round_id,team_id' }
+    )
+  } else {
+    await supabase
+      .from('round_team_declarations')
+      .delete()
+      .eq('round_id', roundId)
+      .eq('team_id', availability.team_id)
+      .eq('declared_golfer_id', user.id)
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/availability/${roundId}`)
+  revalidatePath(`/rounds/${roundId}`)
+  return { success: true }
+}
+
 export async function adminOverrideAvailability(availabilityId: string, status: 'in' | 'out') {
   const { supabase, user } = await getAuthenticatedUser()
 
@@ -170,5 +235,6 @@ export async function adminOverrideAvailability(availabilityId: string, status: 
   }
 
   revalidatePath('/admin/rounds')
+  revalidatePath('/dashboard')
   return { success: true }
 }
