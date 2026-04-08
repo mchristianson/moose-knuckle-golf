@@ -50,7 +50,7 @@ export async function createRound(prevState: any, formData: FormData) {
       availability_deadline: availabilityDeadline.toISOString(),
       course: course || null,
       notes: notes || null,
-      status: 'scheduled',
+      status: 'availability_open',
     })
     .select()
     .single()

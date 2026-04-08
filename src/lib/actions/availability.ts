@@ -81,6 +81,17 @@ export async function setDeclaredGolfer(roundId: string, teamId: string, golferI
 export async function declareAvailability(roundId: string, status: 'in' | 'out') {
   const { supabase, user } = await getAuthenticatedUser()
 
+  // Block declarations once the round has started
+  const { data: round } = await supabase
+    .from('rounds')
+    .select('status')
+    .eq('id', roundId)
+    .single()
+
+  if (round && ['in_progress', 'scoring', 'completed', 'cancelled'].includes(round.status)) {
+    return { error: 'Cannot declare availability after the round has started' }
+  }
+
   // Get user's team for this round
   const { data: availability } = await supabase
     .from('round_availability')

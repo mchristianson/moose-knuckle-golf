@@ -99,7 +99,7 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
           )}
 
           {/* Declaration Status */}
-          {['scheduled', 'availability_open', 'foursomes_set'].includes(round.status) && declarationDetails && (
+          {['availability_open', 'foursomes_set'].includes(round.status) && declarationDetails && (
             <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
               {declarationDetails.declared.length > 0 && (
                 <div>
@@ -145,7 +145,7 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {['scheduled', 'availability_open'].includes(round.status) && (
+        {round.status === 'availability_open' && (
           <button
             onClick={() => handleStatusChange('foursomes_set')}
             disabled={!allDeclared}

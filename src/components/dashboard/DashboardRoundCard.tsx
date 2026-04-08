@@ -79,7 +79,7 @@ export function DashboardRoundCard({
     }
   }
 
-  const roundEnded = round.status === 'completed'
+  const roundEnded = ['in_progress', 'scoring', 'completed', 'cancelled'].includes(round.status)
   const badgeStyle = STATUS_BADGE_STYLES[round.status] || STATUS_BADGE_STYLES.scheduled
 
   // For expanded state, show user's availability badge using status badge styles only when
