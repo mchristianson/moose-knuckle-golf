@@ -18,7 +18,15 @@ export default async function PublicLayout({
 
   // Find the first active round (in_progress or scoring) for the leaderboard nav
   let currentRoundId: string | undefined
+  let avatarUrl: string | undefined
   if (user) {
+    const { data: profileData } = await supabase
+      .from('users')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .single()
+    avatarUrl = profileData?.avatar_url ?? undefined
+
     const { data: activeRounds } = await supabase
       .from('rounds')
       .select('id')
@@ -33,11 +41,11 @@ export default async function PublicLayout({
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950">
-      <SiteHeader navItems={navItems} isLoggedIn={!!user} />
+      <SiteHeader navItems={navItems} isLoggedIn={!!user} avatarUrl={avatarUrl} />
       <main className="flex-1 container mx-auto px-4 py-0">
         {children}
       </main>
-      {user && <AppBottomNav currentRoundId={currentRoundId} />}
+      {user && <AppBottomNav currentRoundId={currentRoundId} avatarUrl={avatarUrl} />}
     </div>
   )
 }

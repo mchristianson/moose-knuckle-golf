@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { signout } from '@/lib/actions/auth'
 import { Icon } from '@/components/Icon'
-import { Bars3Icon, XMarkIcon, BellIcon } from '@heroicons/react/24/outline'
+import { UserCircleIcon } from '@heroicons/react/24/outline'
 
 interface NavItem {
   href: string
@@ -16,10 +16,11 @@ interface SiteHeaderProps {
   navItems: NavItem[]
   isLoggedIn: boolean
   isAdmin?: boolean
+  avatarUrl?: string | null
 }
 
-export function SiteHeader({ navItems, isLoggedIn, isAdmin }: SiteHeaderProps) {
-  const [menuOpen, setMenuOpen] = useState(false)
+export function SiteHeader({ navItems, isLoggedIn, isAdmin, avatarUrl }: SiteHeaderProps) {
+  const pathname = usePathname()
 
   const allNavItems = [
     ...navItems,
@@ -27,13 +28,13 @@ export function SiteHeader({ navItems, isLoggedIn, isAdmin }: SiteHeaderProps) {
   ]
 
   return (
-    <header className="border-b bg-zinc-900 border-zinc-800">
+    <header className="sticky top-0 z-50 border-b bg-zinc-900/85 backdrop-blur-xl border-zinc-800/60">
       <div className="container mx-auto px-4 py-3">
         {/* Outer row — relative so the absolute logo can centre within it */}
         <div className="relative flex items-center justify-between">
 
-          {/* Mobile left: spacer (matches right-buttons width so logo stays centred) */}
-          <div className="w-20 shrink-0 md:hidden" />
+          {/* Mobile left: spacer (matches right-button width so logo stays centred) */}
+          <div className="w-10 shrink-0 md:hidden" />
 
           {/* Logo — absolute centre on mobile, normal flow left on desktop */}
           <Link
@@ -48,13 +49,13 @@ export function SiteHeader({ navItems, isLoggedIn, isAdmin }: SiteHeaderProps) {
               className="rounded-full md:w-14 md:h-14"
               priority
             />
-            {/* Mobile name (white) */}
+            {/* Mobile name */}
             <span className="font-bold text-white text-sm leading-tight md:hidden">
               Moose Knuckle
               <br />
               <span className="text-xs font-semibold text-zinc-400 tracking-wide">Golf League</span>
             </span>
-            {/* Desktop name (green) */}
+            {/* Desktop name */}
             <span className="hidden md:block font-bold text-white text-lg leading-tight">
               Moose Knuckle
               <br />
@@ -68,7 +69,11 @@ export function SiteHeader({ navItems, isLoggedIn, isAdmin }: SiteHeaderProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+                className={`text-sm font-medium transition-colors relative pb-0.5 ${
+                  pathname === item.href || pathname.startsWith(item.href + '/')
+                    ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-green-500 after:rounded-full after:content-['']"
+                    : 'text-zinc-400 hover:text-white'
+                }`}
               >
                 {item.label}
               </Link>
@@ -77,7 +82,7 @@ export function SiteHeader({ navItems, isLoggedIn, isAdmin }: SiteHeaderProps) {
               <form action={signout}>
                 <button
                   type="submit"
-                  className="text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+                  className="text-sm font-medium text-zinc-400 hover:text-white transition-colors"
                 >
                   Logout
                 </button>
@@ -92,57 +97,35 @@ export function SiteHeader({ navItems, isLoggedIn, isAdmin }: SiteHeaderProps) {
             )}
           </nav>
 
-          {/* Mobile right: Bell + Hamburger */}
-          <div className="flex items-center gap-1 shrink-0 md:hidden">
-            <button
-              className="w-10 h-10 flex items-center justify-center rounded-md text-white hover:bg-zinc-800"
-              aria-label="Notifications"
+          {/* Mobile right: avatar button (auth'd) or login CTA (public) */}
+          {isLoggedIn ? (
+            <Link
+              href="/profile"
+              className="flex items-center justify-center w-10 h-10 rounded-full md:hidden shrink-0"
+              aria-label="Profile"
             >
-              <Icon icon={BellIcon} size="sm" />
-            </button>
-            <button
-              className="w-10 h-10 flex items-center justify-center rounded-md text-white hover:bg-zinc-800"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Toggle menu"
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-zinc-700"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+                  <Icon icon={UserCircleIcon} size="sm" className="text-zinc-400" />
+                </div>
+              )}
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="md:hidden shrink-0 text-xs font-semibold bg-green-700 text-white px-3 py-1.5 rounded-full hover:bg-green-800 transition-colors"
             >
-              {menuOpen ? <Icon icon={XMarkIcon} size="sm" /> : <Icon icon={Bars3Icon} size="sm" />}
-            </button>
-          </div>
-        </div>
+              Login
+            </Link>
+          )}
 
-        {/* Mobile dropdown menu */}
-        {menuOpen && (
-          <nav className="md:hidden mt-3 pb-2 border-t border-zinc-700 pt-3 flex flex-col gap-1">
-            {allNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="px-2 py-2.5 text-sm font-medium text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
-                onClick={() => setMenuOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-            {isLoggedIn ? (
-              <form action={signout} className="mt-1">
-                <button
-                  type="submit"
-                  className="w-full text-left px-2 py-2.5 text-sm font-medium text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
-                >
-                  Logout
-                </button>
-              </form>
-            ) : (
-              <Link
-                href="/login"
-                className="mt-1 px-2 py-2.5 text-sm font-medium text-green-400 hover:bg-zinc-800 rounded-md transition-colors"
-                onClick={() => setMenuOpen(false)}
-              >
-                Login
-              </Link>
-            )}
-          </nav>
-        )}
+        </div>
       </div>
     </header>
   )

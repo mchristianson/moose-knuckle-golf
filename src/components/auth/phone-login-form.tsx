@@ -57,17 +57,17 @@ export function PhoneLoginForm() {
     return (
       <form action={handleSendSubmit} className="space-y-4">
         {sendState.error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+          <div className="bg-red-950/60 text-red-400 border border-red-800/50 p-3 rounded-md text-sm">
             {sendState.error}
           </div>
         )}
 
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="phone" className="block text-sm font-medium text-zinc-200 mb-1">
             Phone Number
           </label>
           <div className="flex">
-            <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-md bg-gray-50 text-gray-500 text-sm">
+            <span className="inline-flex items-center px-3 border border-r-0 border-zinc-700 rounded-l-md bg-zinc-800 text-zinc-400 text-sm">
               +1
             </span>
             <input
@@ -78,10 +78,10 @@ export function PhoneLoginForm() {
               placeholder="3334445555"
               maxLength={10}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-3 py-2 border border-zinc-700 rounded-r-md bg-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">Enter your 10-digit US number</p>
+          <p className="text-xs text-zinc-500 mt-1">Enter your 10-digit US number</p>
         </div>
 
         <SubmitButton label="Send Code" pendingLabel="Sending..." />
@@ -93,7 +93,7 @@ export function PhoneLoginForm() {
   return (
     <form action={verifyAction} className="space-y-4">
       {verifyState.error && (
-        <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+        <div className="bg-red-950/60 text-red-400 border border-red-800/50 p-3 rounded-md text-sm">
           {verifyState.error}
         </div>
       )}
@@ -101,10 +101,10 @@ export function PhoneLoginForm() {
       <input type="hidden" name="phone" value={phone} />
 
       <div>
-        <label htmlFor="token" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="token" className="block text-sm font-medium text-zinc-200 mb-1">
           Verification Code
         </label>
-        <p className="text-sm text-gray-600 mb-2">
+        <p className="text-sm text-zinc-400 mb-2">
           We sent a 6-digit code to +1{phone}
         </p>
         <input
@@ -116,7 +116,7 @@ export function PhoneLoginForm() {
           maxLength={6}
           autoComplete="one-time-code"
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-center text-2xl tracking-widest"
+          className="w-full px-3 py-2 border border-zinc-700 rounded-md bg-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-2xl tracking-widest"
         />
       </div>
 
@@ -125,7 +125,7 @@ export function PhoneLoginForm() {
       <button
         type="button"
         onClick={handleBack}
-        className="w-full text-sm text-gray-600 hover:text-green-600"
+        className="w-full text-sm text-zinc-500 hover:text-green-400"
       >
         Back — use a different number
       </button>

@@ -258,10 +258,10 @@ export function LeaderboardTabs({
   const tabBtn = (tab: 'season' | 'current' | 'next', label: React.ReactNode) => (
     <button
       onClick={() => setActiveTab(tab)}
-      className={`px-5 py-2 text-sm font-semibold rounded-full transition-colors ${
+      className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200 ${
         activeTab === tab
-          ? 'bg-green-500 text-white'
-          : 'border border-zinc-700 text-zinc-400 hover:text-zinc-200'
+          ? 'bg-zinc-950 text-white shadow-sm'
+          : 'text-zinc-400 hover:text-zinc-200'
       }`}
     >
       {label}
@@ -292,20 +292,22 @@ export function LeaderboardTabs({
         <p className="text-zinc-400 text-sm mt-0.5">{currentYear} Season</p>
       </div>
 
-      {/* Tabs */}
-      <div className="px-4 flex gap-2 flex-wrap mb-4">
-        {tabBtn('season', 'Season Standings')}
-        {currentRound &&
-          tabBtn(
-            'current',
-            <span className="flex items-center gap-2">
-              Current Round
-              {currentRound.status === 'in_progress' && (
-                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              )}
-            </span>
-          )}
-        {nextRound && tabBtn('next', 'Next Round')}
+      {/* Tabs — iOS segmented control */}
+      <div className="px-4 mb-4">
+        <div className="flex bg-zinc-800 p-1 rounded-full gap-0.5">
+          {tabBtn('season', 'Season')}
+          {currentRound &&
+            tabBtn(
+              'current',
+              <span className="flex items-center justify-center gap-1.5">
+                Current
+                {currentRound.status === 'in_progress' && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                )}
+              </span>
+            )}
+          {nextRound && tabBtn('next', 'Next')}
+        </div>
       </div>
 
       {/* ── Season tab ── */}

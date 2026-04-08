@@ -67,7 +67,7 @@ export function DashboardRoundCard({
   const userUndeclared = !availability || availability.status === 'undeclared'
 
   return (
-    <div className="bg-zinc-800 rounded-xl overflow-hidden">
+    <div className="bg-zinc-800 rounded-xl overflow-hidden transition-shadow hover:shadow-lg hover:shadow-black/20">
       {/* Collapsed header row — always visible */}
       <button
         onClick={() => setIsExpanded((e) => !e)}
@@ -75,17 +75,17 @@ export function DashboardRoundCard({
         aria-expanded={isExpanded}
       >
         {/* Date sidebar */}
-        <div className="bg-zinc-700 flex flex-col items-center justify-center px-3 py-3 min-w-[52px] shrink-0">
+        <div className="bg-zinc-700 flex flex-col items-center justify-center px-4 py-3 min-w-[56px] shrink-0">
           <span className="text-zinc-400 text-xs font-medium leading-none">
             {getDayOfWeek(round.round_date)}
           </span>
-          <span className="text-white text-xl font-bold leading-tight mt-0.5">
+          <span className="text-white text-2xl font-bold leading-tight mt-0.5">
             {getDayNumber(round.round_date)}
           </span>
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex items-center gap-2 px-3 py-3 min-w-0">
+        <div className="flex-1 flex items-center gap-3 px-4 py-3.5 min-w-0">
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-semibold truncate">Round {round.round_number}</p>
             <p className="text-zinc-400 text-xs mt-0.5">{formatRoundDate(round.round_date)}</p>
@@ -123,7 +123,7 @@ export function DashboardRoundCard({
 
       {/* Expanded panel */}
       {isExpanded && (
-        <div className="border-t border-zinc-700 px-3 pt-3 pb-4 space-y-3">
+        <div className="border-t border-zinc-700 px-4 pt-3.5 pb-5 space-y-3">
           {/* Action buttons */}
           <div className="flex flex-col gap-1.5">
             <div className="flex flex-row gap-1.5">
