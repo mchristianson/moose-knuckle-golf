@@ -161,7 +161,38 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
 
               {/* Score grid */}
               <div className="p-4">
-                <div className="overflow-x-auto">
+                {/* Mobile layout — 3×3 hole grid */}
+                <div className="md:hidden">
+                  <div className="grid grid-cols-3 gap-2">
+                    {HOLES.map((h, idx) => (
+                      <div key={h} className="flex flex-col items-center">
+                        <span className="text-xs text-gray-400 mb-1 font-medium">Hole {h}</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={20}
+                          placeholder={String(HOLE_PARS[idx])}
+                          value={row.holeScores[idx] || ''}
+                          onChange={(e) => updateHole(row.userId, idx, e.target.value)}
+                          disabled={row.isLocked || isBusy}
+                          className={`w-full h-12 text-center rounded-lg border text-lg font-semibold
+                            ${row.isLocked
+                              ? 'bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed'
+                              : 'bg-white border-gray-300 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500'
+                            }`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-6 mt-3 text-sm">
+                    <span className="text-gray-500">Gross: <strong className="text-gray-800">{row.grossScore > 0 ? row.grossScore : '—'}</strong></span>
+                    <span className="text-gray-500">Net: <strong className="text-green-700">{row.netScore !== null && row.grossScore > 0 ? row.netScore : '—'}</strong></span>
+                  </div>
+                </div>
+
+                {/* Desktop layout — horizontal table */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr>
@@ -180,6 +211,7 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                           <td key={idx} className="text-center py-1">
                             <input
                               type="number"
+                              inputMode="numeric"
                               min={1}
                               max={20}
                               placeholder={String(HOLE_PARS[idx])}
@@ -189,7 +221,7 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                               className={`w-10 text-center rounded border py-1 text-sm font-medium
                                 ${row.isLocked
                                   ? 'bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed'
-                                  : 'border-gray-300 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500'
+                                  : 'bg-white border-gray-300 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500'
                                 }
                               `}
                             />
@@ -212,31 +244,31 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
 
                 {/* Actions */}
                 {!row.isLocked && (
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="flex flex-col gap-2 mt-3 md:flex-row md:items-center">
                     <button
                       onClick={() => handleSave(row)}
                       disabled={isBusy || !isDirty}
-                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40"
+                      className="w-full md:w-auto px-3 py-2 md:py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40"
                     >
                       {isBusy ? 'Saving…' : 'Save'}
                     </button>
                     <button
                       onClick={() => handleLock(row)}
                       disabled={isBusy || !allHolesEntered}
-                      className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40"
+                      className="w-full md:w-auto px-3 py-2 md:py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40"
                       title={!allHolesEntered ? 'Enter all 9 holes first' : ''}
                     >
                       {isBusy ? (
                         'Locking…'
                       ) : (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center justify-center gap-1">
                           <Icon icon={LockClosedIcon} size="sm" />
                           Lock Score
                         </span>
                       )}
                     </button>
                     {!allHolesEntered && row.holeScores.some((h) => h > 0) && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-400 text-center md:text-left">
                         {row.holeScores.filter((h) => h > 0).length}/9 holes entered
                       </span>
                     )}
@@ -246,12 +278,12 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                   <button
                     onClick={() => handleUnlock(row)}
                     disabled={isBusy}
-                    className="mt-3 px-3 py-1.5 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40"
+                    className="mt-3 w-full md:w-auto px-3 py-2 md:py-1.5 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40"
                   >
                     {isBusy ? (
                       'Unlocking…'
                     ) : (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center justify-center gap-1">
                         <Icon icon={LockOpenIcon} size="sm" />
                         Unlock to Edit
                       </span>
