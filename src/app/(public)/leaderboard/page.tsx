@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { LeaderboardTabs } from '@/components/leaderboard/leaderboard-tabs'
 import { CalendarSubscribe } from '@/components/leaderboard/CalendarSubscribe'
+import { getSeasonStandings } from '@/lib/data/leaderboard'
+import { getAllTeams } from '@/lib/data/teams'
 
 export default async function LeaderboardPage() {
   const supabase = await createClient()
@@ -8,89 +10,94 @@ export default async function LeaderboardPage() {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // ── Season standings ──────────────────────────────────────────────────────
-  const { data: standings } = await supabase
-    .rpc('get_season_leaderboard', { p_season_year: currentYear })
-
-  // ── Recent completed rounds (last 5) ─────────────────────────────────────
-  const { data: recentRoundsData } = await supabase
-    .from('rounds')
-    .select(`
-      id,
-      round_number,
-      round_date,
-      round_points (
-        finish_position,
-        net_score,
-        points_earned,
-        is_tied,
-        team_id,
-        team:team_id ( team_number, team_name )
-      )
-    `)
-    .eq('season_year', currentYear)
-    .eq('status', 'completed')
-    .eq('round_type', 'regular')
-    .order('round_date', { ascending: false })
-    .limit(5)
-
-  // Get scores for these rounds to map golfers to teams
-  let recentRounds = recentRoundsData ?? []
-  if (recentRounds.length > 0) {
-    const roundIds = recentRounds.map((r: any) => r.id)
-    const { data: scores } = await supabase
-      .from('scores')
-      .select('round_id, team_id, user:user_id ( full_name, display_name )')
-      .in('round_id', roundIds)
-      .eq('is_sub', false) // Only get declared golfers
-
-    const scoresByTeamRound = new Map<string, any>()
-    scores?.forEach((s: any) => {
-      scoresByTeamRound.set(`${s.round_id}-${s.team_id}`, {
-        full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown'
-      })
-    })
-
-    // Map golfer names to round_points
-    recentRounds = recentRounds.map((round: any) => ({
-      ...round,
-      round_points: round.round_points.map((rp: any) => ({
-        ...rp,
-        golfer: scoresByTeamRound.get(`${round.id}-${rp.team_id}`)
-      }))
-    }))
-  }
-
-  // ── Current round (in_progress or scoring) ───────────────────────────────
-  const { data: currentRound } = await supabase
-    .from('rounds')
-    .select('id, round_number, round_date, status, tee_time')
-    .in('status', ['in_progress', 'scoring'])
-    .order('round_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  // ── Foursomes for the current round ─────────────────────────────────────
-  let currentRoundFoursomes: any[] = []
-  if (currentRound) {
-    const { data: foursomesData } = await supabase
-      .from('foursomes')
+  // ── Group 1: independent queries run in parallel ──────────────────────────
+  // standings comes from cache; recentRoundsData and currentRound are fetched concurrently
+  const [standings, recentRoundsData, currentRound] = await Promise.all([
+    getSeasonStandings(currentYear),
+    supabase
+      .from('rounds')
       .select(`
-        *,
-        members:foursome_members (
-          user_id,
-          cart_number,
-          is_sub,
-          sub_id,
-          user:user_id ( full_name, display_name, id ),
-          sub:sub_id ( full_name ),
-          team:team_id ( team_number, team_name, id )
+        id,
+        round_number,
+        round_date,
+        round_points (
+          finish_position,
+          net_score,
+          points_earned,
+          is_tied,
+          team_id,
+          team:team_id ( team_number, team_name )
         )
       `)
-      .eq('round_id', currentRound.id)
-      .order('tee_time_slot')
+      .eq('season_year', currentYear)
+      .eq('status', 'completed')
+      .eq('round_type', 'regular')
+      .order('round_date', { ascending: false })
+      .limit(5)
+      .then((r) => r.data ?? []),
+    supabase
+      .from('rounds')
+      .select('id, round_number, round_date, status, tee_time')
+      .in('status', ['in_progress', 'scoring'])
+      .order('round_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then((r) => r.data ?? null),
+  ])
 
-    currentRoundFoursomes = (foursomesData ?? []).map((f: any) => ({
+  // ── Group 2: depends on group 1 results ──────────────────────────────────
+  const recentRoundIds = recentRoundsData.map((r: any) => r.id)
+
+  let recentRounds = recentRoundsData
+  let currentRoundFoursomes: any[] = []
+  let currentRoundScores: any[] = []
+  let nextRound: any = null
+
+  if (currentRound) {
+    // Fetch foursomes, scores for current round + recent round scores all in parallel
+    const [foursomesData, scoresData, recentScoresData] = await Promise.all([
+      supabase
+        .from('foursomes')
+        .select(`
+          id, tee_time_slot, tee_time,
+          members:foursome_members (
+            user_id,
+            cart_number,
+            is_sub,
+            sub_id,
+            user:user_id ( full_name, display_name, id ),
+            sub:sub_id ( full_name ),
+            team:team_id ( team_number, team_name, id )
+          )
+        `)
+        .eq('round_id', currentRound.id)
+        .order('tee_time_slot')
+        .then((r) => r.data ?? []),
+      supabase
+        .from('scores')
+        .select(`
+          user_id,
+          gross_score,
+          net_score,
+          handicap_at_time,
+          hole_scores,
+          is_locked,
+          user:user_id ( full_name, display_name, avatar_url ),
+          team:team_id ( team_name, team_number )
+        `)
+        .eq('round_id', currentRound.id)
+        .then((r) => r.data ?? []),
+      recentRoundIds.length
+        ? supabase
+            .from('scores')
+            .select('round_id, team_id, user:user_id ( full_name, display_name )')
+            .in('round_id', recentRoundIds)
+            .eq('is_sub', false)
+            .then((r) => r.data ?? [])
+        : Promise.resolve([]),
+    ])
+
+    currentRoundFoursomes = foursomesData.map((f: any) => ({
       id: f.id,
       tee_time_slot: f.tee_time_slot,
       tee_time: f.tee_time ?? null,
@@ -103,26 +110,8 @@ export default async function LeaderboardPage() {
         team_number: m.team?.team_number ?? 0,
       }))
     }))
-  }
 
-  // ── Scores for the current round ─────────────────────────────────────────
-  let currentRoundScores: any[] = []
-  if (currentRound) {
-    const { data: scores } = await supabase
-      .from('scores')
-      .select(`
-        user_id,
-        gross_score,
-        net_score,
-        handicap_at_time,
-        hole_scores,
-        is_locked,
-        user:user_id ( full_name, display_name, avatar_url ),
-        team:team_id ( team_name, team_number )
-      `)
-      .eq('round_id', currentRound.id)
-
-    currentRoundScores = (scores ?? []).map((s: any) => ({
+    currentRoundScores = scoresData.map((s: any) => ({
       user_id: s.user_id,
       full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown',
       avatar_url: s.user?.avatar_url ?? null,
@@ -134,40 +123,99 @@ export default async function LeaderboardPage() {
       hole_scores: s.hole_scores ?? [],
       is_locked: s.is_locked ?? false,
     }))
-  }
 
-  // ── Next round (when no current round) ───────────────────────────────────
-  let nextRound: any = null
-  let nextRoundAvailability: any[] = []
-  let nextRoundFoursomes: any[] = []
-  let nextRoundTeamMembers: any[] = []
-  if (!currentRound) {
-    // Fetch the next upcoming round by date
-    const { data: nextRoundData } = await supabase
-      .from('rounds')
-      .select('id, round_number, round_date, status, tee_time')
-      .eq('season_year', currentYear)
-      .eq('round_type', 'regular')
-      .in('status', ['scheduled', 'availability_open', 'foursomes_set'])
-      .order('round_date', { ascending: true })
-      .limit(1)
-      .maybeSingle()
+    // Attach golfer names to recent round points
+    if (recentRoundIds.length > 0) {
+      const scoresByTeamRound = new Map<string, any>()
+      recentScoresData.forEach((s: any) => {
+        scoresByTeamRound.set(`${s.round_id}-${s.team_id}`, {
+          full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown'
+        })
+      })
+      recentRounds = recentRoundsData.map((round: any) => ({
+        ...round,
+        round_points: round.round_points.map((rp: any) => ({
+          ...rp,
+          golfer: scoresByTeamRound.get(`${round.id}-${rp.team_id}`)
+        }))
+      }))
+    }
+  } else {
+    // No current round — fetch next round and recent scores in parallel
+    const [nextRoundData, recentScoresData] = await Promise.all([
+      supabase
+        .from('rounds')
+        .select('id, round_number, round_date, status, tee_time')
+        .eq('season_year', currentYear)
+        .eq('round_type', 'regular')
+        .in('status', ['scheduled', 'availability_open', 'foursomes_set'])
+        .order('round_date', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+        .then((r) => r.data ?? null),
+      recentRoundIds.length
+        ? supabase
+            .from('scores')
+            .select('round_id, team_id, user:user_id ( full_name, display_name )')
+            .in('round_id', recentRoundIds)
+            .eq('is_sub', false)
+            .then((r) => r.data ?? [])
+        : Promise.resolve([]),
+    ])
 
-    if (nextRoundData) {
-      nextRound = nextRoundData
+    // Attach golfer names to recent round points
+    if (recentRoundIds.length > 0) {
+      const scoresByTeamRound = new Map<string, any>()
+      recentScoresData.forEach((s: any) => {
+        scoresByTeamRound.set(`${s.round_id}-${s.team_id}`, {
+          full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown'
+        })
+      })
+      recentRounds = recentRoundsData.map((round: any) => ({
+        ...round,
+        round_points: round.round_points.map((rp: any) => ({
+          ...rp,
+          golfer: scoresByTeamRound.get(`${round.id}-${rp.team_id}`)
+        }))
+      }))
+    }
 
-      // Get availability for next round
-      const { data: availabilityData } = await supabase
-        .from('round_availability')
-        .select(`
-          *,
-          user:user_id ( full_name, display_name, id ),
-          team:team_id ( team_number, team_name, id )
-        `)
-        .eq('round_id', nextRound.id)
-        .order('team_id')
+    nextRound = nextRoundData
 
-      nextRoundAvailability = (availabilityData ?? []).map((a: any) => ({
+    if (nextRound) {
+      // ── Group 3: next round details — all independent, run in parallel ───
+      const [availabilityData, teamsData, foursomesData] = await Promise.all([
+        supabase
+          .from('round_availability')
+          .select(`
+            user_id, team_id, status,
+            user:user_id ( full_name, display_name, id ),
+            team:team_id ( team_number, team_name, id )
+          `)
+          .eq('round_id', nextRound.id)
+          .order('team_id')
+          .then((r) => r.data ?? []),
+        getAllTeams(currentYear),
+        supabase
+          .from('foursomes')
+          .select(`
+            id, tee_time_slot, tee_time,
+            members:foursome_members (
+              user_id,
+              cart_number,
+              is_sub,
+              sub_id,
+              user:user_id ( full_name, display_name, id ),
+              sub:sub_id ( full_name ),
+              team:team_id ( team_number, team_name, id )
+            )
+          `)
+          .eq('round_id', nextRound.id)
+          .order('tee_time_slot')
+          .then((r) => r.data ?? []),
+      ])
+
+      const nextRoundAvailability = availabilityData.map((a: any) => ({
         user_id: a.user_id,
         team_id: a.team_id,
         status: a.status,
@@ -176,22 +224,8 @@ export default async function LeaderboardPage() {
         team_number: a.team?.team_number ?? 0,
       }))
 
-      // Get all team members so we can show undeclared players
-      const { data: teamsData } = await supabase
-        .from('teams')
-        .select(`
-          id,
-          team_number,
-          team_name,
-          team_members (
-            user_id,
-            user:user_id ( full_name, display_name, id )
-          )
-        `)
-        .eq('season_year', currentYear)
-
-      nextRoundTeamMembers = (teamsData ?? []).flatMap((t: any) =>
-        (t.team_members ?? []).map((m: any) => ({
+      const nextRoundTeamMembers = teamsData.flatMap((t) =>
+        (t.team_members ?? []).map((m) => ({
           user_id: m.user_id,
           team_id: t.id,
           full_name: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
@@ -200,25 +234,7 @@ export default async function LeaderboardPage() {
         }))
       )
 
-      // Get foursomes for next round (if they exist)
-      const { data: foursomesData } = await supabase
-        .from('foursomes')
-        .select(`
-          *,
-          members:foursome_members (
-            user_id,
-            cart_number,
-            is_sub,
-            sub_id,
-            user:user_id ( full_name, display_name, id ),
-            sub:sub_id ( full_name ),
-            team:team_id ( team_number, team_name, id )
-          )
-        `)
-        .eq('round_id', nextRound.id)
-        .order('tee_time_slot')
-
-      nextRoundFoursomes = (foursomesData ?? []).map((f: any) => ({
+      const nextRoundFoursomes = foursomesData.map((f: any) => ({
         id: f.id,
         tee_time_slot: f.tee_time_slot,
         tee_time: f.tee_time ?? null,
@@ -231,17 +247,46 @@ export default async function LeaderboardPage() {
           team_number: m.team?.team_number ?? 0,
         }))
       }))
+
+      const currentUserId = user?.id ?? null
+      const userHasDeclared = currentUserId
+        ? nextRoundAvailability.some((a) => a.user_id === currentUserId)
+        : false
+      const userInFoursome = currentUserId
+        ? nextRoundFoursomes.some((f) => f.members.some((m: any) => m.user_id === currentUserId))
+        : false
+
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+      const calendarUrl = `${siteUrl}/api/calendar`
+      const webcalUrl = calendarUrl.replace(/^https?:\/\//, 'webcal://')
+
+      return (
+        <div>
+          <div className="flex justify-end px-4 pt-4 pb-1">
+            <CalendarSubscribe webcalUrl={webcalUrl} calendarUrl={calendarUrl} />
+          </div>
+          <LeaderboardTabs
+            standings={standings as any}
+            recentRounds={recentRounds as any}
+            currentRound={null}
+            currentRoundScores={[]}
+            currentRoundFoursomes={[]}
+            nextRound={nextRound}
+            nextRoundAvailability={nextRoundAvailability}
+            nextRoundTeamMembers={nextRoundTeamMembers}
+            nextRoundFoursomes={nextRoundFoursomes}
+            currentYear={currentYear}
+            userHasDeclared={userHasDeclared || userInFoursome}
+          />
+        </div>
+      )
     }
   }
 
-  // ── Current user's declaration status for next round ────────────────────
+  // ── Default render (current round or no next round) ──────────────────────
   const currentUserId = user?.id ?? null
-  const userHasDeclared = currentUserId
-    ? nextRoundAvailability.some((a) => a.user_id === currentUserId)
-    : false
-  const userInFoursome = currentUserId
-    ? nextRoundFoursomes.some((f) => f.members.some((m: any) => m.user_id === currentUserId))
-    : false
+  const userHasDeclared = false
+  const userInFoursome = false
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   const calendarUrl = `${siteUrl}/api/calendar`
@@ -253,17 +298,17 @@ export default async function LeaderboardPage() {
         <CalendarSubscribe webcalUrl={webcalUrl} calendarUrl={calendarUrl} />
       </div>
       <LeaderboardTabs
-        standings={(standings ?? []) as any}
-        recentRounds={(recentRounds ?? []) as any}
+        standings={standings as any}
+        recentRounds={recentRounds as any}
         currentRound={currentRound ?? null}
         currentRoundScores={currentRoundScores}
         currentRoundFoursomes={currentRoundFoursomes}
         nextRound={nextRound}
-        nextRoundAvailability={nextRoundAvailability}
-        nextRoundTeamMembers={nextRoundTeamMembers}
-        nextRoundFoursomes={nextRoundFoursomes}
+        nextRoundAvailability={[]}
+        nextRoundTeamMembers={[]}
+        nextRoundFoursomes={[]}
         currentYear={currentYear}
-        userHasDeclared={userHasDeclared || userInFoursome}
+        userHasDeclared={false}
       />
     </div>
   )

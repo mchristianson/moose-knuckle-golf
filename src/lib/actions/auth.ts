@@ -2,10 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { phoneSchema, otpSchema } from '@/lib/validators/auth'
+import { IMPERSONATION_COOKIE } from '@/lib/viewer'
 
 export async function sendPhoneOtp(prevState: { error: string | null }, formData: FormData) {
   const validation = phoneSchema.safeParse({ phone: formData.get('phone') as string })
@@ -84,6 +85,9 @@ export async function verifyPhoneOtp(prevState: { error: string | null }, formDa
 export async function signout() {
   const supabase = await createClient()
   await supabase.auth.signOut()
+  // Clear any active impersonation session on sign-out
+  const cookieStore = await cookies()
+  cookieStore.delete(IMPERSONATION_COOKIE)
   revalidatePath('/', 'layout')
   redirect('/leaderboard')
 }

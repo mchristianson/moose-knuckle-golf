@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getViewerContext } from "@/lib/viewer";
 import { DeclaredGolferSelector } from "@/components/availability/declared-golfer-selector";
 import { formatRoundDate } from '@/lib/utils/date'
 import { redirect } from "next/navigation";
@@ -10,18 +10,15 @@ export default async function RoundDeclarationsPage({
 }: {
   params: Promise<{ roundId: string }>;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const ctx = await getViewerContext();
+  if (!ctx) redirect("/login");
+  const { effectiveUserId: userId, db: supabase } = ctx;
 
   const { roundId } = await params;
 
   const [{ data: round }, { data: profile }] = await Promise.all([
     supabase.from("rounds").select("*").eq("id", roundId).single(),
-    supabase.from("users").select("is_admin").eq("id", user.id).single(),
+    supabase.from("users").select("is_admin").eq("id", userId).single(),
   ]);
 
   if (!round) {
@@ -51,7 +48,7 @@ export default async function RoundDeclarationsPage({
 
   // Find which team the current user belongs to
   const myTeamId = (teams || []).find((t: any) =>
-    t.team_members.some((tm: any) => tm.user_id === user.id)
+    t.team_members.some((tm: any) => tm.user_id === userId)
   )?.id ?? null;
 
   // Get existing declarations for this round

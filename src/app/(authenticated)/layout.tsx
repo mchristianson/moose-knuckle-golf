@@ -1,39 +1,33 @@
-import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { getViewerContext } from '@/lib/viewer'
 import { SiteHeader } from '@/components/layout/site-header'
 import { AppBottomNav } from '@/components/layout/app-bottom-nav'
+import { ImpersonationBanner } from '@/components/ImpersonationBanner'
 
 export default async function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const ctx = await getViewerContext()
+  if (!ctx) redirect('/login')
 
-  let isAdmin = false
+  const { effectiveProfile, isImpersonating, db: supabase } = ctx
+
+  const isAdmin: boolean = effectiveProfile?.is_admin || false
+  const avatarUrl: string | undefined = effectiveProfile?.avatar_url ?? undefined
   let currentRoundId: string | undefined
-  let avatarUrl: string | undefined
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('is_admin, avatar_url')
-      .eq('id', user.id)
-      .single()
-    isAdmin = profile?.is_admin || false
-    avatarUrl = profile?.avatar_url ?? undefined
+  // Find the first active round (in_progress or scoring)
+  const { data: activeRounds } = await supabase
+    .from('rounds')
+    .select('id')
+    .in('status', ['in_progress', 'scoring'])
+    .order('round_date', { ascending: false })
+    .limit(1)
 
-    // Find the first active round (in_progress or scoring)
-    const { data: activeRounds } = await supabase
-      .from('rounds')
-      .select('id')
-      .in('status', ['in_progress', 'scoring'])
-      .order('round_date', { ascending: false })
-      .limit(1)
-
-    if (activeRounds && activeRounds.length > 0) {
-      currentRoundId = activeRounds[0].id
-    }
+  if (activeRounds && activeRounds.length > 0) {
+    currentRoundId = activeRounds[0].id
   }
 
   const navItems = [
@@ -42,9 +36,12 @@ export default async function AuthenticatedLayout({
     { href: '/dashboard', label: 'Dashboard' },
   ]
 
+  const displayName = effectiveProfile?.display_name ?? effectiveProfile?.full_name ?? 'Unknown'
+
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950">
-      <SiteHeader navItems={navItems} isLoggedIn={!!user} isAdmin={isAdmin} avatarUrl={avatarUrl} />
+      {isImpersonating && <ImpersonationBanner name={displayName} />}
+      <SiteHeader navItems={navItems} isLoggedIn={true} isAdmin={isAdmin} avatarUrl={avatarUrl} />
       <main className="flex-1 container mx-auto px-4 py-0">
         {children}
       </main>

@@ -68,14 +68,22 @@ export async function middleware(request: NextRequest) {
   }
 
   // Admin routes - require admin flag
+  // Fast path: read is_admin from JWT metadata (synced by DB trigger, no extra DB query).
+  // Falls back to a DB query for users created before the trigger migration ran.
   if (user && isAdminRoute) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
+    let isAdmin: boolean
+    if ('is_admin' in (user.user_metadata ?? {})) {
+      isAdmin = user.user_metadata.is_admin === true
+    } else {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single()
+      isAdmin = profile?.is_admin === true
+    }
 
-    if (!profile?.is_admin) {
+    if (!isAdmin) {
       const redirectUrl = request.nextUrl.clone()
       redirectUrl.pathname = '/dashboard'
       redirectUrl.searchParams.set('error', 'unauthorized')

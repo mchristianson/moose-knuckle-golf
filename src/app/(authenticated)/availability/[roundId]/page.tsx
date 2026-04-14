@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getViewerContext } from "@/lib/viewer";
 import { AvailabilityToggle } from "@/components/availability/availability-toggle";
 import { formatRoundDate } from '@/lib/utils/date'
 import { redirect } from "next/navigation";
@@ -6,10 +6,9 @@ import { Icon } from "@/components/Icon";
 import { ClockIcon, CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 export default async function AvailabilityPage({ params }: { params: Promise<{ roundId: string }> }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect('/login');
+  const ctx = await getViewerContext();
+  if (!ctx) redirect('/login');
+  const { effectiveUserId: userId, db: supabase } = ctx;
 
   const { roundId } = await params;
 
@@ -33,7 +32,7 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ r
       )
     `)
     .eq('round_id', roundId)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .single();
 
   if (!myAvailability) {
@@ -51,7 +50,7 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ r
     `)
     .eq('round_id', roundId)
     .eq('team_id', myAvailability.team_id)
-    .neq('user_id', user.id)
+    .neq('user_id', userId)
     .maybeSingle();
 
   const roundDate = formatRoundDate(round.round_date);

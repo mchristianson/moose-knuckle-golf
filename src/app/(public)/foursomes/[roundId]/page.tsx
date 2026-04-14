@@ -8,42 +8,31 @@ export default async function FoursomesPage({ params }: { params: Promise<{ roun
   const supabase = await createClient();
   const { roundId } = await params;
 
-  // Get the round
-  const { data: round } = await supabase
-    .from('rounds')
-    .select('*')
-    .eq('id', roundId)
-    .single();
+  // Fetch round and foursomes in parallel — both only need roundId from params
+  const [{ data: round }, { data: foursomes }] = await Promise.all([
+    supabase
+      .from('rounds')
+      .select('id, round_number, round_date, status, round_type, season_year, tee_time')
+      .eq('id', roundId)
+      .single(),
+    supabase
+      .from('foursomes')
+      .select(`
+        id, tee_time_slot, tee_time,
+        members:foursome_members (
+          id, cart_number, is_sub, user_id, team_id, sub_id,
+          user:user_id ( id, full_name, display_name ),
+          sub:sub_id ( id, full_name ),
+          team:team_id ( id, team_name, team_number )
+        )
+      `)
+      .eq('round_id', roundId)
+      .order('tee_time_slot'),
+  ]);
 
   if (!round) {
     notFound();
   }
-
-  // Get foursomes with member details
-  const { data: foursomes } = await supabase
-    .from('foursomes')
-    .select(`
-      *,
-      members:foursome_members (
-        *,
-        user:user_id (
-          id,
-          full_name,
-          display_name
-        ),
-        sub:sub_id (
-          id,
-          full_name
-        ),
-        team:team_id (
-          id,
-          team_name,
-          team_number
-        )
-      )
-    `)
-    .eq('round_id', roundId)
-    .order('tee_time_slot');
 
   if (!foursomes || foursomes.length === 0) {
     return (

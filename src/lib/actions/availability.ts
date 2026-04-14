@@ -3,6 +3,19 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getViewerContext } from '@/lib/viewer'
+
+// Returns the effective user (impersonated if applicable) for user-facing mutations.
+// realUserId is preserved for audit fields like declared_by/submitted_by.
+async function getEffectiveUser() {
+  const ctx = await getViewerContext()
+  if (!ctx) redirect('/login')
+  return {
+    supabase: ctx.db,
+    userId: ctx.effectiveUserId,
+    realUserId: ctx.realUserId,
+  }
+}
 
 async function getAuthenticatedUser() {
   const supabase = await createClient()
@@ -12,13 +25,13 @@ async function getAuthenticatedUser() {
 }
 
 export async function setDeclaredGolfer(roundId: string, teamId: string, golferId: string) {
-  const { supabase, user } = await getAuthenticatedUser()
+  const { supabase, userId, realUserId } = await getEffectiveUser()
 
   // Check if user is admin
   const { data: profile } = await supabase
     .from('users')
     .select('is_admin')
-    .eq('id', user.id)
+    .eq('id', userId)
     .single()
 
   if (!profile?.is_admin) {
@@ -27,7 +40,7 @@ export async function setDeclaredGolfer(roundId: string, teamId: string, golferI
       .from('team_members')
       .select('id')
       .eq('team_id', teamId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle()
 
     if (!membership) {
@@ -42,7 +55,7 @@ export async function setDeclaredGolfer(roundId: string, teamId: string, golferI
         round_id: roundId,
         team_id: teamId,
         declared_golfer_id: golferId,
-        declared_by: user.id,
+        declared_by: realUserId,
         declared_at: new Date().toISOString(),
       },
       { onConflict: 'round_id,team_id' }
@@ -66,7 +79,7 @@ export async function setDeclaredGolfer(roundId: string, teamId: string, golferI
         .update({
           status: avail.user_id === golferId ? 'in' : 'out',
           declared_at: new Date().toISOString(),
-          declared_by: user.id,
+          declared_by: realUserId,
         })
         .eq('id', avail.id)
     }
@@ -79,7 +92,7 @@ export async function setDeclaredGolfer(roundId: string, teamId: string, golferI
 }
 
 export async function declareAvailability(roundId: string, status: 'in' | 'out') {
-  const { supabase, user } = await getAuthenticatedUser()
+  const { supabase, userId, realUserId } = await getEffectiveUser()
 
   // Block declarations once the round has started
   const { data: round } = await supabase
@@ -97,7 +110,7 @@ export async function declareAvailability(roundId: string, status: 'in' | 'out')
     .from('round_availability')
     .select('*')
     .eq('round_id', roundId)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .single()
 
   if (!availability) {
@@ -109,7 +122,7 @@ export async function declareAvailability(roundId: string, status: 'in' | 'out')
     .update({
       status,
       declared_at: new Date().toISOString(),
-      declared_by: user.id,
+      declared_by: realUserId,
     })
     .eq('id', availability.id)
 
@@ -126,8 +139,8 @@ export async function declareAvailability(roundId: string, status: 'in' | 'out')
         {
           round_id: roundId,
           team_id: availability.team_id,
-          declared_golfer_id: user.id,
-          declared_by: user.id,
+          declared_golfer_id: userId,
+          declared_by: realUserId,
           declared_at: new Date().toISOString(),
         },
         { onConflict: 'round_id,team_id' }
@@ -143,7 +156,7 @@ export async function declareAvailability(roundId: string, status: 'in' | 'out')
       .delete()
       .eq('round_id', roundId)
       .eq('team_id', availability.team_id)
-      .eq('declared_golfer_id', user.id)
+      .eq('declared_golfer_id', userId)
   }
 
   revalidatePath(`/availability/${roundId}`)
@@ -154,13 +167,13 @@ export async function declareAvailability(roundId: string, status: 'in' | 'out')
 }
 
 export async function setMyAvailability(roundId: string, status: 'in' | 'out') {
-  const { supabase, user } = await getAuthenticatedUser()
+  const { supabase, userId, realUserId } = await getEffectiveUser()
 
   let { data: availability } = await supabase
     .from('round_availability')
     .select('*')
     .eq('round_id', roundId)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .single()
 
   // Record may not exist if user was added to a team after the round was created
@@ -168,7 +181,7 @@ export async function setMyAvailability(roundId: string, status: 'in' | 'out') {
     const { data: membership } = await supabase
       .from('team_members')
       .select('team_id')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (!membership) {
@@ -177,7 +190,7 @@ export async function setMyAvailability(roundId: string, status: 'in' | 'out') {
 
     const { data: created, error: insertError } = await supabase
       .from('round_availability')
-      .insert({ round_id: roundId, user_id: user.id, team_id: membership.team_id, status: 'undeclared' })
+      .insert({ round_id: roundId, user_id: userId, team_id: membership.team_id, status: 'undeclared' })
       .select()
       .single()
 
@@ -187,7 +200,7 @@ export async function setMyAvailability(roundId: string, status: 'in' | 'out') {
 
   const { error } = await supabase
     .from('round_availability')
-    .update({ status, declared_at: new Date().toISOString(), declared_by: user.id })
+    .update({ status, declared_at: new Date().toISOString(), declared_by: realUserId })
     .eq('id', availability.id)
 
   if (error) return { error: error.message }
@@ -197,8 +210,8 @@ export async function setMyAvailability(roundId: string, status: 'in' | 'out') {
       {
         round_id: roundId,
         team_id: availability.team_id,
-        declared_golfer_id: user.id,
-        declared_by: user.id,
+        declared_golfer_id: userId,
+        declared_by: realUserId,
         declared_at: new Date().toISOString(),
       },
       { onConflict: 'round_id,team_id' }
@@ -209,7 +222,7 @@ export async function setMyAvailability(roundId: string, status: 'in' | 'out') {
       .delete()
       .eq('round_id', roundId)
       .eq('team_id', availability.team_id)
-      .eq('declared_golfer_id', user.id)
+      .eq('declared_golfer_id', userId)
   }
 
   revalidatePath('/dashboard')

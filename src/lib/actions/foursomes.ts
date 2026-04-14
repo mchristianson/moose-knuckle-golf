@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { generateFoursomeAssignment } from '@/lib/algorithms/foursome-generator'
 
 async function getAdminUser() {
@@ -206,6 +207,9 @@ export async function generateFoursomes(roundId: string) {
       },
       metadata: { round_id: roundId },
     })
+
+    revalidatePath(`/foursomes/${roundId}`)
+    revalidatePath('/leaderboard')
 
     return {
       success: true,
@@ -432,6 +436,9 @@ export async function patchFoursomes(roundId: string) {
       metadata: { round_id: roundId, method: 'patch' },
     })
 
+    revalidatePath(`/foursomes/${roundId}`)
+    revalidatePath('/leaderboard')
+
     return { success: true }
   } catch (error) {
     console.error('Error patching foursomes:', error)
@@ -508,6 +515,9 @@ export async function updateFoursome(
         method: 'manual_adjustment',
       },
     })
+
+    revalidatePath(`/foursomes/${roundId}`)
+    revalidatePath('/leaderboard')
 
     return { success: true }
   } catch (error) {

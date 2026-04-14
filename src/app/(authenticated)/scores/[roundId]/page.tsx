@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getViewerContext } from '@/lib/viewer'
 import Link from 'next/link'
 import { formatRoundDate } from '@/lib/utils/date'
 import { FoursomeScorecardSwitcher } from '@/components/scores/foursome-scorecard-switcher'
@@ -10,27 +10,28 @@ export default async function MyScorePage({
 }: {
   params: Promise<{ roundId: string }>
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const ctx = await getViewerContext()
+  if (!ctx) redirect('/login')
+  const { effectiveUserId: userId, db: supabase } = ctx
 
   const { roundId } = await params
 
-  const { data: round } = await supabase
-    .from('rounds')
-    .select('*')
-    .eq('id', roundId)
-    .single()
+  // Fetch round and foursome IDs in parallel — both only need roundId from params
+  const [{ data: round }, { data: foursomeIds }] = await Promise.all([
+    supabase
+      .from('rounds')
+      .select('id, status, round_number, round_date')
+      .eq('id', roundId)
+      .single(),
+    supabase
+      .from('foursomes')
+      .select('id')
+      .eq('round_id', roundId),
+  ])
 
   if (!round) return <div>Round not found</div>
 
   const scoringOpen = ['in_progress', 'scoring'].includes(round.status)
-
-  // Get all foursome IDs for this round
-  const { data: foursomeIds } = await supabase
-    .from('foursomes')
-    .select('id')
-    .eq('round_id', roundId)
 
   // Find the current user's foursome membership to get their specific foursome_id
   const { data: userMembership } = foursomeIds?.length
@@ -38,7 +39,7 @@ export default async function MyScorePage({
         .from('foursome_members')
         .select('foursome_id')
         .in('foursome_id', foursomeIds.map((f) => f.id))
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle()
     : { data: null }
 
@@ -67,7 +68,7 @@ export default async function MyScorePage({
     memberIds.length
       ? supabase
           .from('scores')
-          .select('*')
+          .select('id, user_id, hole_scores, is_locked, gross_score, net_score')
           .eq('round_id', roundId)
           .in('user_id', memberIds)
       : Promise.resolve({ data: [] }),
@@ -127,7 +128,7 @@ export default async function MyScorePage({
       {userMembership && players.length > 0 && (
         <FoursomeScorecardSwitcher
           roundId={roundId}
-          currentUserId={user.id}
+          currentUserId={userId}
           players={players}
           roundNumber={round.round_number}
           roundDate={roundDate}

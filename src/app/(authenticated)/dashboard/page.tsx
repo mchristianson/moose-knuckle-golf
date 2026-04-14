@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { redirect } from 'next/navigation'
+import { getViewerContext } from '@/lib/viewer'
 import Link from "next/link";
 import { formatRoundDate } from '@/lib/utils/date'
 import { Button } from '@/components/Button'
@@ -7,6 +8,7 @@ import { Icon } from '@/components/Icon'
 import { DashboardRoundCard } from '@/components/dashboard/DashboardRoundCard'
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection'
 import { CalendarIcon, Cog6ToothIcon, MapPinIcon, FlagIcon, ClipboardDocumentListIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
+import { getAllTeams } from '@/lib/data/teams'
 
 function getInitials(name?: string | null): string {
   if (!name) return '?'
@@ -19,106 +21,103 @@ export default async function DashboardPage({
   searchParams: Promise<{ declared?: string }>;
 }) {
   const { declared } = await searchParams;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const ctx = await getViewerContext();
+  if (!ctx) redirect('/login');
+  const { effectiveUserId: userId, effectiveProfile: profile, db: supabase } = ctx;
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user?.id)
-    .single();
-
-  // Get upcoming rounds
   const today = new Date().toISOString().split('T')[0];
-  const { data: upcomingRounds } = await supabase
-    .from('rounds')
-    .select('*')
-    .gte('round_date', today)
-    .order('round_date', { ascending: true });
+  const currentYear = new Date().getFullYear();
 
-  // Get rounds where scoring is open (in_progress or scoring status)
-  const { data: activeRounds } = await supabase
-    .from('rounds')
-    .select('id, round_number, round_date, status')
-    .in('status', ['in_progress', 'scoring'])
-    .order('round_date', { ascending: false });
+  // Group 2: independent queries run in parallel
+  const [
+    { data: upcomingRounds },
+    { data: activeRounds },
+    allTeams,
+  ] = await Promise.all([
+    supabase
+      .from('rounds')
+      .select('*')
+      .gte('round_date', today)
+      .order('round_date', { ascending: true }),
+    supabase
+      .from('rounds')
+      .select('id, round_number, round_date, status')
+      .in('status', ['in_progress', 'scoring'])
+      .order('round_date', { ascending: false }),
+    getAllTeams(currentYear),
+  ]);
 
-  // For active rounds, check if user is in a foursome
-  const scoringRoundIds = new Set<string>()
-  if (activeRounds && activeRounds.length > 0 && user) {
-    const { data: foursomeRows } = await supabase
-      .from('foursomes')
-      .select('id, round_id')
-      .in('round_id', activeRounds.map((r) => r.id))
+  const activeRoundIds = (activeRounds ?? []).map((r) => r.id)
+  const upcomingRoundIds = (upcomingRounds ?? []).map((r) => r.id)
+  const allRoundIds = [...new Set([...upcomingRoundIds, ...activeRoundIds])]
 
-    if (foursomeRows && foursomeRows.length > 0) {
-      const { data: memberships } = await supabase
+  // Group 3: depends on round IDs from group 2 — run in parallel
+  const [
+    { data: foursomeRows },
+    { data: myAvailability },
+    { data: allAvailability },
+    { data: activeFoursomesRaw },
+  ] = await Promise.all([
+    activeRoundIds.length
+      ? supabase.from('foursomes').select('id, round_id').in('round_id', activeRoundIds)
+      : Promise.resolve({ data: [] }),
+    upcomingRoundIds.length
+      ? supabase
+          .from('round_availability')
+          .select('id, round_id, status')
+          .eq('user_id', userId)
+          .in('round_id', upcomingRoundIds)
+      : Promise.resolve({ data: [] }),
+    allRoundIds.length
+      ? supabase
+          .from('round_availability')
+          .select('round_id, user_id, status')
+          .in('round_id', allRoundIds)
+      : Promise.resolve({ data: [] }),
+    activeRoundIds.length
+      ? supabase
+          .from('foursomes')
+          .select(`
+            id, round_id, tee_time_slot,
+            members:foursome_members (
+              id, cart_number, is_sub, user_id, team_id, sub_id,
+              user:user_id ( id, full_name, display_name ),
+              sub:sub_id ( id, full_name ),
+              team:team_id ( id, team_name, team_number )
+            )
+          `)
+          .in('round_id', activeRoundIds)
+          .order('tee_time_slot')
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  // Group 4: membership check — needs foursomeRows IDs
+  const foursomeRowIds = (foursomeRows ?? []).map((f) => f.id)
+  const { data: memberships } = foursomeRowIds.length
+    ? await supabase
         .from('foursome_members')
         .select('foursome_id')
-        .in('foursome_id', foursomeRows.map((f) => f.id))
-        .eq('user_id', user.id)
+        .in('foursome_id', foursomeRowIds)
+        .eq('user_id', userId)
+    : { data: [] }
 
-      if (memberships && memberships.length > 0) {
-        const memberFoursomeIds = new Set(memberships.map((m) => m.foursome_id))
-        for (const f of foursomeRows) {
-          if (memberFoursomeIds.has(f.id)) {
-            scoringRoundIds.add(f.round_id)
-          }
-        }
+  // Derive which rounds the current user can score
+  const scoringRoundIds = new Set<string>()
+  if (memberships && memberships.length > 0) {
+    const memberFoursomeIds = new Set(memberships.map((m) => m.foursome_id))
+    for (const f of foursomeRows ?? []) {
+      if (memberFoursomeIds.has(f.id)) {
+        scoringRoundIds.add(f.round_id)
       }
     }
   }
 
-  // Fetch foursomes for active rounds to display on dashboard
-  let foursomesByRound: Record<string, any[]> = {}
-  if (activeRounds && activeRounds.length > 0) {
-    const { data: activeFoursomes } = await supabase
-      .from('foursomes')
-      .select(`
-        *,
-        members:foursome_members (
-          *,
-          user:user_id ( id, full_name, display_name ),
-          sub:sub_id ( id, full_name ),
-          team:team_id ( id, team_name, team_number )
-        )
-      `)
-      .in('round_id', activeRounds.map((r) => r.id))
-      .order('tee_time_slot')
-
-    if (activeFoursomes) {
-      for (const f of activeFoursomes) {
-        if (!foursomesByRound[f.round_id]) foursomesByRound[f.round_id] = []
-        foursomesByRound[f.round_id].push(f)
-      }
-    }
+  // Group foursomes by round
+  const foursomesByRound: Record<string, any[]> = {}
+  for (const f of activeFoursomesRaw ?? []) {
+    if (!foursomesByRound[f.round_id]) foursomesByRound[f.round_id] = []
+    foursomesByRound[f.round_id].push(f)
   }
-
-  // Get my availability for upcoming rounds (for the per-round availability badge)
-  const { data: myAvailability } = await supabase
-    .from('round_availability')
-    .select('id, round_id, status')
-    .eq('user_id', user?.id)
-    .in('round_id', upcomingRounds?.map(r => r.id) || []);
-
-  // Get all teams with members
-  const { data: allTeams } = await supabase
-    .from('teams')
-    .select(`
-      id, team_number, team_name,
-      team_members (
-        user_id,
-        user:user_id ( full_name, display_name, id )
-      )
-    `)
-    .order('team_number');
-
-  // Get all availability for upcoming rounds (all players)
-  const allRoundIds = upcomingRounds?.map(r => r.id) ?? []
-  const { data: allAvailability } = await supabase
-    .from('round_availability')
-    .select('round_id, user_id, status')
-    .in('round_id', allRoundIds)
 
   // Group availability by round
   const availabilityByRound: Record<string, { user_id: string; status: 'in' | 'out' }[]> = {}
@@ -128,11 +127,11 @@ export default async function DashboardPage({
   }
 
   // Normalize teams for team availability grid
-  const availabilityTeams = (allTeams ?? []).map((t: any) => ({
+  const availabilityTeams = allTeams.map((t) => ({
     id: t.id,
     team_number: t.team_number,
     team_name: t.team_name,
-    members: (t.team_members ?? []).map((m: any) => ({
+    members: (t.team_members ?? []).map((m) => ({
       user_id: m.user_id,
       full_name: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
     })),

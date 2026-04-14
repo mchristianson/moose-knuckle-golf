@@ -1,6 +1,7 @@
 'use client'
 
 import { toggleAdmin, deactivateUser, activateUser, updateUserPhone, updateUserAvatarAsAdmin, removeUserAvatarAsAdmin } from '@/lib/actions/admin'
+import { startImpersonation } from '@/lib/actions/impersonation'
 import { useState, useRef } from 'react'
 import Image from 'next/image'
 
@@ -242,6 +243,15 @@ export function UserRow({ user, isCurrentUser }: UserRowProps) {
         >
           {user.is_active ? 'Deactivate' : 'Activate'}
         </button>
+        <form action={startImpersonation.bind(null, user.id)} className="inline">
+          <button
+            type="submit"
+            disabled={isLoading || isCurrentUser}
+            className="text-amber-600 hover:text-amber-900 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Impersonate
+          </button>
+        </form>
       </td>
     </tr>
   )

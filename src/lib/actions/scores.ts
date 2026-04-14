@@ -1,8 +1,21 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getViewerContext } from '@/lib/viewer'
+
+// Returns the effective user (impersonated if applicable) for user-facing mutations.
+// realUserId is preserved for audit fields like submitted_by.
+async function getEffectiveUser() {
+  const ctx = await getViewerContext()
+  if (!ctx) redirect('/login')
+  return {
+    supabase: ctx.db,
+    userId: ctx.effectiveUserId,
+    realUserId: ctx.realUserId,
+  }
+}
 
 async function getAuthenticatedUser() {
   const supabase = await createClient()
@@ -29,7 +42,7 @@ async function getAdminUser() {
 
 // Golfer submits their own score — allowed when round is in_progress or scoring
 export async function submitMyScore(roundId: string, holeScores: number[]) {
-  const { supabase, user } = await getAuthenticatedUser()
+  const { supabase, userId, realUserId } = await getEffectiveUser()
 
   // Verify the round is in a state that allows scoring
   const { data: round } = await supabase
@@ -57,7 +70,7 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
     .from('foursome_members')
     .select('team_id, is_sub')
     .in('foursome_id', foursomeIds.map((f) => f.id))
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle()
 
   if (!membership) {
@@ -69,7 +82,7 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
     .from('scores')
     .select('id, is_locked')
     .eq('round_id', roundId)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle()
 
   if (existing?.is_locked) {
@@ -87,7 +100,7 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
   const { data: handicapRow } = await supabase
     .from('handicaps')
     .select('current_handicap')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle()
 
   const handicap = handicapRow?.current_handicap ?? 0
@@ -102,14 +115,14 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
     .upsert(
       {
         round_id: roundId,
-        user_id: user.id,
+        user_id: userId,
         team_id: membership.team_id,
         hole_scores: holeScores,
         handicap_at_time: handicap,
         net_score: netScore,
         is_sub: membership.is_sub,
         submitted_at: new Date().toISOString(),
-        submitted_by: user.id,
+        submitted_by: realUserId,
       },
       { onConflict: 'round_id,user_id' }
     )
@@ -132,7 +145,7 @@ export async function submitScoreForFoursome(
     return { error: 'This player has no user account; an admin must enter their score.' }
   }
 
-  const { supabase, user } = await getAuthenticatedUser()
+  const { supabase, userId, realUserId } = await getEffectiveUser()
 
   // Verify the round is open for scoring
   const { data: round } = await supabase
@@ -160,7 +173,7 @@ export async function submitScoreForFoursome(
     .from('foursome_members')
     .select('foursome_id')
     .in('foursome_id', foursomeIds.map((f) => f.id))
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle()
 
   if (!callerMembership) {
@@ -223,7 +236,7 @@ export async function submitScoreForFoursome(
         net_score: netScore,
         is_sub: targetMembership.is_sub,
         submitted_at: new Date().toISOString(),
-        submitted_by: user.id,
+        submitted_by: realUserId,
       },
       { onConflict: 'round_id,user_id' }
     )
@@ -454,6 +467,7 @@ export async function finalizeRound(roundId: string) {
   revalidatePath(`/admin/rounds/${roundId}`)
   revalidatePath('/admin/rounds')
   revalidatePath('/leaderboard')
+  revalidateTag('standings')
   return { success: true }
 }
 
@@ -484,6 +498,7 @@ export async function recalculateRoundPoints(roundId: string) {
   revalidatePath(`/admin/rounds/${roundId}`)
   revalidatePath('/admin/rounds')
   revalidatePath('/leaderboard')
+  revalidateTag('standings')
   return { success: true }
 }
 
