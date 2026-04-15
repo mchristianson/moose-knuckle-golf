@@ -182,38 +182,36 @@ export function DashboardRoundCard({
                 </Button>
               </>
             ) : (
-              <div className="flex flex-row gap-1.5">
-                {!roundEnded && availability && (userIsIn || userIsOut) && (
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    asChild
-                    className="flex-1 border-zinc-600 text-zinc-100 hover:bg-zinc-700"
-                  >
-                    <Link href={`/availability/${round.id}`}>Change Avail.</Link>
-                  </Button>
-                )}
-                {!roundEnded && availability && userUndeclared && (
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    asChild
-                    className="flex-1"
-                  >
-                    <Link href={`/availability/${round.id}`}>Declare Avail.</Link>
-                  </Button>
-                )}
+              <>
                 {!roundEnded && (
-                  <Button
-                    variant="primary"
-                    size="small"
-                    asChild
-                    className="flex-1"
-                  >
-                    <Link href={`/rounds/${round.id}`}>Declare Golfers</Link>
-                  </Button>
+                  <div className="flex flex-row gap-1.5">
+                    <button
+                      onClick={() => handleAdminDeclare('in')}
+                      disabled={isLoading}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 ${
+                        userIsIn
+                          ? 'bg-green-600 text-white'
+                          : 'bg-zinc-700 text-zinc-200 hover:bg-green-700 hover:text-white'
+                      }`}
+                    >
+                      <Icon icon={CheckIcon} size="sm" />
+                      I'm In
+                    </button>
+                    <button
+                      onClick={() => handleAdminDeclare('out')}
+                      disabled={isLoading}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 ${
+                        userIsOut
+                          ? 'bg-red-600 text-white'
+                          : 'bg-zinc-700 text-zinc-200 hover:bg-red-700 hover:text-white'
+                      }`}
+                    >
+                      <Icon icon={XMarkIcon} size="sm" />
+                      I'm Out
+                    </button>
+                  </div>
                 )}
-              </div>
+              </>
             )}
             {canEnterScore && (
               <Button variant="danger" size="small" asChild className="w-full">
