@@ -248,7 +248,7 @@ function DarkTeamAvailabilityGrid({
       <div className="grid grid-cols-2 gap-2">
         {teams.map((team) => (
           <div key={team.id} className="bg-zinc-950 rounded-xl p-2.5">
-            <p className="text-[11px] font-bold text-zinc-300 mb-2 uppercase tracking-wide">
+            <p className="text-[13px] font-bold text-zinc-300 mb-2 uppercase tracking-wide">
               T{team.team_number}
             </p>
             <div className="space-y-2">
@@ -269,7 +269,7 @@ function DarkTeamAvailabilityGrid({
                       }}
                     >
                       <span
-                        className="text-[9px] font-extrabold font-condensed"
+                        className="text-[10px] font-extrabold font-condensed"
                         style={{ color: isIn ? '#4ade80' : isOut ? '#f87171' : '#52525b' }}
                       >
                         {initials}
@@ -279,13 +279,13 @@ function DarkTeamAvailabilityGrid({
                     {/* Name + status */}
                     <div className="min-w-0 flex-1">
                       <p
-                        className="text-xs font-bold truncate leading-none"
+                        className="text-s font-bold truncate leading-none"
                         style={{ color: isIn ? '#fafafa' : isOut ? '#52525b' : '#a1a1aa' }}
                       >
                         {member.full_name}
                       </p>
                       <p
-                        className="text-[9px] font-bold mt-0.5"
+                        className="text-[12px] font-bold mt-0.5"
                         style={{ color: isIn ? '#4ade80' : isOut ? '#f87171' : '#52525b' }}
                       >
                         {isIn ? '✓ In' : isOut ? '✕ Out' : '? Undeclared'}

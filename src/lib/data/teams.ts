@@ -28,7 +28,7 @@ export const getAllTeams = unstable_cache(
       ...team,
       team_members: (team.team_members ?? []).map((member: any) => ({
         ...member,
-        user: member.user?.[0] ?? null,
+        user: Array.isArray(member.user) ? member.user[0] : member.user,
       })),
     }))
 
