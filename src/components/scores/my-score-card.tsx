@@ -292,33 +292,33 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: H
       <button
         onClick={!readOnly ? onSetPar : undefined}
         disabled={readOnly}
-        className={`flex-1 flex flex-col items-center justify-center py-2 ${
+        className={`flex-1 flex flex-col items-center justify-center ${
           !readOnly ? 'active:opacity-70' : 'cursor-default'
         }`}
         aria-label={`Set hole ${hole} to par ${par}`}
       >
         {touched ? (
           <>
-            <span className="text-[34px] font-black text-white tabular-nums leading-none font-condensed" style={{ letterSpacing: '-0.04em' }}>
+            <span className="font-black text-white tabular-nums leading-none font-condensed" style={{ fontSize: 'clamp(56px, 12cqh, 96px)', letterSpacing: '-0.03em' }}>
               {value}
             </span>
-            <span className={`text-[9px] font-bold mt-0.5 uppercase tracking-wider ${rel.color}`}>
+            <span className={`text-[15px] font-extrabold mt-1 uppercase tracking-widest ${rel.color}`}>
               {rel.text}
             </span>
           </>
         ) : (
-          <div className="w-5 h-0.5 rounded-full my-2" style={{ background: '#333' }} />
+          <div className="w-6 h-0.5 rounded-full" style={{ background: '#333' }} />
         )}
       </button>
 
       {/* +/− controls */}
       {!readOnly && (
-        <div className="flex gap-1 px-1.5 pb-1.5 shrink-0">
+        <div className="flex gap-1.5 px-2 pb-2 shrink-0">
           <button
             onClick={() => onAdjust(-1)}
             disabled={touched && value <= 1}
             aria-label={`Decrease hole ${hole}`}
-            className="flex-1 h-7 rounded-lg text-white text-xl font-bold
+            className="flex-1 h-10 rounded-xl text-white text-2xl font-bold
                        flex items-center justify-center
                        active:opacity-70
                        disabled:opacity-30 disabled:cursor-not-allowed
@@ -331,7 +331,7 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: H
             onClick={() => onAdjust(1)}
             disabled={touched && value >= 20}
             aria-label={`Increase hole ${hole}`}
-            className="flex-1 h-7 rounded-lg text-white text-xl font-bold
+            className="flex-1 h-10 rounded-xl text-white text-2xl font-bold
                        flex items-center justify-center
                        active:opacity-70
                        disabled:opacity-30 disabled:cursor-not-allowed
