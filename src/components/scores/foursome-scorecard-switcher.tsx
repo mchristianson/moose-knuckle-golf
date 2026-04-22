@@ -48,66 +48,58 @@ export function FoursomeScorecardSwitcher({
   if (!selected) return null
 
   return (
-    <>
-      {/* Player avatar selector */}
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Player selector — full-width 4-across cards */}
       {players.length > 1 && (
-        <div className="mb-4 px-2">
-          <div className="flex justify-around">
+        <div className="mb-3 px-2 shrink-0">
+          <div className="flex gap-1.5">
             {players.map((player) => {
               const isActive = player.userId === selectedUserId
-              const isMe = player.userId === currentUserId
-              const label = player.displayName.split(' ')[0].toUpperCase() + (isMe ? ' (Me)' : '')
+              const firstName = player.displayName.split(' ')[0]
 
               return (
                 <button
                   key={player.userId ?? player.displayName}
                   onClick={() => setSelectedUserId(player.userId)}
-                  className="flex flex-col items-center gap-1.5 px-1 min-w-0"
+                  className="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl transition-all"
+                  style={{
+                    background: isActive ? 'rgba(22,163,74,0.15)' : '#27272a',
+                    border: `2px solid ${isActive ? '#16a34a' : 'transparent'}`,
+                  }}
                 >
-                  {/* Avatar circle */}
+                  {/* Avatar */}
                   <div
-                    className={`w-16 h-16 rounded-full overflow-hidden shrink-0 transition-all ${
-                      isActive
-                        ? 'ring-2 ring-green-500 ring-offset-2 ring-offset-zinc-900'
-                        : 'ring-2 ring-zinc-700'
-                    }`}
+                    className="w-11 h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                    style={{
+                      background: player.avatarUrl ? 'transparent' : '#1b4d2e',
+                      outline: isActive ? '2.5px solid #16a34a' : 'none',
+                      outlineOffset: 2,
+                    }}
                   >
                     {player.avatarUrl ? (
                       <Image
                         src={player.avatarUrl}
                         alt={player.displayName}
-                        width={64}
-                        height={64}
+                        width={44}
+                        height={44}
                         className="w-full h-full object-cover"
                         unoptimized
                       />
                     ) : (
-                      <div className="w-full h-full bg-zinc-700 flex items-center justify-center">
-                        <span className="text-white text-lg font-bold">
-                          {getInitials(player.displayName)}
-                        </span>
-                      </div>
+                      <span className="text-white text-sm font-extrabold font-condensed tracking-wide">
+                        {getInitials(player.displayName)}
+                      </span>
                     )}
                   </div>
 
-                  {/* Name label */}
+                  {/* Name */}
                   <span
-                    className={`text-xs font-semibold text-center leading-tight max-w-[72px] truncate ${
-                      isActive ? 'text-green-400' : 'text-zinc-400'
-                    }`}
+                    className="text-[11px] font-bold truncate w-full text-center px-0.5 leading-none"
+                    style={{ color: isActive ? '#4ade80' : '#71717a' }}
                   >
-                    {label}
+                    {firstName}
+                    {player.isLocked && ' 🔒'}
                   </span>
-
-                  {/* Lock indicator */}
-                  {player.isLocked && (
-                    <span className="text-xs text-zinc-500">🔒</span>
-                  )}
-
-                  {/* Active underline */}
-                  <div className={`h-0.5 w-8 rounded-full transition-all ${
-                    isActive ? 'bg-green-500' : 'bg-transparent'
-                  }`} />
                 </button>
               )
             })}
@@ -141,6 +133,6 @@ export function FoursomeScorecardSwitcher({
           </p>
         </div>
       )}
-    </>
+    </div>
   )
 }

@@ -110,7 +110,7 @@ export default async function MyScorePage({
   const roundDate = formatRoundDate(round.round_date)
 
   return (
-    <div className="max-w-lg mx-auto px-0 sm:px-4">
+    <div className="max-w-lg w-full mx-auto px-0 sm:px-4 flex flex-col flex-1 min-h-0">
       {/* Status banners */}
       {!scoringOpen && (
         <div className="mx-4 sm:mx-0 mb-3 bg-yellow-50 border border-yellow-200 rounded-xl p-4">

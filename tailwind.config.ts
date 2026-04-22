@@ -9,7 +9,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        sans: ["var(--font-barlow)", "system-ui", "sans-serif"],
+        condensed: ["var(--font-barlow-condensed)", "system-ui", "sans-serif"],
       },
       colors: {
         background: "var(--background)",

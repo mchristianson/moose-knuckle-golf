@@ -121,115 +121,76 @@ export function MyScoreCard({
   }
 
   return (
-    <div className="flex flex-col rounded-xl overflow-hidden bg-zinc-900">
+    <div className="flex flex-col flex-1 min-h-0 rounded-xl overflow-hidden bg-zinc-950">
 
       {/* ── Score summary bar ── */}
-      <div className="bg-green-800 text-white px-4 py-4">
-        {/* Round info + leaderboard link */}
-        <div className="flex items-start justify-between mb-3 pb-3 border-b border-green-700">
+      <div className="text-white px-3 py-3 shrink-0" style={{ background: 'linear-gradient(140deg, #1b4d2e 0%, #1a5c35 60%, #206640 100%)' }}>
+        {/* Single header row: round info + status + save indicator */}
+        <div className="flex items-center justify-between mb-2.5">
           <div>
-            <p className="text-green-300 text-xs font-medium uppercase tracking-wide">Round {roundNumber}</p>
-            <p className="text-sm text-green-100">{roundDate}</p>
-          </div>
-          <Link
-            href="/leaderboard"
-            className="text-xs font-medium text-white bg-green-700 hover:bg-green-600 px-2.5 py-1.5 rounded-full transition-colors shrink-0 flex items-center gap-1"
-          >
-            <Icon icon={TrophyIcon} size="sm" className="text-white" />
-            Leaderboard
-          </Link>
-        </div>
-
-        {/* Team + status */}
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <p className="text-green-300 text-xs font-medium uppercase tracking-widest">Team {teamNumber}</p>
-            <p className="text-base font-bold leading-tight">{teamName || `Team ${teamNumber}`}</p>
-          </div>
-          {isLocked ? (
-            <span className="text-xs bg-green-700 border border-green-500 px-2 py-1 rounded-full font-medium flex items-center gap-1">
-              <Icon icon={LockClosedIcon} size="sm" className="text-white" />
-              Locked
-            </span>
-          ) : scoringOpen ? (
-            <span className="text-xs bg-green-700 border border-green-500 px-2 py-1 rounded-full font-medium flex items-center gap-1">
-              <Icon icon={FlagIcon} size="sm" className="text-white" />
-              Open
-            </span>
-          ) : null}
-        </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-green-900/60 rounded-lg py-2 px-2">
-            <p className="text-green-300 text-xs uppercase tracking-wide mb-0.5">Gross</p>
-            <p className="text-3xl font-black tabular-nums">
-              {touchedCount > 0 ? gross : <span className="text-xl text-green-500">—</span>}
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              Rd {roundNumber} · {teamName || `Team ${teamNumber}`}
             </p>
           </div>
-          <div className="bg-green-900/60 rounded-lg py-2 px-2">
-            <p className="text-green-300 text-xs uppercase tracking-wide mb-0.5">Handicap</p>
-            <p className="text-3xl font-black tabular-nums text-green-200">{handicap}</p>
-          </div>
-          <div className="bg-green-900/60 rounded-lg py-2 px-2">
-            <p className="text-green-300 text-xs uppercase tracking-wide mb-0.5">
-              {projectedNet !== null ? 'Proj. Net' : 'Net'}
-            </p>
-            <p className="text-3xl font-black tabular-nums">
-              {net !== null
-                ? net
-                : projectedNet !== null
-                ? <span className="text-green-100">{projectedNet}</span>
-                : <span className="text-xl text-green-500">—</span>}
-            </p>
+          <div className="flex items-center gap-2">
+            {saving ? (
+              <span className="text-[9px] font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>↻ Saving…</span>
+            ) : error ? (
+              <span className="text-[9px] font-bold text-red-300">⚠ Error</span>
+            ) : saved ? (
+              <span className="text-[9px] font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>✓ Saved</span>
+            ) : null}
+            {isLocked ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)' }}>🔒 Locked</span>
+            ) : scoringOpen ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)' }}>Open</span>
+            ) : null}
           </div>
         </div>
 
-        {/* Progress bar + auto-save status */}
-        <div className="mt-3">
-          <div className="flex justify-between text-xs text-green-300 mb-1">
-            <span>{touchedCount} of 9</span>
-            <span className="text-green-200 font-medium flex items-center gap-1">
-              {saving ? (
-                <>
-                  <Icon icon={CheckIcon} size="sm" className="text-green-200 animate-pulse" />
-                  Saving…
-                </>
-              ) : error ? (
-                <>
-                  <Icon icon={ExclamationTriangleIcon} size="sm" className="text-red-300" />
-                  Failed
-                </>
-              ) : saved ? (
-                <>
-                  <Icon icon={CheckIcon} size="sm" className="text-green-200" />
-                  Saved
-                </>
-              ) : allTouched ? (
-                <>
-                  <Icon icon={CheckIcon} size="sm" className="text-green-200" />
-                  Done
-                </>
-              ) : null}
-            </span>
-          </div>
-          <div className="h-1 bg-green-900 rounded-full overflow-hidden">
+        {/* Stats + progress in one row */}
+        <div className="flex items-center gap-1.5">
+          {[
+            { label: 'Gross', value: touchedCount > 0 ? gross : '—' },
+            { label: 'HCP', value: handicap },
+            { label: projectedNet !== null ? 'Proj' : 'Net', value: net !== null ? net : projectedNet !== null ? projectedNet : '—' },
+          ].map((s) => (
             <div
-              className="h-full bg-green-300 rounded-full transition-all duration-300"
-              style={{ width: `${(touchedCount / 9) * 100}%` }}
-            />
+              key={s.label}
+              className="flex-1 rounded-lg py-1.5 text-center"
+              style={{ background: 'rgba(0,0,0,0.2)' }}
+            >
+              <p className="text-[8px] uppercase tracking-wider mb-0.5 font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {s.label}
+              </p>
+              <p className="text-[22px] font-black leading-none tabular-nums font-condensed">
+                {s.value}
+              </p>
+            </div>
+          ))}
+          {/* Progress bar + holes */}
+          <div className="flex-[1.4] flex flex-col gap-1.5 pl-1">
+            <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.3)' }}>
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${(touchedCount / 9) * 100}%`, background: '#4ade80' }}
+              />
+            </div>
+            <span className="text-[9px] text-right" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              {touchedCount === 9 ? '✓ Done' : `${touchedCount}/9`}
+            </span>
           </div>
         </div>
       </div>
 
       {/* ── Hole grid ── */}
-      <div className="bg-zinc-900">
+      <div className="flex-1 min-h-0 flex flex-col bg-zinc-950 px-2 pt-1.5 pb-2">
         {!readOnly && (
-          <p className="text-xs text-zinc-500 text-center mb-3">
-            Tap a hole to set par — use + or − to adjust
+          <p className="text-[9px] text-zinc-600 text-center mb-1.5 shrink-0">
+            Tap score → par · − + to adjust
           </p>
         )}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="flex-1 min-h-0 grid grid-cols-3 grid-rows-3 gap-1.5">
           {holes.map((val, i) => (
             <HoleCell
               key={i}
@@ -247,19 +208,19 @@ export function MyScoreCard({
 
       {/* ── Status / error ── */}
       {!readOnly && error && (
-        <div className="px-4 pb-4 bg-zinc-900">
-          <div className="bg-red-900/30 border border-red-700 rounded-lg px-4 py-2">
+        <div className="px-3 pb-3 bg-zinc-950">
+          <div className="bg-red-900/30 border border-red-800 rounded-lg px-3 py-2">
             <p className="text-sm text-red-400">{error}</p>
           </div>
         </div>
       )}
 
       {readOnly && isLocked && (
-        <div className="px-4 pb-5 pt-1 bg-zinc-900">
-          <div className="bg-green-900/30 border border-green-700 rounded-xl p-4 text-center">
+        <div className="px-3 pb-4 pt-1 bg-zinc-950">
+          <div className="bg-green-900/20 border border-green-800 rounded-xl p-3 text-center">
             <p className="text-green-400 font-medium text-sm flex items-center justify-center gap-2">
               <Icon icon={LockClosedIcon} size="sm" className="text-green-400" />
-              Score locked by admin — no further changes allowed.
+              Score locked — no further changes allowed.
             </p>
           </div>
         </div>
@@ -294,72 +255,75 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: H
   const rel = relLabel(diff)
 
   const headerBg = !touched
-    ? 'bg-zinc-700'
+    ? '#27272a'
     : diff < 0
-    ? 'bg-red-700'
+    ? 'rgba(220,38,38,0.25)'
     : diff === 0
-    ? 'bg-green-700'
-    : 'bg-zinc-700'
-
-  const headerText = !touched
-    ? 'text-zinc-400'
-    : diff < 0
-    ? 'text-white'
-    : diff === 0
-    ? 'text-white'
-    : 'text-zinc-300'
+    ? 'rgba(22,163,74,0.25)'
+    : '#2d2d33'
 
   const borderColor = !touched
-    ? 'border-zinc-700'
+    ? '#27272a'
     : diff < 0
-    ? 'border-red-500'
+    ? '#dc2626'
     : diff === 0
-    ? 'border-green-500'
-    : 'border-zinc-600'
+    ? '#16a34a'
+    : '#3f3f46'
 
   return (
-    <div className={`rounded-xl border-2 overflow-hidden bg-zinc-800 ${borderColor}`}>
+    <div
+      className="rounded-xl overflow-hidden flex flex-col"
+      style={{ background: '#000', border: `2px solid ${borderColor}`, transition: 'border-color 0.2s' }}
+    >
       {/* Hole label + par */}
-      <div className={`flex items-center justify-between px-2 py-1.5 text-xs font-semibold uppercase tracking-wider ${headerBg} ${headerText}`}>
-        <span>Hole {hole}</span>
-        <span>Par {par}</span>
+      <div
+        className="flex items-center justify-between px-2 py-1 shrink-0"
+        style={{ background: headerBg }}
+      >
+        <span className="text-[11px] font-extrabold uppercase tracking-widest font-condensed" style={{ color: touched ? '#fff' : '#52525b' }}>
+          H{hole}
+        </span>
+        <span className="text-[11px] font-bold font-condensed" style={{ color: touched ? 'rgba(255,255,255,0.6)' : '#52525b' }}>
+          P{par}
+        </span>
       </div>
 
       {/* Score display — tap to set par */}
       <button
         onClick={!readOnly ? onSetPar : undefined}
         disabled={readOnly}
-        className={`w-full flex flex-col items-center justify-center py-4 ${
-          !readOnly ? 'active:bg-zinc-700' : 'cursor-default'
+        className={`flex-1 flex flex-col items-center justify-center py-2 ${
+          !readOnly ? 'active:opacity-70' : 'cursor-default'
         }`}
         aria-label={`Set hole ${hole} to par ${par}`}
       >
         {touched ? (
           <>
-            <span className="text-5xl font-black text-white tabular-nums leading-none">
+            <span className="text-[34px] font-black text-white tabular-nums leading-none font-condensed" style={{ letterSpacing: '-0.04em' }}>
               {value}
             </span>
-            <span className={`text-xs font-semibold mt-1.5 ${rel.color}`}>
+            <span className={`text-[9px] font-bold mt-0.5 uppercase tracking-wider ${rel.color}`}>
               {rel.text}
             </span>
           </>
         ) : (
-          <div className="w-8 h-0.5 bg-zinc-600 rounded-full my-3" />
+          <div className="w-5 h-0.5 rounded-full my-2" style={{ background: '#333' }} />
         )}
       </button>
 
       {/* +/− controls */}
       {!readOnly && (
-        <div className="flex items-center justify-center gap-3 pb-3 px-2">
+        <div className="flex gap-1 px-1.5 pb-1.5 shrink-0">
           <button
             onClick={() => onAdjust(-1)}
             disabled={touched && value <= 1}
             aria-label={`Decrease hole ${hole}`}
-            className="w-11 h-11 rounded-xl bg-zinc-700 text-white text-2xl font-bold
+            className="flex-1 h-7 rounded-lg text-white text-xl font-bold
                        flex items-center justify-center
-                       active:bg-zinc-600
+                       active:opacity-70
                        disabled:opacity-30 disabled:cursor-not-allowed
-                       transition-colors"
+                       transition-opacity"
+            style={{ background: '#1c1c1e' }}
           >
             −
           </button>
@@ -367,11 +331,12 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: H
             onClick={() => onAdjust(1)}
             disabled={touched && value >= 20}
             aria-label={`Increase hole ${hole}`}
-            className="w-11 h-11 rounded-xl bg-zinc-700 text-white text-2xl font-bold
+            className="flex-1 h-7 rounded-lg text-white text-xl font-bold
                        flex items-center justify-center
-                       active:bg-zinc-600
+                       active:opacity-70
                        disabled:opacity-30 disabled:cursor-not-allowed
-                       transition-colors"
+                       transition-opacity"
+            style={{ background: '#1c1c1e' }}
           >
             +
           </button>

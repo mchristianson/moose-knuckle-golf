@@ -412,19 +412,26 @@ export function LeaderboardTabs({
           ) : (
             <>
               {/* Round header card */}
-              <div className="mx-4 bg-green-600 rounded-xl px-4 py-4 flex items-center justify-between">
+              <div
+                className="mx-4 rounded-xl px-4 py-4 flex items-center justify-between"
+                style={{ background: 'linear-gradient(135deg, #1b4d2e 0%, #1e6b3a 100%)' }}
+              >
                 <div>
-                  <p className="text-green-200 text-xs font-semibold uppercase tracking-widest">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.55)' }}>
                     Round {currentRound.round_number}
                   </p>
-                  <p className="text-white font-bold text-xl mt-0.5">
+                  <p className="text-white font-bold text-lg mt-0.5">
                     {formatRoundDate(currentRound.round_date)}
+                  </p>
+                  <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    Legend&apos;s Golf Club · Front 9
                   </p>
                 </div>
                 {currentRound.status === 'scoring' && (
                   <Link
                     href={`/scores/${currentRound.id}`}
-                    className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shrink-0"
+                    className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shrink-0"
+                    style={{ background: '#16a34a' }}
                   >
                     <Icon icon={PencilSquareIcon} size="sm" />
                     Enter Scores
@@ -555,20 +562,24 @@ export function LeaderboardTabs({
           ) : (
             <>
               {/* Round header */}
-              <div className="bg-green-600 rounded-xl px-4 py-4 flex items-center justify-between">
+              <div
+                className="rounded-xl px-4 py-4 flex items-center justify-between"
+                style={{ background: 'linear-gradient(135deg, #1b4d2e 0%, #1e6b3a 100%)' }}
+              >
                 <div>
-                  <p className="text-green-200 text-xs font-semibold uppercase tracking-widest">
-                    Round {nextRound.round_number}
+                  <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    Round {nextRound.round_number} · Next Up
                   </p>
-                  <p className="text-white font-bold text-xl mt-0.5">{formatRoundDate(nextRound.round_date)}</p>
+                  <p className="text-white font-bold text-lg mt-0.5">{formatRoundDate(nextRound.round_date)}</p>
                   {nextRound.tee_time && (
-                    <p className="text-green-200 text-sm mt-0.5">Tee time: {formatTeeTime(nextRound.tee_time)}</p>
+                    <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>Tee time: {formatTeeTime(nextRound.tee_time)}</p>
                   )}
                 </div>
                 {!userHasDeclared && (
                   <Link
                     href={`/availability/${nextRound.id}`}
-                    className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 ml-4"
+                    className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 ml-4"
+                    style={{ background: '#16a34a' }}
                   >
                     <Icon icon={ClipboardDocumentListIcon} size="sm" />
                     Declare

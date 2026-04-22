@@ -16,7 +16,6 @@ import {
   CheckCircleIcon,
   PauseCircleIcon,
   XMarkIcon,
-  QuestionMarkCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline'
@@ -230,6 +229,10 @@ export function DashboardRoundCard({
   )
 }
 
+function memberInitials(name: string): string {
+  return name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+}
+
 function DarkTeamAvailabilityGrid({
   teams,
   availability,
@@ -239,32 +242,55 @@ function DarkTeamAvailabilityGrid({
 }) {
   return (
     <div>
-      <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-2">
+      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">
         Team Availability
       </p>
       <div className="grid grid-cols-2 gap-2">
         {teams.map((team) => (
-          <div key={team.id} className="bg-zinc-900 rounded-lg p-2.5">
-            <p className="text-xs font-semibold text-zinc-300 mb-1.5">T{team.team_number}</p>
-            <div className="space-y-1">
+          <div key={team.id} className="bg-zinc-950 rounded-xl p-2.5">
+            <p className="text-[11px] font-bold text-zinc-300 mb-2 uppercase tracking-wide">
+              T{team.team_number}
+            </p>
+            <div className="space-y-2">
               {team.members.map((member) => {
                 const record = availability.find((a) => a.user_id === member.user_id)
                 const isIn = record?.status === 'in'
                 const isOut = record?.status === 'out'
+                const initials = memberInitials(member.full_name)
+
                 return (
-                  <div key={member.user_id} className="flex items-center gap-1.5">
-                    {isIn && <Icon icon={CheckIcon} size="sm" className="text-green-500 shrink-0" />}
-                    {isOut && <Icon icon={XMarkIcon} size="sm" className="text-red-500 shrink-0" />}
-                    {!isIn && !isOut && (
-                      <Icon icon={QuestionMarkCircleIcon} size="sm" className="text-zinc-500 shrink-0" />
-                    )}
-                    <span
-                      className={`text-xs truncate ${
-                        isIn ? 'text-green-400' : isOut ? 'text-red-400' : 'text-zinc-500'
-                      }`}
+                  <div key={member.user_id} className="flex items-center gap-2">
+                    {/* Color-coded avatar circle */}
+                    <div
+                      className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center"
+                      style={{
+                        background: isIn ? '#1b4d2e' : isOut ? '#450a0a' : '#18181b',
+                        border: `1.5px solid ${isIn ? '#16a34a' : isOut ? '#dc2626' : '#3f3f46'}`,
+                      }}
                     >
-                      {member.full_name}
-                    </span>
+                      <span
+                        className="text-[9px] font-extrabold font-condensed"
+                        style={{ color: isIn ? '#4ade80' : isOut ? '#f87171' : '#52525b' }}
+                      >
+                        {initials}
+                      </span>
+                    </div>
+
+                    {/* Name + status */}
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="text-xs font-bold truncate leading-none"
+                        style={{ color: isIn ? '#fafafa' : isOut ? '#52525b' : '#a1a1aa' }}
+                      >
+                        {member.full_name}
+                      </p>
+                      <p
+                        className="text-[9px] font-bold mt-0.5"
+                        style={{ color: isIn ? '#4ade80' : isOut ? '#f87171' : '#52525b' }}
+                      >
+                        {isIn ? '✓ In' : isOut ? '✕ Out' : '? Undeclared'}
+                      </p>
+                    </div>
                   </div>
                 )
               })}
