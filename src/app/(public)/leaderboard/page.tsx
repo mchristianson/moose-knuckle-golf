@@ -262,7 +262,7 @@ export default async function LeaderboardPage() {
 
       return (
         <div>
-          <div className="flex justify-end px-4 pt-4 pb-1">
+          <div className="flex justify-end px-2 pt-2 pb-1">
             <CalendarSubscribe webcalUrl={webcalUrl} calendarUrl={calendarUrl} />
           </div>
           <LeaderboardTabs
@@ -294,7 +294,7 @@ export default async function LeaderboardPage() {
 
   return (
     <div>
-      <div className="flex justify-end px-4 pt-4 pb-1">
+      <div className="flex justify-end px-2 pt-2 pb-1">
         <CalendarSubscribe webcalUrl={webcalUrl} calendarUrl={calendarUrl} />
       </div>
       <LeaderboardTabs

@@ -26,7 +26,7 @@ export function AppBottomNav({ currentRoundId, avatarUrl }: AppBottomNavProps) {
         className="fixed bottom-0 left-0 right-0 bg-zinc-900/85 backdrop-blur-xl border-t border-white/[0.06] shadow-lg md:hidden z-40"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex h-16">
+        <div className="flex h-16 px-3 pb-3">
 
           {/* Leaderboard */}
           <Link

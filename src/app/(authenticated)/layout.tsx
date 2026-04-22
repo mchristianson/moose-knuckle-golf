@@ -42,7 +42,7 @@ export default async function AuthenticatedLayout({
     <div className="min-h-screen flex flex-col bg-zinc-950">
       {isImpersonating && <ImpersonationBanner name={displayName} />}
       <SiteHeader navItems={navItems} isLoggedIn={true} isAdmin={isAdmin} avatarUrl={avatarUrl} />
-      <main className="flex-1 flex flex-col min-h-0 container mx-auto px-4 py-0">
+      <main className="flex-1 flex flex-col min-h-0 container mx-auto px-3 pb-6">
         {children}
       </main>
       <AppBottomNav currentRoundId={currentRoundId} avatarUrl={avatarUrl} />

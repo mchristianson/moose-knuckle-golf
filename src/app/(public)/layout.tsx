@@ -42,7 +42,7 @@ export default async function PublicLayout({
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950">
       <SiteHeader navItems={navItems} isLoggedIn={!!user} avatarUrl={avatarUrl} />
-      <main className="flex-1 container mx-auto px-4 py-0">
+      <main className="flex-1 container mx-auto px-1 pb-6">
         {children}
       </main>
       {user && <AppBottomNav currentRoundId={currentRoundId} avatarUrl={avatarUrl} />}
