@@ -163,7 +163,7 @@ export function MyScoreCard({
               <p className="text-[8px] uppercase tracking-wider mb-0.5 font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>
                 {s.label}
               </p>
-              <p className="text-[22px] font-black leading-none tabular-nums font-condensed">
+              <p className="text-[12px] font-black leading-none tabular-nums font-condensed">
                 {s.value}
               </p>
             </div>
@@ -299,7 +299,7 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: H
       >
         {touched ? (
           <>
-            <span className="font-black text-white tabular-nums leading-none font-condensed" style={{ fontSize: 'clamp(56px, 12cqh, 96px)', letterSpacing: '-0.03em' }}>
+            <span className="font-black text-white tabular-nums leading-none font-condensed" style={{ fontSize: 'clamp(46px, 12cqh, 86px)', letterSpacing: '-0.03em' }}>
               {value}
             </span>
             <span className={`text-[15px] font-extrabold mt-1 uppercase tracking-widest ${rel.color}`}>

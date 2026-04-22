@@ -69,7 +69,7 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
   const { data: membership } = await supabase
     .from('foursome_members')
     .select('team_id, is_sub')
-    .in('foursome_id', foursomeIds.map((f) => f.id))
+    .in('foursome_id', foursomeIds.map((f: { id: number | string }) => f.id))
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -172,7 +172,7 @@ export async function submitScoreForFoursome(
   const { data: callerMembership } = await supabase
     .from('foursome_members')
     .select('foursome_id')
-    .in('foursome_id', foursomeIds.map((f) => f.id))
+    .in('foursome_id', foursomeIds.map((f: { id: number | string }) => f.id))
     .eq('user_id', userId)
     .maybeSingle()
 

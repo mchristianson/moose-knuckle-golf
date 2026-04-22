@@ -22,7 +22,17 @@ export const getAllTeams = unstable_cache(
       `)
       .eq('season_year', year)
       .order('team_number')
-    return (data ?? []) as Array<{
+
+    // Flatten nested arrays from Supabase relational queries
+    const normalizedData = (data ?? []).map((team: any) => ({
+      ...team,
+      team_members: (team.team_members ?? []).map((member: any) => ({
+        ...member,
+        user: member.user?.[0] ?? null,
+      })),
+    }))
+
+    return normalizedData as Array<{
       id: string
       team_number: number
       team_name: string

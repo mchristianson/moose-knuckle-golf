@@ -63,6 +63,15 @@ export function UserRow({ user, isCurrentUser }: UserRowProps) {
     setIsLoading(false)
   }
 
+  const handleImpersonate = async () => {
+    setIsLoading(true)
+    const result = await startImpersonation(user.id)
+    if (result?.error) {
+      alert(result.error)
+    }
+    setIsLoading(false)
+  }
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -243,15 +252,13 @@ export function UserRow({ user, isCurrentUser }: UserRowProps) {
         >
           {user.is_active ? 'Deactivate' : 'Activate'}
         </button>
-        <form action={startImpersonation.bind(null, user.id)} className="inline">
-          <button
-            type="submit"
-            disabled={isLoading || isCurrentUser}
-            className="text-amber-600 hover:text-amber-900 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Impersonate
-          </button>
-        </form>
+        <button
+          onClick={handleImpersonate}
+          disabled={isLoading || isCurrentUser}
+          className="text-amber-600 hover:text-amber-900 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Impersonate
+        </button>
       </td>
     </tr>
   )

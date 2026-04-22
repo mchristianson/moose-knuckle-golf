@@ -57,6 +57,17 @@ export default async function FoursomesPage({ params }: { params: Promise<{ roun
     );
   }
 
+  // Flatten the nested arrays from Supabase relational queries
+  const normalizedFoursomes = (foursomes ?? []).map((f: any) => ({
+    ...f,
+    members: (f.members ?? []).map((m: any) => ({
+      ...m,
+      user: m.user?.[0] ?? null,
+      sub: m.sub?.[0] ?? null,
+      team: m.team?.[0] ?? null,
+    })),
+  }));
+
   const roundDate = formatRoundDate(round.round_date);
 
   return (
@@ -88,7 +99,7 @@ export default async function FoursomesPage({ params }: { params: Promise<{ roun
           </div>
         </div>
 
-        <FoursomesList foursomes={foursomes} teeTime={round.tee_time} />
+        <FoursomesList foursomes={normalizedFoursomes} teeTime={round.tee_time} />
       </div>
     </div>
   );

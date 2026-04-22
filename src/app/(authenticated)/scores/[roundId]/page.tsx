@@ -38,7 +38,7 @@ export default async function MyScorePage({
     ? await supabase
         .from('foursome_members')
         .select('foursome_id')
-        .in('foursome_id', foursomeIds.map((f) => f.id))
+        .in('foursome_id', foursomeIds.map((f: { id: number | string }) => f.id))
         .eq('user_id', userId)
         .maybeSingle()
     : { data: null }
@@ -81,7 +81,7 @@ export default async function MyScorePage({
   ])
 
   const scoreMap: Record<string, any> = Object.fromEntries(
-    (scores ?? []).map((s) => [s.user_id, s])
+    (scores ?? []).map((s: any) => [s.user_id, s])
   )
   const handicapMap: Record<string, number> = Object.fromEntries(
     (handicaps ?? []).map((h: any) => [h.user_id, h.current_handicap])

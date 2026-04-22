@@ -58,7 +58,7 @@ export default async function RoundDeclarationsPage({
     .eq("round_id", roundId);
 
   const declarationMap: Record<string, string> = Object.fromEntries(
-    (declarations || []).map((d) => [d.team_id, d.declared_golfer_id])
+    (declarations || []).map((d: { team_id: string | number; declared_golfer_id: string | number }) => [String(d.team_id), String(d.declared_golfer_id)])
   );
 
   const roundDate = formatRoundDate(round.round_date);

@@ -47,8 +47,8 @@ export default async function DashboardPage({
     getAllTeams(currentYear),
   ]);
 
-  const activeRoundIds = (activeRounds ?? []).map((r) => r.id)
-  const upcomingRoundIds = (upcomingRounds ?? []).map((r) => r.id)
+  const activeRoundIds = (activeRounds ?? []).map((r: { id: number | string }) => String(r.id))
+  const upcomingRoundIds = (upcomingRounds ?? []).map((r: { id: number | string }) => String(r.id))
   const allRoundIds = [...new Set([...upcomingRoundIds, ...activeRoundIds])]
 
   // Group 3: depends on round IDs from group 2 — run in parallel
@@ -92,7 +92,7 @@ export default async function DashboardPage({
   ]);
 
   // Group 4: membership check — needs foursomeRows IDs
-  const foursomeRowIds = (foursomeRows ?? []).map((f) => f.id)
+  const foursomeRowIds = (foursomeRows ?? []).map((f: { id: number | string }) => f.id)
   const { data: memberships } = foursomeRowIds.length
     ? await supabase
         .from('foursome_members')
@@ -104,7 +104,7 @@ export default async function DashboardPage({
   // Derive which rounds the current user can score
   const scoringRoundIds = new Set<string>()
   if (memberships && memberships.length > 0) {
-    const memberFoursomeIds = new Set(memberships.map((m) => m.foursome_id))
+    const memberFoursomeIds = new Set(memberships.map((m: { foursome_id: string | number }) => m.foursome_id))
     for (const f of foursomeRows ?? []) {
       if (memberFoursomeIds.has(f.id)) {
         scoringRoundIds.add(f.round_id)
@@ -127,30 +127,30 @@ export default async function DashboardPage({
   }
 
   // Normalize teams for team availability grid
-  const availabilityTeams = allTeams.map((t) => ({
+  const availabilityTeams = allTeams.map((t: any) => ({
     id: t.id,
     team_number: t.team_number,
     team_name: t.team_name,
-    members: (t.team_members ?? []).map((m) => ({
+    members: (t.team_members ?? []).map((m: any) => ({
       user_id: m.user_id,
       full_name: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
     })),
   }))
 
   // Scoring-open rounds that are NOT already in upcomingRounds (they may be today or past)
-  const upcomingIds = new Set(upcomingRounds?.map((r) => r.id) ?? [])
+  const upcomingIds = new Set(upcomingRounds?.map((r: { id: number | string }) => String(r.id)) ?? [])
   const extraActiveRounds = (activeRounds ?? []).filter(
-    (r) => !upcomingIds.has(r.id) && scoringRoundIds.has(r.id)
+    (r: { id: number | string }) => !upcomingIds.has(String(r.id)) && scoringRoundIds.has(String(r.id))
   )
 
   // Separate rounds into active (scoring open) and upcoming (future)
   const activeScoringSectionRounds = (activeRounds ?? []).filter(
-    (r) => scoringRoundIds.has(r.id)
+    (r: { id: number | string }) => scoringRoundIds.has(String(r.id))
   )
   const futureUpcomingRounds = (upcomingRounds ?? []).filter(
-    (r) => !activeScoringSectionRounds.some((ar) => ar.id === r.id)
+    (r: { id: number | string; status?: string }) => !activeScoringSectionRounds.some((ar: { id: number | string }) => String(ar.id) === String(r.id))
   )
-  const pastRounds = (upcomingRounds ?? []).filter((r) => r.status === 'completed')
+  const pastRounds = (upcomingRounds ?? []).filter((r: { status?: string }) => r.status === 'completed')
 
   const displayName = profile?.display_name ?? profile?.full_name ?? 'Golfer'
 
@@ -205,7 +205,7 @@ export default async function DashboardPage({
               <DashboardRoundCard
                 key={round.id}
                 round={round}
-                availability={myAvailability?.find(a => a.round_id === round.id)}
+                availability={myAvailability?.find((a: { round_id: string | number }) => String(a.round_id) === String(round.id))}
                 canEnterScore={scoringRoundIds.has(round.id)}
                 foursomes={foursomesByRound[round.id]}
                 teams={availabilityTeams}
@@ -219,7 +219,7 @@ export default async function DashboardPage({
       )}
 
       {/* Extra Active Rounds (today's scoring that wasn't in upcoming) */}
-      {extraActiveRounds.length > 0 && !activeScoringSectionRounds.some((r) => extraActiveRounds.some((e) => e.id === r.id)) && (
+      {extraActiveRounds.length > 0 && !activeScoringSectionRounds.some((r: { id: number | string }) => extraActiveRounds.some((e: { id: number | string }) => String(e.id) === String(r.id))) && (
         <div className="mb-3">
           <h2 className="text-white text-base font-semibold mb-3">Score Entry Open</h2>
           <div className="space-y-3">
@@ -263,7 +263,7 @@ export default async function DashboardPage({
               <DashboardRoundCard
                 key={round.id}
                 round={round}
-                availability={myAvailability?.find(a => a.round_id === round.id)}
+                availability={myAvailability?.find((a: { round_id: string | number }) => String(a.round_id) === String(round.id))}
                 canEnterScore={scoringRoundIds.has(round.id)}
                 teams={availabilityTeams}
                 roundAvailability={availabilityByRound[round.id] ?? []}
@@ -288,7 +288,7 @@ export default async function DashboardPage({
                 <DashboardRoundCard
                   key={round.id}
                   round={round}
-                  availability={myAvailability?.find(a => a.round_id === round.id)}
+                  availability={myAvailability?.find((a: { round_id: string | number }) => String(a.round_id) === String(round.id))}
                   canEnterScore={false}
                   isAdmin={!!profile?.is_admin}
                 />
