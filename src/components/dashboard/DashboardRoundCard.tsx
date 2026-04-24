@@ -153,20 +153,27 @@ export function DashboardRoundCard({
         <div className="border-t border-zinc-700 px-4 pt-3.5 pb-5 space-y-3">
           {/* Weather strip */}
           {weather && (
-            <div className="flex items-center justify-around bg-zinc-900/60 rounded-lg px-3 py-2">
-              <div className="flex items-center gap-1.5 text-zinc-400">
-                <Icon icon={SunIcon} size="sm" />
-                <span className="text-xs font-medium">{weather.tempF}°F</span>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-zinc-900 rounded-lg p-2.5 flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1 text-zinc-400">
+                  <Icon icon={SunIcon} size="sm" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Temp</span>
+                </div>
+                <span className="text-white text-base font-bold">{weather.tempF}°F</span>
               </div>
-              <div className="w-px h-3 bg-zinc-700" />
-              <div className="flex items-center gap-1.5 text-zinc-400">
-                <Icon icon={CloudIcon} size="sm" />
-                <span className="text-xs font-medium">{weather.cloudCoverPct}% clouds</span>
+              <div className="bg-zinc-900 rounded-lg p-2.5 flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1 text-zinc-400">
+                  <Icon icon={CloudIcon} size="sm" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Clouds</span>
+                </div>
+                <span className="text-white text-base font-bold">{weather.cloudCoverPct}%</span>
               </div>
-              <div className="w-px h-3 bg-zinc-700" />
-              <div className="flex items-center gap-1.5 text-zinc-400">
-                <Icon icon={CloudArrowDownIcon} size="sm" />
-                <span className="text-xs font-medium">{weather.rainChancePct}% rain</span>
+              <div className="bg-zinc-900 rounded-lg p-2.5 flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1 text-zinc-400">
+                  <Icon icon={CloudArrowDownIcon} size="sm" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Rain</span>
+                </div>
+                <span className="text-white text-base font-bold">{weather.rainChancePct}%</span>
               </div>
             </div>
           )}
