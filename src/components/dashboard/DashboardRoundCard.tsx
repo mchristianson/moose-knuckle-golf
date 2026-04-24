@@ -18,7 +18,11 @@ import {
   XMarkIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  SunIcon,
+  CloudIcon,
+  CloudArrowDownIcon,
 } from '@heroicons/react/24/outline'
+import type { WeatherData } from '@/lib/weather'
 
 interface DashboardRoundCardProps {
   round: any
@@ -29,6 +33,7 @@ interface DashboardRoundCardProps {
   roundAvailability?: AvailabilityRecord[]
   defaultExpanded?: boolean
   isAdmin?: boolean
+  weather?: WeatherData | null
 }
 
 function getMonth(dateString: string): string {
@@ -57,6 +62,7 @@ export function DashboardRoundCard({
   roundAvailability = [],
   defaultExpanded = false,
   isAdmin = false,
+  weather,
 }: DashboardRoundCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const [localStatus, setLocalStatus] = useState(availability?.status ?? 'undeclared')
@@ -145,6 +151,32 @@ export function DashboardRoundCard({
       {/* Expanded panel */}
       {isExpanded && (
         <div className="border-t border-zinc-700 px-4 pt-3.5 pb-5 space-y-3">
+          {/* Weather strip */}
+          {weather && (
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-amber-950/50 rounded-lg p-2.5 flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1 text-amber-400">
+                  <Icon icon={SunIcon} size="sm" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Temp</span>
+                </div>
+                <span className="text-amber-200 text-base font-bold">{weather.tempF}°F</span>
+              </div>
+              <div className="bg-sky-950/50 rounded-lg p-2.5 flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1 text-sky-400">
+                  <Icon icon={CloudIcon} size="sm" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Clouds</span>
+                </div>
+                <span className="text-sky-200 text-base font-bold">{weather.cloudCoverPct}%</span>
+              </div>
+              <div className="bg-blue-950/50 rounded-lg p-2.5 flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1 text-blue-400">
+                  <Icon icon={CloudArrowDownIcon} size="sm" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Rain</span>
+                </div>
+                <span className="text-blue-200 text-base font-bold">{weather.rainChancePct}%</span>
+              </div>
+            </div>
+          )}
           {/* Action buttons */}
           <div className="flex flex-col gap-1.5">
             {!roundEnded && isAdmin ? (
