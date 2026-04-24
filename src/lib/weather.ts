@@ -7,6 +7,7 @@ export interface WeatherData {
 export async function getWeatherForRound(roundDate: string): Promise<WeatherData | null> {
   const lat = process.env.WEATHER_LAT
   const lng = process.env.WEATHER_LNG
+
   if (!lat || !lng) return null
 
   try {
