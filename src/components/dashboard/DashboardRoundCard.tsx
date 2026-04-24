@@ -154,26 +154,26 @@ export function DashboardRoundCard({
           {/* Weather strip */}
           {weather && (
             <div className="grid grid-cols-3 gap-2">
-              <div className="bg-zinc-900 rounded-lg p-2.5 flex flex-col items-center gap-1">
-                <div className="flex items-center gap-1 text-zinc-400">
+              <div className="bg-amber-950/50 rounded-lg p-2.5 flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1 text-amber-400">
                   <Icon icon={SunIcon} size="sm" />
                   <span className="text-[10px] font-semibold uppercase tracking-wide">Temp</span>
                 </div>
-                <span className="text-white text-base font-bold">{weather.tempF}°F</span>
+                <span className="text-amber-200 text-base font-bold">{weather.tempF}°F</span>
               </div>
-              <div className="bg-zinc-900 rounded-lg p-2.5 flex flex-col items-center gap-1">
-                <div className="flex items-center gap-1 text-zinc-400">
+              <div className="bg-sky-950/50 rounded-lg p-2.5 flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1 text-sky-400">
                   <Icon icon={CloudIcon} size="sm" />
                   <span className="text-[10px] font-semibold uppercase tracking-wide">Clouds</span>
                 </div>
-                <span className="text-white text-base font-bold">{weather.cloudCoverPct}%</span>
+                <span className="text-sky-200 text-base font-bold">{weather.cloudCoverPct}%</span>
               </div>
-              <div className="bg-zinc-900 rounded-lg p-2.5 flex flex-col items-center gap-1">
-                <div className="flex items-center gap-1 text-zinc-400">
+              <div className="bg-blue-950/50 rounded-lg p-2.5 flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1 text-blue-400">
                   <Icon icon={CloudArrowDownIcon} size="sm" />
                   <span className="text-[10px] font-semibold uppercase tracking-wide">Rain</span>
                 </div>
-                <span className="text-white text-base font-bold">{weather.rainChancePct}%</span>
+                <span className="text-blue-200 text-base font-bold">{weather.rainChancePct}%</span>
               </div>
             </div>
           )}
