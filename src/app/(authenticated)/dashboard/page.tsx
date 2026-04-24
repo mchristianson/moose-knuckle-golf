@@ -9,6 +9,7 @@ import { DashboardRoundCard } from '@/components/dashboard/DashboardRoundCard'
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection'
 import { CalendarIcon, Cog6ToothIcon, MapPinIcon, FlagIcon, ClipboardDocumentListIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { getAllTeams } from '@/lib/data/teams'
+import { getWeatherForRound } from '@/lib/weather'
 
 function getInitials(name?: string | null): string {
   if (!name) return '?'
@@ -152,6 +153,10 @@ export default async function DashboardPage({
   )
   const pastRounds = (upcomingRounds ?? []).filter((r: { status?: string }) => r.status === 'completed')
 
+  const upcomingWeather = futureUpcomingRounds[0]
+    ? await getWeatherForRound(futureUpcomingRounds[0].round_date)
+    : null
+
   const displayName = profile?.display_name ?? profile?.full_name ?? 'Golfer'
 
   return (
@@ -269,6 +274,7 @@ export default async function DashboardPage({
                 roundAvailability={availabilityByRound[round.id] ?? []}
                 defaultExpanded={index === 0}
                 isAdmin={!!profile?.is_admin}
+                weather={index === 0 ? upcomingWeather : undefined}
               />
             ))}
           </div>
