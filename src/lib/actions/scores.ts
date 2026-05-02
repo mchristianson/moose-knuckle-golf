@@ -313,22 +313,40 @@ async function calculateRoundPoints(supabase: any, roundId: string) {
   // Get all complete scores for this round (net_score is set only when all 9 holes are entered)
   const { data: scores, error: scoresError } = await supabase
     .from('scores')
-    .select('id, user_id, team_id, net_score, is_sub')
+    .select('id, user_id, sub_id, team_id, net_score, is_sub')
     .eq('round_id', roundId)
     .not('net_score', 'is', null)
 
   if (scoresError) return { error: scoresError.message, points: null }
-  if (!scores || scores.length === 0) return { error: 'No complete scores found', points: null }
 
-  // One net score per team — use the declared golfer's score (is_sub=false preferred)
+  // Also fetch makeup scores from other rounds that count toward this round
+  const { data: makeupScores, error: makeupError } = await supabase
+    .from('scores')
+    .select('id, user_id, sub_id, team_id, net_score, is_sub')
+    .eq('covers_missed_round_id', roundId)
+    .not('net_score', 'is', null)
+
+  if (makeupError) return { error: makeupError.message, points: null }
+
+  const allScores = [...(scores ?? []), ...(makeupScores ?? [])]
+  if (allScores.length === 0) return { error: 'No complete scores found', points: null }
+
+  // One net score per team — three-tier priority:
+  // 1. Non-sub direct score (regular golfer played that night)
+  // 2. Non-sub makeup score (player made up the round later/earlier)
+  // 3. Sub score (fallback if neither direct nor makeup exists)
   const teamScores: Record<string, number> = {}
-  for (const s of scores) {
+  for (const s of scores ?? []) {
     if (!s.is_sub && s.net_score !== null) {
       teamScores[s.team_id] = s.net_score
     }
   }
-  // Fall back to sub scores for teams with no regular player score
-  for (const s of scores) {
+  for (const s of makeupScores ?? []) {
+    if (!(s.team_id in teamScores) && !s.is_sub && s.net_score !== null) {
+      teamScores[s.team_id] = s.net_score
+    }
+  }
+  for (const s of scores ?? []) {
     if (!(s.team_id in teamScores) && s.net_score !== null) {
       teamScores[s.team_id] = s.net_score
     }
@@ -461,6 +479,79 @@ export async function recalculateRoundPoints(roundId: string) {
   revalidatePath(`/admin/rounds/${roundId}/scores`)
   revalidatePath(`/admin/rounds/${roundId}`)
   revalidatePath('/admin/rounds')
+  revalidatePath('/leaderboard')
+  revalidateTag('standings')
+  return { success: true }
+}
+
+// Admin: link (or unlink) a score to a missed round for makeup purposes
+export async function linkMakeupScore(
+  scoreId: string,
+  missedRoundId: string | null
+): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getAdminUser()
+
+  const { data: score } = await supabase
+    .from('scores')
+    .select('id, user_id, round_id, covers_missed_round_id')
+    .eq('id', scoreId)
+    .single()
+
+  if (!score) return { error: 'Score not found' }
+  if (missedRoundId === score.round_id) return { error: 'Score already belongs to this round' }
+
+  const previousMissedRoundId = score.covers_missed_round_id
+
+  const { error: updateError } = await supabase
+    .from('scores')
+    .update({ is_makeup: !!missedRoundId, covers_missed_round_id: missedRoundId ?? null })
+    .eq('id', scoreId)
+
+  if (updateError) return { error: updateError.message }
+
+  // Recalculate points for the newly linked missed round (only if already completed)
+  if (missedRoundId) {
+    const { data: missedRound } = await supabase
+      .from('rounds').select('status').eq('id', missedRoundId).single()
+    if (missedRound?.status === 'completed') {
+      const { points } = await calculateRoundPoints(supabase, missedRoundId)
+      if (points) {
+        await supabase.from('round_points').upsert(points, { onConflict: 'round_id,team_id' })
+      }
+    }
+  }
+
+  // Recalculate points for the previously linked round when re-linking or unlinking
+  if (previousMissedRoundId && previousMissedRoundId !== missedRoundId) {
+    const { data: prevRound } = await supabase
+      .from('rounds').select('status').eq('id', previousMissedRoundId).single()
+    if (prevRound?.status === 'completed') {
+      const { points } = await calculateRoundPoints(supabase, previousMissedRoundId)
+      if (points) {
+        await supabase.from('round_points').upsert(points, { onConflict: 'round_id,team_id' })
+      }
+    }
+  }
+
+  // Recalculate handicap for the player (subs have no user_id — skip)
+  if (score.user_id) {
+    await recalculateHandicap(supabase, score.user_id, user.id)
+  }
+
+  await supabase.from('audit_log').insert({
+    user_id: user.id,
+    action: 'makeup_score_linked',
+    entity_type: 'score',
+    entity_id: scoreId,
+    old_value: { covers_missed_round_id: previousMissedRoundId },
+    new_value: { covers_missed_round_id: missedRoundId },
+  })
+
+  revalidatePath(`/admin/rounds/${score.round_id}/scores`)
+  if (missedRoundId) revalidatePath(`/admin/rounds/${missedRoundId}/scores`)
+  if (previousMissedRoundId && previousMissedRoundId !== missedRoundId) {
+    revalidatePath(`/admin/rounds/${previousMissedRoundId}/scores`)
+  }
   revalidatePath('/leaderboard')
   revalidateTag('standings')
   return { success: true }

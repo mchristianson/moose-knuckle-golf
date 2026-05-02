@@ -4,6 +4,7 @@ import { formatRoundDate } from '@/lib/utils/date'
 import { ScoreEntryTable } from '@/components/scores/score-entry-table'
 import { FinalizeRoundButton } from '@/components/scores/finalize-round-button'
 import { RecalculatePointsButton } from '@/components/scores/recalculate-points-button'
+import { MakeupAssignmentPanel } from '@/components/scores/makeup-assignment-panel'
 
 export default async function ScoringPage({ params }: { params: Promise<{ roundId: string }> }) {
   const supabase = await createClient()
@@ -42,8 +43,22 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
   // Get existing scores for this round
   const { data: existingScores } = await supabase
     .from('scores')
-    .select('*')
+    .select('id, user_id, sub_id, team_id, hole_scores, net_score, is_sub, is_makeup, covers_missed_round_id, handicap_at_time, submitted_at, submitted_by')
     .eq('round_id', roundId)
+
+  // All rounds in the season (for the makeup assignment dropdown)
+  const { data: allSeasonRounds } = await supabase
+    .from('rounds')
+    .select('id, round_number, round_date, round_type')
+    .eq('season_year', round.season_year)
+    .order('round_number')
+
+  // Makeup scores from OTHER rounds that count toward this round (for the info box)
+  const { data: inboundMakeupScores } = await supabase
+    .from('scores')
+    .select('id, net_score, round:round_id(round_number), user:user_id(display_name, full_name)')
+    .eq('covers_missed_round_id', roundId)
+    .not('net_score', 'is', null)
 
   // Get handicaps for all players (filter nulls — external subs have no user_id)
   const playerIds = (foursomeMembers ?? [])
@@ -87,6 +102,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
       grossScore: gross,
       netScore: net,
       isSub: m.is_sub,
+      coversMissedRoundId: existing?.covers_missed_round_id ?? null,
     }
   })
 
@@ -152,7 +168,41 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
             <RecalculatePointsButton roundId={roundId} isCompleted={isCompleted} />
           )}
 
+          {(inboundMakeupScores ?? []).length > 0 && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <h3 className="font-semibold text-amber-900 mb-2">Makeup Scores Applied to This Round</h3>
+              <ul className="text-sm text-amber-800 space-y-1">
+                {inboundMakeupScores!.map((s: any) => (
+                  <li key={s.id}>
+                    {s.user?.display_name ?? s.user?.full_name ?? 'Unknown'} — makeup score
+                    from Round {s.round?.round_number} (net {s.net_score})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <ScoreEntryTable roundId={roundId} rows={rows} />
+
+          {round.round_type === 'makeup' && (
+            <div className="mt-8">
+              <MakeupAssignmentPanel
+                makeupRoundId={roundId}
+                scores={rows
+                  .filter(r => r.netScore !== null)
+                  .map(r => ({
+                    scoreId: r.scoreId!,
+                    userId: r.userId,
+                    subId: r.subId,
+                    playerName: r.fullName,
+                    teamName: r.teamName,
+                    teamNumber: r.teamNumber,
+                    coversMissedRoundId: r.coversMissedRoundId,
+                  }))}
+                allRounds={(allSeasonRounds ?? []).filter(r => r.id !== roundId)}
+              />
+            </div>
+          )}
 
           {isCompleted && (
             <div className="mt-8">
