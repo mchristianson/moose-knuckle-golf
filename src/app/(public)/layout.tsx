@@ -10,10 +10,21 @@ export default async function PublicLayout({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  let isAdmin = false
+  if (user) {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    isAdmin = userData?.is_admin ?? false
+  }
+
   const navItems = [
     { href: '/leaderboard', label: 'Leaderboard' },
     { href: '/manual', label: 'Manual' },
     ...(user ? [{ href: '/dashboard', label: 'Dashboard' }] : []),
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
   ]
 
   // Find the first active round (in_progress or scoring) for the leaderboard nav

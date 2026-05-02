@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { submitScoreForFoursome } from '@/lib/actions/scores'
 import { Icon } from '@/components/Icon'
-import { TrophyIcon, LockClosedIcon, FlagIcon, CheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { TrophyIcon, FlagIcon, CheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 // Legend's front nine par values
 const HOLE_PARS = [4, 4, 4, 5, 3, 4, 3, 4, 5]
@@ -12,12 +12,12 @@ const HOLE_PARS = [4, 4, 4, 5, 3, 4, 3, 4, 5]
 interface MyScoreCardProps {
   roundId: string
   userId: string
-  targetUserId: string
+  targetUserId: string | null
+  targetSubId?: string | null
   teamName: string
   teamNumber: number
   handicap: number
   holeScores: number[]
-  isLocked: boolean
   scoringOpen: boolean
   existingScoreId: string | null
   grossScore: number | null
@@ -29,11 +29,11 @@ interface MyScoreCardProps {
 export function MyScoreCard({
   roundId,
   targetUserId,
+  targetSubId,
   teamName,
   teamNumber,
   handicap,
   holeScores: initialHoleScores,
-  isLocked,
   scoringOpen,
   roundNumber,
   roundDate,
@@ -51,7 +51,7 @@ export function MyScoreCard({
 
   const userChangedRef = useRef(false)
 
-  const readOnly = isLocked || !scoringOpen
+  const readOnly = !scoringOpen
 
   const touchedCount = touched.filter(Boolean).length
   const allTouched = touchedCount === 9
@@ -73,7 +73,7 @@ export function MyScoreCard({
       setError(null)
       setSaved(false)
       const payload = holesCopy.map((val, i) => (touchedCopy[i] ? val : 0))
-      const result = await submitScoreForFoursome(roundId, targetUserId, payload) as any
+      const result = await submitScoreForFoursome(roundId, targetUserId ?? null, targetSubId ?? null, payload) as any
       setSaving(false)
       if (result?.error) {
         setError(result.error)
@@ -139,9 +139,6 @@ export function MyScoreCard({
               <span className="text-[9px] font-bold text-red-300">⚠ Error</span>
             ) : saved ? (
               <span className="text-[9px] font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>✓ Saved</span>
-            ) : null}
-            {isLocked ? (
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)' }}>🔒 Locked</span>
             ) : scoringOpen ? (
               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)' }}>Open</span>
             ) : null}
@@ -211,17 +208,6 @@ export function MyScoreCard({
         <div className="px-3 pb-3 bg-zinc-950">
           <div className="bg-red-900/30 border border-red-800 rounded-lg px-3 py-2">
             <p className="text-sm text-red-400">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {readOnly && isLocked && (
-        <div className="px-3 pb-4 pt-1 bg-zinc-950">
-          <div className="bg-green-900/20 border border-green-800 rounded-xl p-3 text-center">
-            <p className="text-green-400 font-medium text-sm flex items-center justify-center gap-2">
-              <Icon icon={LockClosedIcon} size="sm" className="text-green-400" />
-              Score locked — no further changes allowed.
-            </p>
           </div>
         </div>
       )}

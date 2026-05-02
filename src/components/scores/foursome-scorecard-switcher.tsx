@@ -6,6 +6,7 @@ import { MyScoreCard } from './my-score-card'
 
 export interface FoursomePlayer {
   userId: string | null   // null for external subs without a user account
+  subId: string | null    // non-null for external subs
   teamId: string
   teamName: string
   teamNumber: number
@@ -13,7 +14,6 @@ export interface FoursomePlayer {
   displayName: string
   handicap: number
   holeScores: number[]
-  isLocked: boolean
   existingScoreId: string | null
   grossScore: number | null
   netScore: number | null
@@ -33,6 +33,11 @@ function getInitials(name: string): string {
   return name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 }
 
+// Stable key for a player regardless of whether they're a user or sub
+function playerKey(p: FoursomePlayer): string {
+  return p.userId ? `user:${p.userId}` : `sub:${p.subId}`
+}
+
 export function FoursomeScorecardSwitcher({
   roundId,
   currentUserId,
@@ -41,9 +46,10 @@ export function FoursomeScorecardSwitcher({
   roundDate,
   scoringOpen,
 }: FoursomeScorecardSwitcherProps) {
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(currentUserId)
+  const currentPlayer = players.find((p) => p.userId === currentUserId) ?? players[0]
+  const [selectedKey, setSelectedKey] = useState<string>(() => playerKey(currentPlayer ?? players[0]))
 
-  const selected = players.find((p) => p.userId === selectedUserId) ?? players[0]
+  const selected = players.find((p) => playerKey(p) === selectedKey) ?? players[0]
 
   if (!selected) return null
 
@@ -54,13 +60,14 @@ export function FoursomeScorecardSwitcher({
         <div className="mb-3 px-2 shrink-0">
           <div className="flex gap-1.5">
             {players.map((player) => {
-              const isActive = player.userId === selectedUserId
+              const key = playerKey(player)
+              const isActive = key === selectedKey
               const firstName = player.displayName.split(' ')[0]
 
               return (
                 <button
-                  key={player.userId ?? player.displayName}
-                  onClick={() => setSelectedUserId(player.userId)}
+                  key={key}
+                  onClick={() => setSelectedKey(key)}
                   className="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl transition-all"
                   style={{
                     background: isActive ? 'rgba(22,163,74,0.15)' : '#27272a',
@@ -98,7 +105,6 @@ export function FoursomeScorecardSwitcher({
                     style={{ color: isActive ? '#4ade80' : '#71717a' }}
                   >
                     {firstName}
-                    {player.isLocked && ' 🔒'}
                   </span>
                 </button>
               )
@@ -108,31 +114,23 @@ export function FoursomeScorecardSwitcher({
       )}
 
       {/* Scorecard for selected player */}
-      {selected.userId ? (
-        <MyScoreCard
-          key={selected.userId ?? selected.displayName}
-          roundId={roundId}
-          userId={currentUserId}
-          targetUserId={selected.userId}
-          teamName={selected.teamName}
-          teamNumber={selected.teamNumber}
-          handicap={selected.handicap}
-          holeScores={selected.holeScores}
-          isLocked={selected.isLocked}
-          scoringOpen={scoringOpen}
-          existingScoreId={selected.existingScoreId}
-          grossScore={selected.grossScore}
-          netScore={selected.netScore}
-          roundNumber={roundNumber}
-          roundDate={roundDate}
-        />
-      ) : (
-        <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5 text-center">
-          <p className="text-zinc-300 font-medium text-sm">
-            {selected.displayName} is an external sub — an admin must enter their score.
-          </p>
-        </div>
-      )}
+      <MyScoreCard
+        key={playerKey(selected)}
+        roundId={roundId}
+        userId={currentUserId}
+        targetUserId={selected.userId}
+        targetSubId={selected.subId}
+        teamName={selected.teamName}
+        teamNumber={selected.teamNumber}
+        handicap={selected.handicap}
+        holeScores={selected.holeScores}
+        scoringOpen={scoringOpen}
+        existingScoreId={selected.existingScoreId}
+        grossScore={selected.grossScore}
+        netScore={selected.netScore}
+        roundNumber={roundNumber}
+        roundDate={roundDate}
+      />
     </div>
   )
 }

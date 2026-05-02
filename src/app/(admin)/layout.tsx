@@ -27,7 +27,7 @@ export default async function AdminLayout({
             </div>
             <nav className="flex gap-4 items-center">
               <Link href="/leaderboard" className="hidden md:inline text-sm font-medium hover:text-neutral-100 transition-colors">
-                Public View
+                Leaderboard
               </Link>
               <Link href="/dashboard" className="hidden md:inline text-sm font-medium hover:text-neutral-100 transition-colors">
                 Dashboard

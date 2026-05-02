@@ -1,15 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { saveScore, lockScore, unlockScore } from '@/lib/actions/scores'
+import { saveScore } from '@/lib/actions/scores'
 import { useRouter } from 'next/navigation'
 import { HOLE_PARS } from '@/lib/constants/course'
-import { Icon } from '@/components/Icon'
-import { LockClosedIcon, LockOpenIcon, PencilIcon } from '@heroicons/react/24/outline'
 
 interface ScoreRow {
   scoreId: string | null
-  userId: string
+  userId: string | null   // null for external subs
+  subId: string | null    // non-null for external subs
   teamId: string
   fullName: string
   teamName: string
@@ -18,7 +17,6 @@ interface ScoreRow {
   holeScores: number[]  // length 9, 0 = not entered
   grossScore: number
   netScore: number | null
-  isLocked: boolean
   isSub: boolean
 }
 
@@ -32,15 +30,18 @@ const HOLES = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableProps) {
   const router = useRouter()
   const [rows, setRows] = useState<ScoreRow[]>(initialRows)
-  const [saving, setSaving] = useState<string | null>(null) // userId being saved
+  const [saving, setSaving] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const updateHole = (userId: string, holeIdx: number, value: string) => {
+  // Stable key for each row regardless of whether it's a user or sub
+  const rowKey = (row: ScoreRow) => row.userId ?? row.subId ?? ''
+
+  const updateHole = (key: string, holeIdx: number, value: string) => {
     const parsed = parseInt(value)
     const score = isNaN(parsed) || parsed < 0 ? 0 : Math.min(parsed, 20)
     setRows((prev) =>
       prev.map((r) => {
-        if (r.userId !== userId) return r
+        if (rowKey(r) !== key) return r
         const holes = [...r.holeScores]
         holes[holeIdx] = score
         const gross = holes.reduce((a, b) => a + b, 0)
@@ -51,67 +52,18 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
   }
 
   const handleSave = async (row: ScoreRow) => {
-    setSaving(row.userId)
-    setErrors((e) => ({ ...e, [row.userId]: '' }))
-    const result = await saveScore(roundId, row.userId, row.teamId, row.holeScores, row.isSub)
+    const key = rowKey(row)
+    setSaving(key)
+    setErrors((e) => ({ ...e, [key]: '' }))
+    const result = await saveScore(roundId, row.userId, row.teamId, row.holeScores, row.isSub, row.subId)
     if (result.error) {
-      setErrors((e) => ({ ...e, [row.userId]: result.error! }))
+      setErrors((e) => ({ ...e, [key]: result.error! }))
     } else {
       router.refresh()
     }
     setSaving(null)
   }
 
-  const handleLock = async (row: ScoreRow) => {
-    if (!row.scoreId) {
-      setErrors((e) => ({ ...e, [row.userId]: 'Please save the score first before locking' }))
-      return
-    }
-    setSaving(row.userId)
-    setErrors((e) => ({ ...e, [row.userId]: '' }))
-
-    // Optimistic update
-    setRows((prev) =>
-      prev.map((r) => r.userId === row.userId ? { ...r, isLocked: true } : r)
-    )
-
-    const result = await lockScore(row.scoreId, roundId)
-    if (result.error) {
-      // Revert optimistic update on error
-      setRows((prev) =>
-        prev.map((r) => r.userId === row.userId ? { ...r, isLocked: false } : r)
-      )
-      setErrors((e) => ({ ...e, [row.userId]: result.error! }))
-    } else {
-      router.refresh()
-    }
-    setSaving(null)
-  }
-
-  const handleUnlock = async (row: ScoreRow) => {
-    if (!row.scoreId) return
-    setSaving(row.userId)
-    setErrors((e) => ({ ...e, [row.userId]: '' }))
-
-    // Optimistic update
-    setRows((prev) =>
-      prev.map((r) => r.userId === row.userId ? { ...r, isLocked: false } : r)
-    )
-
-    const result = await unlockScore(row.scoreId, roundId)
-    if (result.error) {
-      // Revert optimistic update on error
-      setRows((prev) =>
-        prev.map((r) => r.userId === row.userId ? { ...r, isLocked: true } : r)
-      )
-      setErrors((e) => ({ ...e, [row.userId]: result.error! }))
-    } else {
-      router.refresh()
-    }
-    setSaving(null)
-  }
-
-  const allLocked = rows.every((r) => r.isLocked)
 
   return (
     <div className="space-y-6">
@@ -119,21 +71,18 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
         .slice()
         .sort((a, b) => a.teamNumber - b.teamNumber)
         .map((row) => {
-          const isBusy = saving === row.userId
+          const key = rowKey(row)
+          const isBusy = saving === key
           const allHolesEntered = row.holeScores.length === 9 && row.holeScores.every((h) => h > 0)
-          const isDirty = JSON.stringify(row.holeScores) !== JSON.stringify(initialRows.find(r => r.userId === row.userId)?.holeScores)
+          const isDirty = JSON.stringify(row.holeScores) !== JSON.stringify(initialRows.find(r => rowKey(r) === key)?.holeScores)
 
           return (
             <div
-              key={row.userId}
-              className={`bg-white rounded-lg shadow border overflow-hidden ${
-                row.isLocked ? 'border-green-300' : 'border-gray-200'
-              }`}
+              key={key}
+              className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden"
             >
               {/* Header */}
-              <div className={`px-4 py-3 flex items-center justify-between ${
-                row.isLocked ? 'bg-green-50' : 'bg-gray-50'
-              }`}>
+              <div className="px-4 py-3 flex items-center justify-between bg-gray-50">
                 <div>
                   <span className="font-semibold">{row.fullName}</span>
                   <span className="text-sm text-gray-500 ml-2">
@@ -143,20 +92,7 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                     <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">Sub</span>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-500">Handicap: {row.handicap}</span>
-                  {row.isLocked ? (
-                    <span className="flex items-center gap-1 text-sm font-medium text-green-700">
-                      <Icon icon={LockClosedIcon} size="sm" className="text-green-700" />
-                      Locked
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-sm text-gray-400">
-                      <Icon icon={PencilIcon} size="sm" className="text-gray-400" />
-                      Editing
-                    </span>
-                  )}
-                </div>
+                <span className="text-sm text-gray-500">Handicap: {row.handicap}</span>
               </div>
 
               {/* Score grid */}
@@ -174,13 +110,9 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                           max={20}
                           placeholder={String(HOLE_PARS[idx])}
                           value={row.holeScores[idx] || ''}
-                          onChange={(e) => updateHole(row.userId, idx, e.target.value)}
-                          disabled={row.isLocked || isBusy}
-                          className={`w-full h-12 text-center rounded-lg border text-lg font-semibold
-                            ${row.isLocked
-                              ? 'bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed'
-                              : 'bg-white border-gray-300 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500'
-                            }`}
+                          onChange={(e) => updateHole(key, idx, e.target.value)}
+                          disabled={isBusy}
+                          className="w-full h-12 text-center rounded-lg border bg-white border-gray-300 text-lg font-semibold focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                       </div>
                     ))}
@@ -216,14 +148,9 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                               max={20}
                               placeholder={String(HOLE_PARS[idx])}
                               value={row.holeScores[idx] || ''}
-                              onChange={(e) => updateHole(row.userId, idx, e.target.value)}
-                              disabled={row.isLocked || isBusy}
-                              className={`w-10 text-center rounded border py-1 text-sm font-medium
-                                ${row.isLocked
-                                  ? 'bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed'
-                                  : 'bg-white border-gray-300 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500'
-                                }
-                              `}
+                              onChange={(e) => updateHole(key, idx, e.target.value)}
+                              disabled={isBusy}
+                              className="w-10 text-center rounded border bg-white border-gray-300 py-1 text-sm font-medium focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
                           </td>
                         ))}
@@ -238,58 +165,25 @@ export function ScoreEntryTable({ roundId, rows: initialRows }: ScoreEntryTableP
                   </table>
                 </div>
 
-                {errors[row.userId] && (
-                  <p className="text-sm text-red-600 mt-2">{errors[row.userId]}</p>
+                {errors[key] && (
+                  <p className="text-sm text-red-600 mt-2">{errors[key]}</p>
                 )}
 
                 {/* Actions */}
-                {!row.isLocked && (
-                  <div className="flex flex-col gap-2 mt-3 md:flex-row md:items-center">
-                    <button
-                      onClick={() => handleSave(row)}
-                      disabled={isBusy || !isDirty}
-                      className="w-full md:w-auto px-3 py-2 md:py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40"
-                    >
-                      {isBusy ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => handleLock(row)}
-                      disabled={isBusy || !allHolesEntered}
-                      className="w-full md:w-auto px-3 py-2 md:py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40"
-                      title={!allHolesEntered ? 'Enter all 9 holes first' : ''}
-                    >
-                      {isBusy ? (
-                        'Locking…'
-                      ) : (
-                        <span className="flex items-center justify-center gap-1">
-                          <Icon icon={LockClosedIcon} size="sm" />
-                          Lock Score
-                        </span>
-                      )}
-                    </button>
-                    {!allHolesEntered && row.holeScores.some((h) => h > 0) && (
-                      <span className="text-xs text-gray-400 text-center md:text-left">
-                        {row.holeScores.filter((h) => h > 0).length}/9 holes entered
-                      </span>
-                    )}
-                  </div>
-                )}
-                {row.isLocked && (
+                <div className="flex flex-col gap-2 mt-3 md:flex-row md:items-center">
                   <button
-                    onClick={() => handleUnlock(row)}
-                    disabled={isBusy}
-                    className="mt-3 w-full md:w-auto px-3 py-2 md:py-1.5 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40"
+                    onClick={() => handleSave(row)}
+                    disabled={isBusy || !isDirty}
+                    className="w-full md:w-auto px-3 py-2 md:py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40"
                   >
-                    {isBusy ? (
-                      'Unlocking…'
-                    ) : (
-                      <span className="flex items-center justify-center gap-1">
-                        <Icon icon={LockOpenIcon} size="sm" />
-                        Unlock to Edit
-                      </span>
-                    )}
+                    {isBusy ? 'Saving…' : 'Save'}
                   </button>
-                )}
+                  {!allHolesEntered && row.holeScores.some((h) => h > 0) && (
+                    <span className="text-xs text-gray-400 text-center md:text-left">
+                      {row.holeScores.filter((h) => h > 0).length}/9 holes entered
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )

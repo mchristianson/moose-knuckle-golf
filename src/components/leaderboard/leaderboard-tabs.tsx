@@ -48,7 +48,6 @@ interface CurrentRoundScore {
   net_score: number | null
   handicap_at_time: number | null
   hole_scores: number[]
-  is_locked: boolean
 }
 
 interface CurrentRound {
@@ -370,7 +369,9 @@ export function LeaderboardTabs({
                         <tr className="border-b border-zinc-700">
                           <th className="text-left px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide w-10">Pos</th>
                           <th className="text-left px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Golfer</th>
-                          <th className="text-center px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Net</th>
+                          <th className="text-center px-2 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Gross</th>
+                          <th className="text-center px-2 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Net</th>
+                          <th className="text-center px-2 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Thru</th>
                           <th className="text-center px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Pts</th>
                         </tr>
                       </thead>
@@ -387,7 +388,9 @@ export function LeaderboardTabs({
                                 <p className="text-white font-medium">{golfer?.full_name ?? '—'}</p>
                                 <p className="text-xs text-green-500">{team?.team_name ?? '—'}</p>
                               </td>
-                              <td className="px-4 py-2.5 text-center text-zinc-300">{p.net_score}</td>
+                              <td className="px-2 py-2.5 text-center text-zinc-300">{golfer?.gross_score ?? '—'}</td>
+                              <td className="px-2 py-2.5 text-center text-zinc-300">{p.net_score}</td>
+                              <td className="px-2 py-2.5 text-center text-zinc-500">F</td>
                               <td className="px-4 py-2.5 text-center font-bold text-green-400">{p.points_earned}</td>
                             </tr>
                           )
@@ -467,6 +470,9 @@ export function LeaderboardTabs({
                       <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Golfer</span>
                     </div>
                     <div className="w-12 text-center">
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Score</span>
+                    </div>
+                    <div className="w-12 text-center">
                       <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Gross</span>
                     </div>
                     <div className="w-14 text-center">
@@ -509,7 +515,12 @@ export function LeaderboardTabs({
                             <p className="text-green-500 text-xs truncate">{s.team_name}</p>
                           </div>
 
-                          {/* Gross */}
+                          {/* Score (raw stroke count) */}
+                          <div className="w-12 text-center text-sm font-medium tabular-nums text-zinc-300">
+                            {s.holesPlayed > 0 ? (s.gross_score ?? '—') : '—'}
+                          </div>
+
+                          {/* Gross (relative to par) */}
                           <div className={`w-12 text-center text-sm font-medium tabular-nums ${grossColor(s.gross)}`}>
                             {grossStr}
                           </div>

@@ -58,15 +58,17 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
     (handicaps ?? []).map((h) => [h.user_id, h.current_handicap])
   )
 
-  const scoreMap: Record<string, any> = Object.fromEntries(
-    (existingScores ?? []).map((s) => [s.user_id, s])
-  )
+  // Key scores by prefixed ID so user and sub entries don't collide
+  const scoreMap: Record<string, any> = {}
+  for (const s of existingScores ?? []) {
+    if (s.user_id) scoreMap[`user:${s.user_id}`] = s
+    else if (s.sub_id) scoreMap[`sub:${s.sub_id}`] = s
+  }
 
   // Build rows
   const rows = (foursomeMembers ?? []).map((m: any) => {
-    // External subs have no user_id — use their sub_id as the unique identifier
-    const rowUserId: string = m.user_id ?? m.sub_id
-    const existing = scoreMap[m.user_id]
+    const mapKey = m.user_id ? `user:${m.user_id}` : `sub:${m.sub_id}`
+    const existing = scoreMap[mapKey]
     const handicap = handicapMap[m.user_id] ?? 0
     const holeScores: number[] = existing?.hole_scores ?? Array(9).fill(0)
     const gross = holeScores.reduce((a: number, b: number) => a + b, 0)
@@ -74,7 +76,8 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
 
     return {
       scoreId: existing?.id ?? null,
-      userId: rowUserId,
+      userId: (m.user_id as string | null) ?? null,
+      subId: (m.sub_id as string | null) ?? null,
       teamId: m.team_id,
       fullName: m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? 'Unknown',
       teamName: m.team?.team_name ?? '',
@@ -83,12 +86,11 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
       holeScores,
       grossScore: gross,
       netScore: net,
-      isLocked: existing?.is_locked ?? false,
       isSub: m.is_sub,
     }
   })
 
-  const lockedCount = rows.filter((r) => r.isLocked).length
+  const enteredCount = rows.filter((r) => r.holeScores.length === 9 && r.holeScores.every((h: number) => h > 0)).length
   const totalCount = rows.length
 
   const roundDate = formatRoundDate(round.round_date)
@@ -127,11 +129,11 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
               <div className="text-sm text-gray-500">Golfers</div>
             </div>
             <div className="bg-white p-4 rounded-lg shadow text-center">
-              <div className="text-2xl font-bold text-green-600">{lockedCount}</div>
-              <div className="text-sm text-gray-500">Locked</div>
+              <div className="text-2xl font-bold text-green-600">{enteredCount}</div>
+              <div className="text-sm text-gray-500">Scores Entered</div>
             </div>
             <div className="bg-white p-4 rounded-lg shadow text-center">
-              <div className="text-2xl font-bold text-amber-600">{totalCount - lockedCount}</div>
+              <div className="text-2xl font-bold text-amber-600">{totalCount - enteredCount}</div>
               <div className="text-sm text-gray-500">Remaining</div>
             </div>
           </div>
@@ -140,7 +142,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
             <div className="mb-6">
               <FinalizeRoundButton
                 roundId={roundId}
-                lockedCount={lockedCount}
+                enteredCount={enteredCount}
                 totalCount={totalCount}
               />
             </div>

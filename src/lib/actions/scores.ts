@@ -77,17 +77,6 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
     return { error: 'You are not listed as a player in this round' }
   }
 
-  // Ensure the score isn't already locked
-  const { data: existing } = await supabase
-    .from('scores')
-    .select('id, is_locked')
-    .eq('round_id', roundId)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (existing?.is_locked) {
-    return { error: 'Your score has been locked and cannot be changed' }
-  }
 
   if (holeScores.length !== 9) {
     return { error: 'Expected exactly 9 hole score slots' }
@@ -138,13 +127,9 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
 export async function submitScoreForFoursome(
   roundId: string,
   targetUserId: string | null,
+  targetSubId: string | null,
   holeScores: number[]
 ) {
-  // External subs have no user account — their scores must be entered by an admin
-  if (!targetUserId) {
-    return { error: 'This player has no user account; an admin must enter their score.' }
-  }
-
   const { supabase, userId, realUserId } = await getEffectiveUser()
 
   // Verify the round is open for scoring
@@ -180,29 +165,33 @@ export async function submitScoreForFoursome(
     return { error: 'You are not listed as a player in this round' }
   }
 
-  // Verify the target user is in the SAME foursome as the calling user
-  const { data: targetMembership } = await supabase
-    .from('foursome_members')
-    .select('team_id, is_sub')
-    .eq('foursome_id', callerMembership.foursome_id)
-    .eq('user_id', targetUserId)
-    .maybeSingle()
+  // Verify the target is in the SAME foursome as the calling user
+  const targetQuery = targetSubId
+    ? supabase
+        .from('foursome_members')
+        .select('team_id, is_sub')
+        .eq('foursome_id', callerMembership.foursome_id)
+        .eq('sub_id', targetSubId)
+        .maybeSingle()
+    : supabase
+        .from('foursome_members')
+        .select('team_id, is_sub')
+        .eq('foursome_id', callerMembership.foursome_id)
+        .eq('user_id', targetUserId!)
+        .maybeSingle()
+
+  const { data: targetMembership } = await targetQuery
 
   if (!targetMembership) {
     return { error: 'That player is not in your foursome' }
   }
 
-  // Ensure the target score isn't already locked
-  const { data: existing } = await supabase
-    .from('scores')
-    .select('id, is_locked')
-    .eq('round_id', roundId)
-    .eq('user_id', targetUserId)
-    .maybeSingle()
+  // Check if score already exists to decide insert vs update
+  const existingQuery = targetSubId
+    ? supabase.from('scores').select('id').eq('round_id', roundId).eq('sub_id', targetSubId).maybeSingle()
+    : supabase.from('scores').select('id').eq('round_id', roundId).eq('user_id', targetUserId!).maybeSingle()
 
-  if (existing?.is_locked) {
-    return { error: 'That score has been locked and cannot be changed' }
-  }
+  const { data: existing } = await existingQuery
 
   if (holeScores.length !== 9) {
     return { error: 'Expected exactly 9 hole score slots' }
@@ -211,35 +200,38 @@ export async function submitScoreForFoursome(
     return { error: 'Hole scores cannot be negative' }
   }
 
-  // Fetch current handicap for the target player
-  const { data: handicapRow } = await supabase
-    .from('handicaps')
-    .select('current_handicap')
-    .eq('user_id', targetUserId)
-    .maybeSingle()
+  // Subs don't have handicap records — default to 0
+  let handicap = 0
+  if (targetUserId) {
+    const { data: handicapRow } = await supabase
+      .from('handicaps')
+      .select('current_handicap')
+      .eq('user_id', targetUserId)
+      .maybeSingle()
+    handicap = handicapRow?.current_handicap ?? 0
+  }
 
-  const handicap = handicapRow?.current_handicap ?? 0
   const filledScores = holeScores.filter((h) => h > 0)
   const grossScore = filledScores.reduce((a, b) => a + b, 0)
   const allFilled = filledScores.length === 9
   const netScore = allFilled ? Math.round((grossScore - handicap) * 10) / 10 : null
 
-  const { error } = await supabase
-    .from('scores')
-    .upsert(
-      {
-        round_id: roundId,
-        user_id: targetUserId,
-        team_id: targetMembership.team_id,
-        hole_scores: holeScores,
-        handicap_at_time: handicap,
-        net_score: netScore,
-        is_sub: targetMembership.is_sub,
-        submitted_at: new Date().toISOString(),
-        submitted_by: realUserId,
-      },
-      { onConflict: 'round_id,user_id' }
-    )
+  const scoreData = {
+    round_id: roundId,
+    user_id: targetSubId ? null : targetUserId,
+    sub_id: targetSubId ?? null,
+    team_id: targetMembership.team_id,
+    hole_scores: holeScores,
+    handicap_at_time: handicap,
+    net_score: netScore,
+    is_sub: targetMembership.is_sub,
+    submitted_at: new Date().toISOString(),
+    submitted_by: realUserId,
+  }
+
+  const { error } = existing
+    ? await supabase.from('scores').update(scoreData).eq('id', existing.id)
+    : await supabase.from('scores').insert(scoreData)
 
   if (error) return { error: error.message }
 
@@ -251,10 +243,11 @@ export async function submitScoreForFoursome(
 // Save hole-by-hole scores for a golfer in a round (does not lock)
 export async function saveScore(
   roundId: string,
-  userId: string,
+  userId: string | null,
   teamId: string,
   holeScores: number[],
-  isSub: boolean = false
+  isSub: boolean = false,
+  subId: string | null = null
 ) {
   const { supabase, user } = await getAdminUser()
 
@@ -262,35 +255,49 @@ export async function saveScore(
     return { error: 'Exactly 9 hole scores are required' }
   }
 
-  // Fetch current handicap for this golfer
-  const { data: handicapRow } = await supabase
-    .from('handicaps')
-    .select('current_handicap')
-    .eq('user_id', userId)
-    .maybeSingle()
+  if (!userId && !subId) {
+    return { error: 'Either userId or subId is required' }
+  }
 
-  const handicap = handicapRow?.current_handicap ?? 0
+  // Fetch handicap — subs don't have handicap records, default to 0
+  let handicap = 0
+  if (userId) {
+    const { data: handicapRow } = await supabase
+      .from('handicaps')
+      .select('current_handicap')
+      .eq('user_id', userId)
+      .maybeSingle()
+    handicap = handicapRow?.current_handicap ?? 0
+  }
+
   const filledScores = holeScores.filter((h) => h > 0)
   const grossScore = filledScores.reduce((a, b) => a + b, 0)
   const allFilled = filledScores.length === 9
   const netScore = allFilled ? Math.round((grossScore - handicap) * 10) / 10 : null
 
-  const { error } = await supabase
-    .from('scores')
-    .upsert(
-      {
-        round_id: roundId,
-        user_id: userId,
-        team_id: teamId,
-        hole_scores: holeScores,
-        handicap_at_time: handicap,
-        net_score: netScore,
-        is_sub: isSub,
-        submitted_at: new Date().toISOString(),
-        submitted_by: user.id,
-      },
-      { onConflict: 'round_id,user_id' }
-    )
+  const scoreData = {
+    round_id: roundId,
+    user_id: isSub ? null : userId,
+    sub_id: isSub ? subId : null,
+    team_id: teamId,
+    hole_scores: holeScores,
+    handicap_at_time: handicap,
+    net_score: netScore,
+    is_sub: isSub,
+    submitted_at: new Date().toISOString(),
+    submitted_by: user.id,
+  }
+
+  // Check for an existing score record to decide insert vs update
+  const existingQuery = isSub
+    ? supabase.from('scores').select('id').eq('round_id', roundId).eq('sub_id', subId!).maybeSingle()
+    : supabase.from('scores').select('id').eq('round_id', roundId).eq('user_id', userId!).maybeSingle()
+
+  const { data: existing } = await existingQuery
+
+  const { error } = existing
+    ? await supabase.from('scores').update(scoreData).eq('id', existing.id)
+    : await supabase.from('scores').insert(scoreData)
 
   if (error) {
     return { error: error.message }
@@ -300,61 +307,18 @@ export async function saveScore(
   return { success: true }
 }
 
-// Lock a score — requires all 9 hole scores to be non-zero
-export async function lockScore(scoreId: string, roundId: string) {
-  const { supabase, user } = await getAdminUser()
 
-  const { data: score } = await supabase
-    .from('scores')
-    .select('hole_scores, is_locked')
-    .eq('id', scoreId)
-    .single()
-
-  if (!score) return { error: 'Score not found' }
-  if (score.is_locked) return { error: 'Score is already locked' }
-
-  const holes: number[] = score.hole_scores
-  if (holes.length !== 9 || holes.some((h) => !h || h <= 0)) {
-    return { error: 'All 9 hole scores must be entered before locking' }
-  }
-
-  const { error } = await supabase
-    .from('scores')
-    .update({ is_locked: true })
-    .eq('id', scoreId)
-
-  if (error) return { error: error.message }
-
-  revalidatePath(`/admin/rounds/${roundId}/scores`)
-  return { success: true }
-}
-
-// Unlock a score (admin override)
-export async function unlockScore(scoreId: string, roundId: string) {
-  const { supabase } = await getAdminUser()
-
-  const { error } = await supabase
-    .from('scores')
-    .update({ is_locked: false })
-    .eq('id', scoreId)
-
-  if (error) return { error: error.message }
-
-  revalidatePath(`/admin/rounds/${roundId}/scores`)
-  return { success: true }
-}
-
-// Helper function to calculate points from locked scores
+// Helper function to calculate points from entered scores
 async function calculateRoundPoints(supabase: any, roundId: string) {
-  // Get all locked scores for this round
+  // Get all complete scores for this round (net_score is set only when all 9 holes are entered)
   const { data: scores, error: scoresError } = await supabase
     .from('scores')
     .select('id, user_id, team_id, net_score, is_sub')
     .eq('round_id', roundId)
-    .eq('is_locked', true)
+    .not('net_score', 'is', null)
 
   if (scoresError) return { error: scoresError.message, points: null }
-  if (!scores || scores.length === 0) return { error: 'No locked scores found', points: null }
+  if (!scores || scores.length === 0) return { error: 'No complete scores found', points: null }
 
   // One net score per team — use the declared golfer's score (is_sub=false preferred)
   const teamScores: Record<string, number> = {}
@@ -502,14 +466,14 @@ export async function recalculateRoundPoints(roundId: string) {
   return { success: true }
 }
 
-// Recalculate handicaps for all players who have scores in this round
+// Recalculate handicaps for all non-sub players who have scores in this round
 async function updateHandicapsForRound(supabase: any, roundId: string, adminUserId: string) {
   const { data: roundScores } = await supabase
     .from('scores')
     .select('user_id')
     .eq('round_id', roundId)
-    .eq('is_locked', true)
     .eq('is_sub', false)
+    .not('net_score', 'is', null)
 
   if (!roundScores) return
 

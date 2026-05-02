@@ -77,12 +77,13 @@ export default async function LeaderboardPage() {
         .from('scores')
         .select(`
           user_id,
+          sub_id,
           gross_score,
           net_score,
           handicap_at_time,
           hole_scores,
-          is_locked,
           user:user_id ( full_name, display_name, avatar_url ),
+          sub:sub_id ( full_name ),
           team:team_id ( team_name, team_number )
         `)
         .eq('round_id', currentRound.id)
@@ -90,7 +91,7 @@ export default async function LeaderboardPage() {
       recentRoundIds.length
         ? supabase
             .from('scores')
-            .select('round_id, team_id, user:user_id ( full_name, display_name )')
+            .select('round_id, team_id, gross_score, user:user_id ( full_name, display_name )')
             .in('round_id', recentRoundIds)
             .eq('is_sub', false)
             .then((r) => r.data ?? [])
@@ -113,7 +114,7 @@ export default async function LeaderboardPage() {
 
     currentRoundScores = scoresData.map((s: any) => ({
       user_id: s.user_id,
-      full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown',
+      full_name: s.user?.display_name ?? s.user?.full_name ?? s.sub?.full_name ?? 'Unknown',
       avatar_url: s.user?.avatar_url ?? null,
       team_name: s.team?.team_name ?? '',
       team_number: s.team?.team_number ?? 0,
@@ -121,7 +122,6 @@ export default async function LeaderboardPage() {
       net_score: s.net_score,
       handicap_at_time: s.handicap_at_time,
       hole_scores: s.hole_scores ?? [],
-      is_locked: s.is_locked ?? false,
     }))
 
     // Attach golfer names to recent round points
@@ -129,7 +129,8 @@ export default async function LeaderboardPage() {
       const scoresByTeamRound = new Map<string, any>()
       recentScoresData.forEach((s: any) => {
         scoresByTeamRound.set(`${s.round_id}-${s.team_id}`, {
-          full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown'
+          full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown',
+          gross_score: s.gross_score,
         })
       })
       recentRounds = recentRoundsData.map((round: any) => ({
@@ -156,7 +157,7 @@ export default async function LeaderboardPage() {
       recentRoundIds.length
         ? supabase
             .from('scores')
-            .select('round_id, team_id, user:user_id ( full_name, display_name )')
+            .select('round_id, team_id, gross_score, user:user_id ( full_name, display_name )')
             .in('round_id', recentRoundIds)
             .eq('is_sub', false)
             .then((r) => r.data ?? [])
@@ -168,7 +169,8 @@ export default async function LeaderboardPage() {
       const scoresByTeamRound = new Map<string, any>()
       recentScoresData.forEach((s: any) => {
         scoresByTeamRound.set(`${s.round_id}-${s.team_id}`, {
-          full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown'
+          full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown',
+          gross_score: s.gross_score,
         })
       })
       recentRounds = recentRoundsData.map((round: any) => ({

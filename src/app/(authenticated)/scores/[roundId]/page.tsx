@@ -49,6 +49,7 @@ export default async function MyScorePage({
         .from('foursome_members')
         .select(`
           user_id,
+          sub_id,
           team_id,
           is_sub,
           user:user_id ( id, full_name, display_name, avatar_url ),
@@ -58,40 +59,53 @@ export default async function MyScorePage({
         .eq('foursome_id', userMembership.foursome_id)
     : { data: null }
 
-  // Load scores and handicaps for all foursome members
-  // Filter out null user_ids (subs without a user account) — passing null to .in() causes PostgREST to error
-  const memberIds = (foursomeMembers ?? [])
+  // Separate member and sub IDs for targeted score/handicap queries
+  const memberUserIds = (foursomeMembers ?? [])
     .map((m: any) => m.user_id)
     .filter((id: string | null): id is string => id !== null)
+  const memberSubIds = (foursomeMembers ?? [])
+    .map((m: any) => m.sub_id)
+    .filter((id: string | null): id is string => id !== null)
 
-  const [{ data: scores }, { data: handicaps }] = await Promise.all([
-    memberIds.length
+  const [{ data: userScores }, { data: subScores }, { data: handicaps }] = await Promise.all([
+    memberUserIds.length
       ? supabase
           .from('scores')
-          .select('id, user_id, hole_scores, is_locked, gross_score, net_score')
+          .select('id, user_id, sub_id, hole_scores, gross_score, net_score')
           .eq('round_id', roundId)
-          .in('user_id', memberIds)
+          .in('user_id', memberUserIds)
       : Promise.resolve({ data: [] }),
-    memberIds.length
+    memberSubIds.length
+      ? supabase
+          .from('scores')
+          .select('id, user_id, sub_id, hole_scores, gross_score, net_score')
+          .eq('round_id', roundId)
+          .in('sub_id', memberSubIds)
+      : Promise.resolve({ data: [] }),
+    memberUserIds.length
       ? supabase
           .from('handicaps')
           .select('user_id, current_handicap')
-          .in('user_id', memberIds)
+          .in('user_id', memberUserIds)
       : Promise.resolve({ data: [] }),
   ])
 
-  const scoreMap: Record<string, any> = Object.fromEntries(
-    (scores ?? []).map((s: any) => [s.user_id, s])
-  )
+  // Key scores by prefixed ID so user and sub entries don't collide
+  const scoreMap: Record<string, any> = {}
+  for (const s of userScores ?? []) if (s.user_id) scoreMap[`user:${s.user_id}`] = s
+  for (const s of subScores ?? []) if (s.sub_id) scoreMap[`sub:${s.sub_id}`] = s
+
   const handicapMap: Record<string, number> = Object.fromEntries(
     (handicaps ?? []).map((h: any) => [h.user_id, h.current_handicap])
   )
 
   const players: FoursomePlayer[] = (foursomeMembers ?? []).map((m: any) => {
-    const existing = scoreMap[m.user_id]
+    const mapKey = m.user_id ? `user:${m.user_id}` : `sub:${m.sub_id}`
+    const existing = scoreMap[mapKey]
     const handicap = handicapMap[m.user_id] ?? 0
     return {
-      userId: m.user_id,
+      userId: m.user_id ?? null,
+      subId: m.sub_id ?? null,
       teamId: m.team_id,
       teamName: m.team?.team_name ?? '',
       teamNumber: m.team?.team_number ?? 0,
@@ -100,7 +114,6 @@ export default async function MyScorePage({
       avatarUrl: m.user?.avatar_url ?? null,
       handicap,
       holeScores: existing?.hole_scores ?? Array(9).fill(0),
-      isLocked: existing?.is_locked ?? false,
       existingScoreId: existing?.id ?? null,
       grossScore: existing?.gross_score ?? null,
       netScore: existing?.net_score ?? null,
