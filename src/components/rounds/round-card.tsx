@@ -86,6 +86,11 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
                 Makeup
               </span>
             )}
+            {round.round_type === 'practice' && (
+              <span className="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                Practice
+              </span>
+            )}
           </div>
           <p className="text-gray-600 mb-2">{formatRoundDate(round.round_date)}</p>
           {round.tee_time && (

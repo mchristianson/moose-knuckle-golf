@@ -31,7 +31,7 @@ export default async function LeaderboardPage() {
       `)
       .eq('season_year', currentYear)
       .eq('status', 'completed')
-      .eq('round_type', 'regular')
+      .in('round_type', ['regular', 'practice'])
       .order('round_date', { ascending: false })
       .limit(5)
       .then((r) => r.data ?? []),
@@ -148,7 +148,6 @@ export default async function LeaderboardPage() {
         .from('rounds')
         .select('id, round_number, round_date, status, tee_time')
         .eq('season_year', currentYear)
-        .eq('round_type', 'regular')
         .in('status', ['scheduled', 'availability_open', 'foursomes_set'])
         .order('round_date', { ascending: true })
         .limit(1)

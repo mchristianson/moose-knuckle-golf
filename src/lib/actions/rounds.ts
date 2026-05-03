@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
@@ -186,6 +186,81 @@ export async function updateCourse(roundId: string, course: string) {
 
   revalidatePath('/admin/rounds')
   revalidatePath(`/admin/rounds/${roundId}`)
+  return { success: true }
+}
+
+export async function updateRoundType(roundId: string, roundType: string) {
+  const { supabase, user } = await getAdminUser()
+
+  if (!['regular', 'makeup', 'practice'].includes(roundType)) {
+    return { error: 'Invalid round type' }
+  }
+
+  const { data: oldRound } = await supabase
+    .from('rounds')
+    .select('round_type, status')
+    .eq('id', roundId)
+    .single()
+
+  const { error } = await supabase
+    .from('rounds')
+    .update({ round_type: roundType })
+    .eq('id', roundId)
+
+  if (error) return { error: error.message }
+
+  // If the round is completed, recalculate handicaps for all players who scored
+  // (changing to/from practice changes which scores are eligible for handicap)
+  if (oldRound?.status === 'completed') {
+    const { data: roundScores } = await supabase
+      .from('scores')
+      .select('user_id')
+      .eq('round_id', roundId)
+      .eq('is_sub', false)
+      .not('net_score', 'is', null)
+
+    if (roundScores) {
+      for (const { user_id } of roundScores) {
+        await supabase.rpc('get_eligible_scores_for_handicap', { p_user_id: user_id, p_limit: 10 })
+          .then(async ({ data: eligibleScores }: { data: any[] | null }) => {
+            if (!eligibleScores || eligibleScores.length === 0) return
+            const grossScores = eligibleScores.map((s: any) => s.gross_score as number)
+            const scoresToUse = Math.max(1, Math.floor(grossScores.length * 0.8))
+            const sorted = [...grossScores].sort((a, b) => a - b)
+            const best = sorted.slice(0, scoresToUse)
+            const avg = best.reduce((sum, s) => sum + s, 0) / best.length
+            const handicap = Math.round(Math.max(0, avg - 36) * 10) / 10
+
+            await supabase.from('handicaps').upsert(
+              { user_id, current_handicap: handicap, rounds_played: grossScores.length, last_calculated_at: new Date().toISOString() },
+              { onConflict: 'user_id' }
+            )
+            await supabase.from('handicap_history').insert({
+              user_id,
+              handicap_value: handicap,
+              calculation_method: 'calculated',
+              scores_used: eligibleScores,
+              changed_by: user.id,
+              reason: `Round type changed to ${roundType}`,
+            })
+          })
+      }
+    }
+  }
+
+  await supabase.from('audit_log').insert({
+    user_id: user.id,
+    action: 'round_type_updated',
+    entity_type: 'round',
+    entity_id: roundId,
+    old_value: { round_type: oldRound?.round_type },
+    new_value: { round_type: roundType },
+  })
+
+  revalidatePath('/admin/rounds')
+  revalidatePath(`/admin/rounds/${roundId}`)
+  revalidatePath('/leaderboard')
+  revalidateTag('standings')
   return { success: true }
 }
 

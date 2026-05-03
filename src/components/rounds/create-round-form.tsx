@@ -80,6 +80,7 @@ export function CreateRoundForm() {
         >
           <option value="regular">Regular</option>
           <option value="makeup">Makeup</option>
+          <option value="practice">Practice</option>
         </select>
       </div>
 

@@ -4,6 +4,7 @@ import { formatRoundDate } from "@/lib/utils/date";
 import { AvailabilitySummary } from "@/components/availability/availability-summary";
 import { TeeTimeEditor } from "@/components/rounds/tee-time-editor";
 import { CourseEditor } from "@/components/rounds/course-editor";
+import { RoundTypeEditor } from "@/components/rounds/round-type-editor";
 import { GenerateFoursomesButton } from "@/components/foursomes/generate-foursomes-button";
 import { DraggableFoursomes } from "@/components/foursomes/draggable-foursomes";
 
@@ -135,10 +136,7 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
               <span className="text-gray-400">Status:</span>{' '}
               <span className="font-medium capitalize">{round.status.replace(/_/g, ' ')}</span>
             </span>
-            <span>
-              <span className="text-gray-400">Type:</span>{' '}
-              <span className="font-medium capitalize">{round.round_type}</span>
-            </span>
+            <RoundTypeEditor roundId={roundId} currentRoundType={round.round_type} />
             <span>
               <span className="text-gray-400">Season:</span>{' '}
               <span className="font-medium">{round.season_year}</span>
