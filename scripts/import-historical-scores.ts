@@ -166,6 +166,7 @@ const NAME_ALIASES: Record<string, string> = {
   'Joseph Wolfgang': 'Joe Wolfgang',
   'Andrew Nordeen': 'Andy Nordeen',
   'Denny Misener': 'Denny Misner',
+  'Aaron Wheatcrat': 'Aaron Wheatcraft',
   // Tom Oberg is not yet in the app — scores will be skipped with a warning
 }
 
@@ -389,7 +390,7 @@ async function recalculateHandicap(userId: string, adminId: string) {
   if (!eligible || eligible.length === 0) return
 
   const grossScores: number[] = eligible.map((s: any) => s.gross_score)
-  const scoresToUse = Math.max(1, Math.floor(grossScores.length * 0.8))
+  const scoresToUse = Math.min(grossScores.length, 5)
   const sorted = [...grossScores].sort((a: number, b: number) => a - b)
   const best = sorted.slice(0, scoresToUse)
   const avgBest = best.reduce((a: number, b: number) => a + b, 0) / best.length

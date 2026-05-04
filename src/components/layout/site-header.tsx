@@ -10,6 +10,7 @@ import { UserCircleIcon } from '@heroicons/react/24/outline'
 interface NavItem {
   href: string
   label: string
+  disabled?: boolean
 }
 
 interface SiteHeaderProps {
@@ -17,15 +18,32 @@ interface SiteHeaderProps {
   isLoggedIn: boolean
   isAdmin?: boolean
   avatarUrl?: string | null
+  currentRoundId?: string | undefined
 }
 
-export function SiteHeader({ navItems, isLoggedIn, isAdmin, avatarUrl }: SiteHeaderProps) {
+export function SiteHeader({ navItems, isLoggedIn, isAdmin, avatarUrl, currentRoundId }: SiteHeaderProps) {
   const pathname = usePathname()
 
-  const allNavItems = [
-    ...navItems,
+  // Build all nav items in the order specified by user
+  const allNavItems: NavItem[] = [
+    { href: '/leaderboard', label: 'Leaderboard' },
+    { href: '/dashboard', label: 'Dashboard', disabled: !isLoggedIn },
+    { href: `/scores/${currentRoundId}`, label: 'Scoring', disabled: !currentRoundId },
+    { href: '/profile', label: 'Profile', disabled: !isLoggedIn },
     ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
+    { href: '/manual', label: 'Manual' },
   ]
+
+  const isActive = (href: string) => {
+    if (href === '/leaderboard' || href === '/dashboard' || href === '/profile' || href === '/manual') {
+      return pathname === href || pathname.startsWith(href + '/')
+    }
+    // For scoring link with dynamic ID
+    if (href.startsWith('/scores/')) {
+      return pathname.startsWith('/scores/')
+    }
+    return pathname === href
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b bg-zinc-900/85 backdrop-blur-xl border-zinc-800/60">
@@ -65,19 +83,33 @@ export function SiteHeader({ navItems, isLoggedIn, isAdmin, avatarUrl }: SiteHea
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-5">
-            {allNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`text-sm font-medium transition-colors relative pb-0.5 ${
-                  pathname === item.href || pathname.startsWith(item.href + '/')
-                    ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-green-500 after:rounded-full after:content-['']"
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {allNavItems.map((item) => {
+              if (item.disabled) {
+                return (
+                  <span
+                    key={item.href}
+                    className="text-sm font-medium text-zinc-600 cursor-not-allowed"
+                    title={`${item.label} is not available`}
+                  >
+                    {item.label}
+                  </span>
+                )
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`text-sm font-medium transition-colors relative pb-0.5 ${
+                    isActive(item.href)
+                      ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-green-500 after:rounded-full after:content-['']"
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
             {isLoggedIn ? (
               <form action={signout}>
                 <button

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import Link from "next/link";
-import { SignOutButton } from "@/components/auth/signout-button";
+import { redirect } from "next/navigation";
+import { SiteHeader } from "@/components/layout/site-header";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { AdminMobileNav } from "@/components/layout/admin-mobile-nav";
 
@@ -12,32 +12,33 @@ export default async function AdminLayout({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  if (!user) redirect('/login');
+
+  // Check if user is admin
+  const { data: userData } = await supabase
+    .from('users')
+    .select('is_admin, avatar_url')
+    .eq('id', user.id)
+    .single();
+
+  if (!userData?.is_admin) redirect('/dashboard');
+
+  // Find the first active round (in_progress or scoring)
+  let currentRoundId: string | undefined;
+  const { data: activeRounds } = await supabase
+    .from('rounds')
+    .select('id')
+    .in('status', ['in_progress', 'scoring'])
+    .order('round_date', { ascending: false })
+    .limit(1);
+
+  if (activeRounds && activeRounds.length > 0) {
+    currentRoundId = activeRounds[0].id;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b bg-primary text-white">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/admin">
-                <h1 className="text-lg font-bold leading-tight md:text-h2">
-                  Moose Knuckle Golf
-                </h1>
-              </Link>
-              <span className="text-xs font-semibold bg-primary-dark px-2 py-0.5 rounded-full shrink-0">Admin</span>
-            </div>
-            <nav className="flex gap-4 items-center">
-              <Link href="/leaderboard" className="hidden md:inline text-sm font-medium hover:text-neutral-100 transition-colors">
-                Leaderboard
-              </Link>
-              <Link href="/dashboard" className="hidden md:inline text-sm font-medium hover:text-neutral-100 transition-colors">
-                Dashboard
-              </Link>
-              <SignOutButton />
-            </nav>
-          </div>
-        </div>
-        <AdminMobileNav />
-      </header>
+      <SiteHeader isLoggedIn={true} isAdmin={true} avatarUrl={userData?.avatar_url} currentRoundId={currentRoundId} navItems={[]} />
       <div className="flex flex-1">
         <AdminSidebar />
         <main className="flex-1 container mx-auto px-4 py-6">

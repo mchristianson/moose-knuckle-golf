@@ -30,18 +30,12 @@ export default async function AuthenticatedLayout({
     currentRoundId = activeRounds[0].id
   }
 
-  const navItems = [
-    { href: '/leaderboard', label: 'Leaderboard' },
-    { href: '/manual', label: 'Manual' },
-    { href: '/dashboard', label: 'Dashboard' },
-  ]
-
   const displayName = effectiveProfile?.display_name ?? effectiveProfile?.full_name ?? 'Unknown'
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950">
       {isImpersonating && <ImpersonationBanner name={displayName} />}
-      <SiteHeader navItems={navItems} isLoggedIn={true} isAdmin={isAdmin} avatarUrl={avatarUrl} />
+      <SiteHeader isLoggedIn={true} isAdmin={isAdmin} avatarUrl={avatarUrl} currentRoundId={currentRoundId} navItems={[]} />
       <main className="flex-1 flex flex-col min-h-0 container mx-auto px-3 pb-6">
         {children}
       </main>

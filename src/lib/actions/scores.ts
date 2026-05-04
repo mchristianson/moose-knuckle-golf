@@ -582,8 +582,8 @@ async function recalculateHandicap(supabase: any, userId: string, adminUserId: s
 
   const grossScores: number[] = eligibleScores.map((s: any) => s.gross_score)
 
-  // Use best differentials: ≤10 scores → use best 3, approaching best 8 of 10
-  const scoresToUse = Math.max(1, Math.floor(grossScores.length * 0.8))
+  // LeagueGolfer formula: best 5 of last 10
+  const scoresToUse = Math.min(grossScores.length, 5)
   const sorted = [...grossScores].sort((a, b) => a - b)
   const best = sorted.slice(0, scoresToUse)
   const avgBest = best.reduce((a, b) => a + b, 0) / best.length
@@ -668,4 +668,39 @@ export async function setHandicap(userId: string, handicap: number, reason: stri
 
   revalidatePath('/admin/handicaps')
   return { success: true }
+}
+
+// Read-only: fetch eligible scores + handicap history for breakdown display
+export async function getHandicapBreakdown(userId: string) {
+  const supabase = await createClient()
+
+  const { data: eligible } = await supabase
+    .rpc('get_eligible_scores_for_handicap', { p_user_id: userId, p_limit: 10 })
+
+  const scores = (eligible ?? []) as Array<{
+    score_id: string
+    round_id: string
+    gross_score: number
+    round_date: string
+    is_makeup: boolean
+    covers_missed_round_id: string | null
+  }>
+
+  const scoresToUse = Math.min(scores.length, 5)
+  const usedIds = new Set(
+    [...scores].sort((a, b) => a.gross_score - b.gross_score).slice(0, scoresToUse).map(s => s.score_id)
+  )
+
+  const { data: history } = await supabase
+    .from('handicap_history')
+    .select('handicap_value, created_at, calculation_method')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(30)
+
+  return {
+    scores: scores.map(s => ({ ...s, used_for_handicap: usedIds.has(s.score_id) })),
+    scoresToUse,
+    history: (history ?? []) as Array<{ handicap_value: number; created_at: string; calculation_method: string }>,
+  }
 }

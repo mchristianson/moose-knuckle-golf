@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/Button'
 import { linkGoogleAccount, unlinkGoogleAccount } from '@/lib/actions/auth'
 import { updateAvatar, removeAvatar } from '@/lib/actions/profile'
+import { HandicapBreakdown } from '@/components/handicaps/HandicapBreakdown'
+import { HandicapHistoryGraph } from '@/components/handicaps/HandicapHistoryGraph'
 
 function getInitials(name?: string | null): string {
   if (!name) return '?'
@@ -97,6 +99,9 @@ export function ProfileClient({ isImpersonating }: Props) {
   const [pastRounds, setPastRounds] = useState<PastRound[]>([])
   const [seasonStats, setSeasonStats] = useState<SeasonStats | null>(null)
   const [activeTab, setActiveTab] = useState<'history' | 'settings'>('history')
+  const [eligibleScores, setEligibleScores] = useState<any[]>([])
+  const [scoresToUse, setScoresToUse] = useState(0)
+  const [handicapHistory, setHandicapHistory] = useState<any[]>([])
 
   useEffect(() => {
     const loadData = async () => {
@@ -147,6 +152,27 @@ export function ProfileClient({ isImpersonating }: Props) {
       if (team) {
         setTeamInfo({ teamName: team.team_name, teamNumber: team.team_number })
       }
+
+      // Handicap breakdown + history (for graph and score breakdown)
+      const [{ data: eligibleRaw }, { data: hcpHistory }] = await Promise.all([
+        supabase.rpc('get_eligible_scores_for_handicap', { p_user_id: user.id, p_limit: 10 }),
+        supabase
+          .from('handicap_history')
+          .select('handicap_value, created_at, calculation_method')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(30),
+      ])
+
+      const eligible = (eligibleRaw ?? []) as any[]
+      const count = eligible.length
+      const toUse = Math.min(count, 5)
+      const usedIds = new Set(
+        [...eligible].sort((a, b) => a.gross_score - b.gross_score).slice(0, toUse).map((s: any) => s.score_id)
+      )
+      setEligibleScores(eligible.map((s: any) => ({ ...s, used_for_handicap: usedIds.has(s.score_id) })))
+      setScoresToUse(toUse)
+      setHandicapHistory(hcpHistory ?? [])
 
       // Fetch round_points for finish positions if we have a team
       const teamId = (teamMemberData as any)?.team_id
@@ -400,6 +426,12 @@ export function ProfileClient({ isImpersonating }: Props) {
             )}
           </div>
         )}
+
+        {handicapHistory.length >= 2 && (
+          <div className="mt-4 pt-3 border-t border-zinc-700">
+            <HandicapHistoryGraph history={handicapHistory} />
+          </div>
+        )}
       </div>
 
       {/* ── Season stats ── */}
@@ -443,6 +475,23 @@ export function ProfileClient({ isImpersonating }: Props) {
       {/* ── History tab ── */}
       {activeTab === 'history' && (
         <div className="mx-4 space-y-2 pb-4">
+          {/* Handicap breakdown */}
+          {eligibleScores.length > 0 && (
+            <div className="bg-zinc-800 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-zinc-700">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Handicap Calculation</p>
+              </div>
+              <div className="px-2 py-2">
+                <HandicapBreakdown
+                  scores={eligibleScores}
+                  scoresToUse={scoresToUse}
+                  currentHandicap={handicap}
+                  dark
+                />
+              </div>
+            </div>
+          )}
+
           {pastRounds.length === 0 ? (
             <div className="bg-zinc-800 rounded-xl px-4 py-8 text-center text-zinc-500">
               No completed rounds yet.

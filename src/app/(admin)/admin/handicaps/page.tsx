@@ -1,10 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
-import { SetHandicapForm } from '@/components/handicaps/set-handicap-form'
+import { HandicapPlayerList } from '@/components/handicaps/HandicapPlayerList'
 
 export default async function HandicapsPage() {
   const supabase = await createClient()
 
-  // All active players with their handicaps and recent scores
   const { data: players } = await supabase
     .from('users')
     .select(`
@@ -15,7 +14,6 @@ export default async function HandicapsPage() {
     .eq('is_active', true)
     .order('full_name')
 
-  // Recent handicap history (last 20 changes)
   const { data: history } = await supabase
     .from('handicap_history')
     .select(`
@@ -34,49 +32,12 @@ export default async function HandicapsPage() {
     <div>
       <h1 className="text-3xl font-bold mb-6">Handicaps</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Player handicap list */}
+      <div className="space-y-8">
+        {/* Player handicap list — expandable */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Current Handicaps</h2>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Player</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Handicap</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Rounds</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Set</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {(players ?? []).map((p: any) => {
-                  const h = Array.isArray(p.handicaps) ? p.handicaps[0] : p.handicaps
-                  return (
-                    <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium">
-                        {p.full_name}
-                        {h?.is_manual_override && (
-                          <span className="ml-2 text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Manual</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center font-bold">
-                        {h ? h.current_handicap : <span className="text-gray-400">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-center text-gray-500">
-                        {h?.rounds_played ?? 0}
-                      </td>
-                      <td className="px-4 py-3">
-                        <SetHandicapForm
-                          userId={p.id}
-                          currentHandicap={h?.current_handicap ?? 0}
-                        />
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <p className="text-sm text-gray-500 mb-3">Click a player row to see their score breakdown and handicap calculation.</p>
+          <HandicapPlayerList players={(players ?? []) as any} />
         </div>
 
         {/* History */}

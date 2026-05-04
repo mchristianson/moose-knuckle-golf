@@ -20,13 +20,6 @@ export default async function PublicLayout({
     isAdmin = userData?.is_admin ?? false
   }
 
-  const navItems = [
-    { href: '/leaderboard', label: 'Leaderboard' },
-    { href: '/manual', label: 'Manual' },
-    ...(user ? [{ href: '/dashboard', label: 'Dashboard' }] : []),
-    ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
-  ]
-
   // Find the first active round (in_progress or scoring) for the leaderboard nav
   let currentRoundId: string | undefined
   let avatarUrl: string | undefined
@@ -52,7 +45,7 @@ export default async function PublicLayout({
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950">
-      <SiteHeader navItems={navItems} isLoggedIn={!!user} avatarUrl={avatarUrl} />
+      <SiteHeader isLoggedIn={!!user} isAdmin={isAdmin} avatarUrl={avatarUrl} currentRoundId={currentRoundId} navItems={[]} />
       <main className="flex-1 container mx-auto px-1 pb-6">
         {children}
       </main>
