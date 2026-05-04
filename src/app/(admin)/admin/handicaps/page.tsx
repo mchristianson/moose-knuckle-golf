@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { HandicapPlayerList } from '@/components/handicaps/HandicapPlayerList'
+import { RecalculateAllButton } from '@/components/handicaps/RecalculateAllButton'
 
 export default async function HandicapsPage() {
   const supabase = await createClient()
@@ -35,7 +36,10 @@ export default async function HandicapsPage() {
       <div className="space-y-8">
         {/* Player handicap list — expandable */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Current Handicaps</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Current Handicaps</h2>
+            <RecalculateAllButton />
+          </div>
           <p className="text-sm text-gray-500 mb-3">Click a player row to see their score breakdown and handicap calculation.</p>
           <HandicapPlayerList players={(players ?? []) as any} />
         </div>

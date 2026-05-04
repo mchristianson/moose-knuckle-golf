@@ -588,7 +588,7 @@ async function recalculateHandicap(supabase: any, userId: string, adminUserId: s
   const best = sorted.slice(0, scoresToUse)
   const avgBest = best.reduce((a, b) => a + b, 0) / best.length
   // Simple handicap: average of best scores minus course par (36 for 9 holes)
-  const newHandicap = Math.round(Math.max(0, avgBest - 36) * 10) / 10
+  const newHandicap = Math.floor(Math.max(0, avgBest - 36))
 
   const { data: existing } = await supabase
     .from('handicaps')
@@ -668,6 +668,25 @@ export async function setHandicap(userId: string, handicap: number, reason: stri
 
   revalidatePath('/admin/handicaps')
   return { success: true }
+}
+
+// Admin: recalculate handicaps for every active player
+export async function recalculateAllHandicaps() {
+  const { supabase, user } = await getAdminUser()
+
+  const { data: players } = await supabase
+    .from('users')
+    .select('id')
+    .eq('is_active', true)
+
+  if (!players) return { success: false, error: 'No players found' }
+
+  for (const { id } of players) {
+    await recalculateHandicap(supabase, id, user.id)
+  }
+
+  revalidatePath('/admin/handicaps')
+  return { success: true, count: players.length }
 }
 
 // Read-only: fetch eligible scores + handicap history for breakdown display
