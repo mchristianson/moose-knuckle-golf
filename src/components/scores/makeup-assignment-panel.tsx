@@ -92,7 +92,7 @@ export function MakeupAssignmentPanel({ makeupRoundId, scores, allRounds }: Prop
                         value={score.coversMissedRoundId ?? ''}
                         onChange={e => handleChange(score.scoreId, e.target.value)}
                         disabled={isSaving}
-                        className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 text-sm"
+                        className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 text-sm bg-white"
                       >
                         <option value="">Counts for this round only</option>
                         {allRounds.map(r => (

@@ -140,7 +140,7 @@ export function TeamCard({ team, allUsers }: TeamCardProps) {
                 e.target.value = ''
               }
             }}
-            className="w-full px-md py-2 border border-neutral-200 rounded-lg text-small"
+            className="w-full px-md py-2 border border-neutral-200 rounded-lg text-small bg-white"
           >
             <option value="">Select a golfer...</option>
             {availableUsers.map((user: any) => (

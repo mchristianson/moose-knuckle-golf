@@ -130,33 +130,71 @@ export async function declareAvailability(roundId: string, status: 'in' | 'out')
     return { error: error.message }
   }
 
-  // If declaring "in", automatically set as team's golfer
-  // If declaring "out", clear team's declaration
+  // Auto-manage team declaration based on availability
   if (status === 'in') {
-    const { error: declError } = await supabase
-      .from('round_team_declarations')
-      .upsert(
-        {
-          round_id: roundId,
-          team_id: availability.team_id,
-          declared_golfer_id: userId,
-          declared_by: realUserId,
-          declared_at: new Date().toISOString(),
-        },
-        { onConflict: 'round_id,team_id' }
-      )
-
-    if (declError) {
-      return { error: `Availability updated but failed to set team golfer: ${declError.message}` }
-    }
-  } else if (status === 'out') {
-    // Clear the team's declaration if this user was the declared golfer
-    await supabase
-      .from('round_team_declarations')
-      .delete()
+    // Check if any other team members are marked "in"
+    const { data: otherInMembers } = await supabase
+      .from('round_availability')
+      .select('user_id')
       .eq('round_id', roundId)
       .eq('team_id', availability.team_id)
-      .eq('declared_golfer_id', userId)
+      .eq('status', 'in')
+      .neq('user_id', userId)
+
+    // Only auto-declare if this user is the only one marked "in"
+    if (!otherInMembers || otherInMembers.length === 0) {
+      const { error: declError } = await supabase
+        .from('round_team_declarations')
+        .upsert(
+          {
+            round_id: roundId,
+            team_id: availability.team_id,
+            declared_golfer_id: userId,
+            declared_by: realUserId,
+            declared_at: new Date().toISOString(),
+          },
+          { onConflict: 'round_id,team_id' }
+        )
+
+      if (declError) {
+        return { error: `Availability updated but failed to set team golfer: ${declError.message}` }
+      }
+    }
+  } else if (status === 'out') {
+    // Check how many team members are still marked "in"
+    const { data: inMembers } = await supabase
+      .from('round_availability')
+      .select('user_id')
+      .eq('round_id', roundId)
+      .eq('team_id', availability.team_id)
+      .eq('status', 'in')
+
+    // Clear the team's declaration if no one is marked "in", or if this user was the only one
+    if (!inMembers || inMembers.length === 0) {
+      await supabase
+        .from('round_team_declarations')
+        .delete()
+        .eq('round_id', roundId)
+        .eq('team_id', availability.team_id)
+    } else if (inMembers.length === 1) {
+      // If exactly one person is still "in", make them the declared golfer
+      const { error: declError } = await supabase
+        .from('round_team_declarations')
+        .upsert(
+          {
+            round_id: roundId,
+            team_id: availability.team_id,
+            declared_golfer_id: inMembers[0].user_id,
+            declared_by: realUserId,
+            declared_at: new Date().toISOString(),
+          },
+          { onConflict: 'round_id,team_id' }
+        )
+
+      if (declError) {
+        return { error: `Declaration update failed: ${declError.message}` }
+      }
+    }
   }
 
   revalidatePath(`/availability/${roundId}`)
@@ -205,24 +243,59 @@ export async function setMyAvailability(roundId: string, status: 'in' | 'out') {
 
   if (error) return { error: error.message }
 
+  // Auto-manage team declaration based on availability
   if (status === 'in') {
-    await supabase.from('round_team_declarations').upsert(
-      {
-        round_id: roundId,
-        team_id: availability.team_id,
-        declared_golfer_id: userId,
-        declared_by: realUserId,
-        declared_at: new Date().toISOString(),
-      },
-      { onConflict: 'round_id,team_id' }
-    )
-  } else {
-    await supabase
-      .from('round_team_declarations')
-      .delete()
+    // Check if any other team members are marked "in"
+    const { data: otherInMembers } = await supabase
+      .from('round_availability')
+      .select('user_id')
       .eq('round_id', roundId)
       .eq('team_id', availability.team_id)
-      .eq('declared_golfer_id', userId)
+      .eq('status', 'in')
+      .neq('user_id', userId)
+
+    // Only auto-declare if this user is the only one marked "in"
+    if (!otherInMembers || otherInMembers.length === 0) {
+      await supabase.from('round_team_declarations').upsert(
+        {
+          round_id: roundId,
+          team_id: availability.team_id,
+          declared_golfer_id: userId,
+          declared_by: realUserId,
+          declared_at: new Date().toISOString(),
+        },
+        { onConflict: 'round_id,team_id' }
+      )
+    }
+  } else {
+    // Check how many team members are still marked "in"
+    const { data: inMembers } = await supabase
+      .from('round_availability')
+      .select('user_id')
+      .eq('round_id', roundId)
+      .eq('team_id', availability.team_id)
+      .eq('status', 'in')
+
+    // Clear the team's declaration if no one is marked "in", or if this user was the only one
+    if (!inMembers || inMembers.length === 0) {
+      await supabase
+        .from('round_team_declarations')
+        .delete()
+        .eq('round_id', roundId)
+        .eq('team_id', availability.team_id)
+    } else if (inMembers.length === 1) {
+      // If exactly one person is still "in", make them the declared golfer
+      await supabase.from('round_team_declarations').upsert(
+        {
+          round_id: roundId,
+          team_id: availability.team_id,
+          declared_golfer_id: inMembers[0].user_id,
+          declared_by: realUserId,
+          declared_at: new Date().toISOString(),
+        },
+        { onConflict: 'round_id,team_id' }
+      )
+    }
   }
 
   revalidatePath('/dashboard')
@@ -245,6 +318,17 @@ export async function adminOverrideAvailability(availabilityId: string, status: 
     return { error: 'Unauthorized' }
   }
 
+  // Get the availability record to know which round and team
+  const { data: availability } = await supabase
+    .from('round_availability')
+    .select('round_id, team_id, user_id')
+    .eq('id', availabilityId)
+    .single()
+
+  if (!availability) {
+    return { error: 'Availability record not found' }
+  }
+
   const { error } = await supabase
     .from('round_availability')
     .update({
@@ -256,6 +340,61 @@ export async function adminOverrideAvailability(availabilityId: string, status: 
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Auto-manage team declaration based on updated availability
+  if (status === 'in') {
+    // Check if any other team members are marked "in"
+    const { data: otherInMembers } = await supabase
+      .from('round_availability')
+      .select('user_id')
+      .eq('round_id', availability.round_id)
+      .eq('team_id', availability.team_id)
+      .eq('status', 'in')
+      .neq('user_id', availability.user_id)
+
+    // Only auto-declare if this user is the only one marked "in"
+    if (!otherInMembers || otherInMembers.length === 0) {
+      await supabase.from('round_team_declarations').upsert(
+        {
+          round_id: availability.round_id,
+          team_id: availability.team_id,
+          declared_golfer_id: availability.user_id,
+          declared_by: user.id,
+          declared_at: new Date().toISOString(),
+        },
+        { onConflict: 'round_id,team_id' }
+      )
+    }
+  } else {
+    // Check how many team members are still marked "in"
+    const { data: inMembers } = await supabase
+      .from('round_availability')
+      .select('user_id')
+      .eq('round_id', availability.round_id)
+      .eq('team_id', availability.team_id)
+      .eq('status', 'in')
+
+    // Clear the team's declaration if no one is marked "in"
+    if (!inMembers || inMembers.length === 0) {
+      await supabase
+        .from('round_team_declarations')
+        .delete()
+        .eq('round_id', availability.round_id)
+        .eq('team_id', availability.team_id)
+    } else if (inMembers.length === 1) {
+      // If exactly one person is still "in", make them the declared golfer
+      await supabase.from('round_team_declarations').upsert(
+        {
+          round_id: availability.round_id,
+          team_id: availability.team_id,
+          declared_golfer_id: inMembers[0].user_id,
+          declared_by: user.id,
+          declared_at: new Date().toISOString(),
+        },
+        { onConflict: 'round_id,team_id' }
+      )
+    }
   }
 
   revalidatePath('/admin/rounds')
