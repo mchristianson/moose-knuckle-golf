@@ -63,7 +63,7 @@ export function MyScoreCard({
     : null
 
   useEffect(() => {
-    if (!userChangedRef.current || readOnly || !touched.some(Boolean)) return
+    if (!userChangedRef.current || readOnly) return
 
     const holesCopy = [...holes]
     const touchedCopy = [...touched]
@@ -114,6 +114,23 @@ export function MyScoreCard({
     setTouched((prev) => {
       const next = [...prev]
       next[index] = true
+      return next
+    })
+    setSaved(false)
+    setError(null)
+  }
+
+  const clearHole = (index: number) => {
+    if (readOnly) return
+    userChangedRef.current = true
+    setHoles((prev) => {
+      const next = [...prev]
+      next[index] = HOLE_PARS[index]
+      return next
+    })
+    setTouched((prev) => {
+      const next = [...prev]
+      next[index] = false
       return next
     })
     setSaved(false)
@@ -198,6 +215,7 @@ export function MyScoreCard({
               readOnly={readOnly}
               onAdjust={(delta) => adjust(i, delta)}
               onSetPar={() => setToPar(i)}
+              onClear={() => clearHole(i)}
             />
           ))}
         </div>
@@ -225,6 +243,7 @@ interface HoleCellProps {
   readOnly: boolean
   onAdjust: (delta: number) => void
   onSetPar: () => void
+  onClear: () => void
 }
 
 function relLabel(diff: number): { text: string; color: string } {
@@ -236,7 +255,7 @@ function relLabel(diff: number): { text: string; color: string } {
   return { text: `+${diff}`,               color: 'text-red-500' }
 }
 
-function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: HoleCellProps) {
+function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar, onClear }: HoleCellProps) {
   const diff = value - par
   const rel = relLabel(diff)
 
@@ -269,9 +288,21 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar }: H
         <span className="text-[11px] font-extrabold uppercase tracking-widest font-condensed" style={{ color: touched ? '#fff' : '#52525b' }}>
           H{hole}
         </span>
-        <span className="text-[11px] font-bold font-condensed" style={{ color: touched ? 'rgba(255,255,255,0.6)' : '#52525b' }}>
-          P{par}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] font-bold font-condensed" style={{ color: touched ? 'rgba(255,255,255,0.6)' : '#52525b' }}>
+            P{par}
+          </span>
+          {touched && !readOnly && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onClear() }}
+              aria-label={`Clear hole ${hole} score`}
+              className="w-4 h-4 rounded-full flex items-center justify-center active:opacity-60"
+              style={{ background: 'rgba(255,255,255,0.15)' }}
+            >
+              <span className="text-[9px] font-bold leading-none" style={{ color: 'rgba(255,255,255,0.7)' }}>✕</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Score display — tap to set par */}
