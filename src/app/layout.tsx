@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Barlow, Barlow_Condensed, Anton, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const barlow = Barlow({
@@ -12,6 +12,18 @@ const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
   weight: ["700", "800", "900"],
   variable: "--font-barlow-condensed",
+});
+
+const anton = Anton({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-anton",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-jb-mono",
 });
 
 export const metadata: Metadata = {
@@ -31,7 +43,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${barlow.variable} ${barlowCondensed.variable} ${barlow.className}`}
+      className={`${barlow.variable} ${barlowCondensed.variable} ${anton.variable} ${jetbrainsMono.variable} ${barlow.className}`}
       style={{ colorScheme: 'dark' }}
     >
       <body className="antialiased">

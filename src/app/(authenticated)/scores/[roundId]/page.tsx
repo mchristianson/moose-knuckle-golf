@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getViewerContext } from '@/lib/viewer'
 import Link from 'next/link'
 import { formatRoundDate } from '@/lib/utils/date'
-import { FoursomeScorecardSwitcher } from '@/components/scores/foursome-scorecard-switcher'
+import { HoleByHoleScorecard } from '@/components/scores/hole-by-hole-scorecard'
 import type { FoursomePlayer } from '@/components/scores/foursome-scorecard-switcher'
 
 export default async function MyScorePage({
@@ -139,7 +139,7 @@ export default async function MyScorePage({
       )}
 
       {userMembership && players.length > 0 && (
-        <FoursomeScorecardSwitcher
+        <HoleByHoleScorecard
           roundId={roundId}
           currentUserId={userId}
           players={players}
