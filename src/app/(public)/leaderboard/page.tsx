@@ -12,7 +12,7 @@ export default async function LeaderboardPage() {
 
   // ── Group 1: independent queries run in parallel ──────────────────────────
   // standings comes from cache; recentRoundsData and currentRound are fetched concurrently
-  const [standings, recentRoundsData, currentRound] = await Promise.all([
+  const [standings, recentRoundsData, currentRound, allTeamsData, allHandicapsRaw] = await Promise.all([
     getSeasonStandings(currentYear),
     supabase
       .from('rounds')
@@ -43,10 +43,30 @@ export default async function LeaderboardPage() {
       .limit(1)
       .maybeSingle()
       .then((r) => r.data ?? null),
+    getAllTeams(currentYear),
+    supabase.from('handicaps').select('user_id, current_handicap').then((r) => r.data ?? []),
   ])
 
   // ── Group 2: depends on group 1 results ──────────────────────────────────
   const recentRoundIds = recentRoundsData.map((r: any) => r.id)
+
+  const allHandicapsByUserId = new Map((allHandicapsRaw as any[]).map((h: any) => [h.user_id, h.current_handicap]))
+  const allHandicaps = (allTeamsData as any[])
+    .flatMap((t: any) =>
+      (t.team_members ?? []).map((m: any) => ({
+        user_id: m.user_id,
+        full_name: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
+        team_name: t.team_name,
+        team_number: t.team_number,
+        current_handicap: allHandicapsByUserId.get(m.user_id) ?? null,
+      }))
+    )
+    .sort((a: any, b: any) => {
+      if (a.current_handicap === null && b.current_handicap === null) return 0
+      if (a.current_handicap === null) return 1
+      if (b.current_handicap === null) return -1
+      return a.current_handicap - b.current_handicap
+    })
 
   let recentRounds = recentRoundsData
   let currentRoundFoursomes: any[] = []
@@ -91,7 +111,7 @@ export default async function LeaderboardPage() {
       recentRoundIds.length
         ? supabase
             .from('scores')
-            .select('round_id, team_id, gross_score, user:user_id ( full_name, display_name )')
+            .select('round_id, team_id, gross_score, user_id, user:user_id ( full_name, display_name )')
             .in('round_id', recentRoundIds)
             .eq('is_sub', false)
             .then((r) => r.data ?? [])
@@ -124,13 +144,21 @@ export default async function LeaderboardPage() {
       hole_scores: s.hole_scores ?? [],
     }))
 
-    // Attach golfer names to recent round points
+    // Attach golfer names and handicaps to recent round points
     if (recentRoundIds.length > 0) {
+      const userIds = [...new Set(recentScoresData.map((s: any) => s.user_id).filter(Boolean))]
+      const { data: handicapsData } = userIds.length
+        ? await supabase.from('handicaps').select('user_id, current_handicap').in('user_id', userIds)
+        : { data: [] }
+
+      const handicapsByUserId = new Map(handicapsData?.map((h: any) => [h.user_id, h.current_handicap]) ?? [])
+
       const scoresByTeamRound = new Map<string, any>()
       recentScoresData.forEach((s: any) => {
         scoresByTeamRound.set(`${s.round_id}-${s.team_id}`, {
           full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown',
           gross_score: s.gross_score,
+          handicap: handicapsByUserId.get(s.user_id) ?? null,
         })
       })
       recentRounds = recentRoundsData.map((round: any) => ({
@@ -156,20 +184,28 @@ export default async function LeaderboardPage() {
       recentRoundIds.length
         ? supabase
             .from('scores')
-            .select('round_id, team_id, gross_score, user:user_id ( full_name, display_name )')
+            .select('round_id, team_id, gross_score, user_id, user:user_id ( full_name, display_name )')
             .in('round_id', recentRoundIds)
             .eq('is_sub', false)
             .then((r) => r.data ?? [])
         : Promise.resolve([]),
     ])
 
-    // Attach golfer names to recent round points
+    // Attach golfer names and handicaps to recent round points
     if (recentRoundIds.length > 0) {
+      const userIds = [...new Set(recentScoresData.map((s: any) => s.user_id).filter(Boolean))]
+      const { data: handicapsData } = userIds.length
+        ? await supabase.from('handicaps').select('user_id, current_handicap').in('user_id', userIds)
+        : { data: [] }
+
+      const handicapsByUserId = new Map(handicapsData?.map((h: any) => [h.user_id, h.current_handicap]) ?? [])
+
       const scoresByTeamRound = new Map<string, any>()
       recentScoresData.forEach((s: any) => {
         scoresByTeamRound.set(`${s.round_id}-${s.team_id}`, {
           full_name: s.user?.display_name ?? s.user?.full_name ?? 'Unknown',
           gross_score: s.gross_score,
+          handicap: handicapsByUserId.get(s.user_id) ?? null,
         })
       })
       recentRounds = recentRoundsData.map((round: any) => ({
@@ -185,7 +221,7 @@ export default async function LeaderboardPage() {
 
     if (nextRound) {
       // ── Group 3: next round details — all independent, run in parallel ───
-      const [availabilityData, teamsData, foursomesData] = await Promise.all([
+      const [availabilityData, foursomesData] = await Promise.all([
         supabase
           .from('round_availability')
           .select(`
@@ -196,7 +232,6 @@ export default async function LeaderboardPage() {
           .eq('round_id', nextRound.id)
           .order('team_id')
           .then((r) => r.data ?? []),
-        getAllTeams(currentYear),
         supabase
           .from('foursomes')
           .select(`
@@ -225,8 +260,8 @@ export default async function LeaderboardPage() {
         team_number: a.team?.team_number ?? 0,
       }))
 
-      const nextRoundTeamMembers = teamsData.flatMap((t) =>
-        (t.team_members ?? []).map((m) => ({
+      const nextRoundTeamMembers = (allTeamsData as any[]).flatMap((t: any) =>
+        (t.team_members ?? []).map((m: any) => ({
           user_id: m.user_id,
           team_id: t.id,
           full_name: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
@@ -278,6 +313,7 @@ export default async function LeaderboardPage() {
             nextRoundFoursomes={nextRoundFoursomes}
             currentYear={currentYear}
             userHasDeclared={userHasDeclared || userInFoursome}
+            allHandicaps={allHandicaps}
           />
         </div>
       )
@@ -310,6 +346,7 @@ export default async function LeaderboardPage() {
         nextRoundFoursomes={[]}
         currentYear={currentYear}
         userHasDeclared={false}
+        allHandicaps={allHandicaps}
       />
     </div>
   )

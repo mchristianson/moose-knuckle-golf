@@ -78,8 +78,8 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
   }
 
 
-  if (holeScores.length !== 9) {
-    return { error: 'Expected exactly 9 hole score slots' }
+  if (holeScores.length < 9 || holeScores.length > 18) {
+    return { error: 'Expected 9 to 18 hole scores' }
   }
   if (holeScores.some((h) => h < 0)) {
     return { error: 'Hole scores cannot be negative' }
@@ -193,8 +193,8 @@ export async function submitScoreForFoursome(
 
   const { data: existing } = await existingQuery
 
-  if (holeScores.length !== 9) {
-    return { error: 'Expected exactly 9 hole score slots' }
+  if (holeScores.length < 9 || holeScores.length > 18) {
+    return { error: 'Expected 9 to 18 hole scores' }
   }
   if (holeScores.some((h) => h < 0)) {
     return { error: 'Hole scores cannot be negative' }
@@ -251,8 +251,8 @@ export async function saveScore(
 ) {
   const { supabase, user } = await getAdminUser()
 
-  if (holeScores.length !== 9) {
-    return { error: 'Exactly 9 hole scores are required' }
+  if (holeScores.length < 9 || holeScores.length > 18) {
+    return { error: 'Expected 9 to 18 hole scores' }
   }
 
   if (!userId && !subId) {
@@ -414,6 +414,23 @@ async function calculateRoundPoints(supabase: any, roundId: string) {
 // Calculate and save round points for all teams, then mark round completed
 export async function finalizeRound(roundId: string) {
   const { supabase, user } = await getAdminUser()
+
+  // Validate: all scores must have at least first 9 holes filled (non-zero)
+  const { data: allScores } = await supabase
+    .from('scores')
+    .select('user_id, sub_id, team_id, hole_scores')
+    .eq('round_id', roundId)
+
+  if (allScores) {
+    for (const score of allScores) {
+      const firstNine = score.hole_scores.slice(0, 9)
+      const allFilled = firstNine.every((h: number) => h > 0)
+      if (!allFilled) {
+        const playerName = score.user_id ? 'A player' : 'A sub'
+        return { error: `${playerName} has not completed all 9 holes` }
+      }
+    }
+  }
 
   const { error, points: pointsRecords } = await calculateRoundPoints(supabase, roundId)
   if (error || !pointsRecords) return { error: error || 'Failed to calculate points' }

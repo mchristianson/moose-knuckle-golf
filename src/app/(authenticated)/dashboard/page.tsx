@@ -34,6 +34,7 @@ export default async function DashboardPage({
     { data: upcomingRounds },
     { data: activeRounds },
     allTeams,
+    { data: handicapRow },
   ] = await Promise.all([
     supabase
       .from('rounds')
@@ -46,6 +47,11 @@ export default async function DashboardPage({
       .in('status', ['in_progress', 'scoring'])
       .order('round_date', { ascending: false }),
     getAllTeams(currentYear),
+    supabase
+      .from('handicaps')
+      .select('current_handicap')
+      .eq('user_id', userId)
+      .maybeSingle(),
   ]);
 
   const activeRoundIds = (activeRounds ?? []).map((r: { id: number | string }) => String(r.id))
@@ -191,6 +197,12 @@ export default async function DashboardPage({
               </span>
             )}
             <span className="text-zinc-400 text-sm">Season 2026</span>
+            {handicapRow && (
+              <span className="text-zinc-400 text-sm">•</span>
+            )}
+            {handicapRow && (
+              <span className="text-white text-sm font-medium">Handicap: {handicapRow.current_handicap}</span>
+            )}
           </div>
         </div>
         <Link href="/profile" className="text-zinc-400 hover:text-white p-1 transition-colors">

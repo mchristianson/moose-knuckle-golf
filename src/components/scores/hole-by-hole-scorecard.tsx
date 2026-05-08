@@ -8,15 +8,26 @@ import type { FoursomePlayer } from './foursome-scorecard-switcher'
 // ─── Course data ──────────────────────────────────────────────────────────────
 
 const HOLES = [
-  { n: 1, par: 4, hcp: 7 },
-  { n: 2, par: 4, hcp: 5 },
-  { n: 3, par: 4, hcp: 1 },
-  { n: 4, par: 5, hcp: 3 },
-  { n: 5, par: 3, hcp: 9 },
-  { n: 6, par: 4, hcp: 4 },
-  { n: 7, par: 3, hcp: 2 },
-  { n: 8, par: 4, hcp: 8 },
-  { n: 9, par: 5, hcp: 6 },
+  // Front nine
+  { n: 1,  par: 4, hcp: 7  },
+  { n: 2,  par: 4, hcp: 5  },
+  { n: 3,  par: 4, hcp: 1  },
+  { n: 4,  par: 5, hcp: 3  },
+  { n: 5,  par: 3, hcp: 9  },
+  { n: 6,  par: 4, hcp: 4  },
+  { n: 7,  par: 3, hcp: 2  },
+  { n: 8,  par: 4, hcp: 8  },
+  { n: 9,  par: 5, hcp: 6  },
+  // Back nine
+  { n: 10, par: 4, hcp: 8  },
+  { n: 11, par: 5, hcp: 2  },
+  { n: 12, par: 4, hcp: 16 },
+  { n: 13, par: 3, hcp: 12 },
+  { n: 14, par: 4, hcp: 18 },
+  { n: 15, par: 4, hcp: 14 },
+  { n: 16, par: 5, hcp: 4  },
+  { n: 17, par: 3, hcp: 10 },
+  { n: 18, par: 4, hcp: 6  },
 ]
 
 // Palette for player avatars — assigned by foursome order
@@ -172,7 +183,7 @@ export function HoleByHoleScorecard({
       onTouchEnd={(e) => {
         if (swipeStart.current == null) return
         const dx = e.changedTouches[0].clientX - swipeStart.current
-        if (Math.abs(dx) > 40) setHoleIdx((h) => dx < 0 ? Math.min(8, h + 1) : Math.max(0, h - 1))
+        if (Math.abs(dx) > 40) setHoleIdx((h) => dx < 0 ? Math.min(17, h + 1) : Math.max(0, h - 1))
         swipeStart.current = null
       }}
     >
@@ -315,7 +326,7 @@ function HoleHeader({ holeIdx, setHoleIdx }: { holeIdx: number; setHoleIdx: (i: 
       padding: '8px 12px 6px', background: '#000', flexShrink: 0,
     }}>
       <button
-        onClick={() => setHoleIdx((holeIdx - 1 + 9) % 9)}
+        onClick={() => setHoleIdx((holeIdx - 1 + 18) % 18)}
         style={navBtnStyle()}
         aria-label="Previous hole"
       >
@@ -339,7 +350,7 @@ function HoleHeader({ holeIdx, setHoleIdx }: { holeIdx: number; setHoleIdx: (i: 
       </div>
 
       <button
-        onClick={() => setHoleIdx((holeIdx + 1) % 9)}
+        onClick={() => setHoleIdx((holeIdx + 1) % 18)}
         style={navBtnStyle()}
         aria-label="Next hole"
       >

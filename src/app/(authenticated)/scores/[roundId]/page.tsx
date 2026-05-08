@@ -113,7 +113,7 @@ export default async function MyScorePage({
       displayName: m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? 'Unknown',
       avatarUrl: m.user?.avatar_url ?? null,
       handicap,
-      holeScores: existing?.hole_scores ?? Array(9).fill(0),
+      holeScores: existing?.hole_scores ?? Array(18).fill(0),
       existingScoreId: existing?.id ?? null,
       grossScore: existing?.gross_score ?? null,
       netScore: existing?.net_score ?? null,

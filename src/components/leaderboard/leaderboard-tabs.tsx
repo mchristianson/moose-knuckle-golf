@@ -28,7 +28,7 @@ interface RoundPointsRow {
   points_earned: number
   is_tied: boolean
   team: { team_name: string; team_number: number }
-  golfer_name?: string
+  golfer?: { full_name: string; gross_score: number; handicap: number | null }
 }
 
 interface RecentRound {
@@ -97,6 +97,14 @@ interface TeamMember {
   team_number: number
 }
 
+interface AllHandicapRow {
+  user_id: string
+  full_name: string
+  team_name: string
+  team_number: number
+  current_handicap: number | null
+}
+
 interface LeaderboardTabsProps {
   standings: StandingRow[]
   recentRounds: RecentRound[]
@@ -109,6 +117,7 @@ interface LeaderboardTabsProps {
   nextRoundFoursomes: NextRoundFoursome[]
   currentYear: number
   userHasDeclared: boolean
+  allHandicaps: AllHandicapRow[]
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -249,12 +258,13 @@ export function LeaderboardTabs({
   nextRoundFoursomes,
   currentYear,
   userHasDeclared,
+  allHandicaps,
 }: LeaderboardTabsProps) {
-  const [activeTab, setActiveTab] = useState<'season' | 'current' | 'next'>(
+  const [activeTab, setActiveTab] = useState<'season' | 'current' | 'next' | 'handicaps'>(
     currentRound ? 'current' : nextRound ? 'next' : 'season'
   )
 
-  const tabBtn = (tab: 'season' | 'current' | 'next', label: React.ReactNode) => (
+  const tabBtn = (tab: 'season' | 'current' | 'next' | 'handicaps', label: React.ReactNode) => (
     <button
       onClick={() => setActiveTab(tab)}
       className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200 ${
@@ -306,6 +316,7 @@ export function LeaderboardTabs({
               </span>
             )}
           {nextRound && tabBtn('next', 'Next')}
+          {tabBtn('handicaps', 'Handicaps')}
         </div>
       </div>
 
@@ -386,7 +397,7 @@ export function LeaderboardTabs({
                               </td>
                               <td className="px-4 py-2.5">
                                 <p className="text-white font-medium">{golfer?.full_name ?? '—'}</p>
-                                <p className="text-xs text-green-500">{team?.team_name ?? '—'}</p>
+                                <p className="text-green-500 text-xs">{team?.team_name ?? '—'}</p>
                               </td>
                               <td className="px-2 py-2.5 text-center text-zinc-300">{golfer?.gross_score ?? '—'}</td>
                               <td className="px-2 py-2.5 text-center text-zinc-300">{p.net_score}</td>
@@ -560,6 +571,45 @@ export function LeaderboardTabs({
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Handicaps tab ── */}
+      {activeTab === 'handicaps' && (
+        <div className="mx-4">
+          <div className="bg-zinc-800 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-zinc-700">
+              <h2 className="text-white font-semibold">Golfer Handicaps</h2>
+              <p className="text-zinc-500 text-xs mt-0.5">{currentYear} Season</p>
+            </div>
+            {allHandicaps.length === 0 ? (
+              <div className="px-4 py-8 text-center text-zinc-500">No handicap data available.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-700">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide w-10">Rank</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Golfer</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Hdcp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-700/50">
+                  {allHandicaps.map((row, idx) => (
+                    <tr key={row.user_id} className="hover:bg-zinc-700/30">
+                      <td className="px-4 py-3 text-center text-zinc-400 font-semibold">{idx + 1}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-white font-medium">{row.full_name}</p>
+                        <p className="text-green-500 text-xs">Team {row.team_number} · {row.team_name}</p>
+                      </td>
+                      <td className="px-4 py-3 text-center font-bold text-green-400 text-lg">
+                        {row.current_handicap ?? '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 
