@@ -93,10 +93,10 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
     .maybeSingle()
 
   const handicap = handicapRow?.current_handicap ?? 0
-  // Only sum filled holes (> 0); net score is null until all 9 are entered
-  const filledScores = holeScores.filter((h) => h > 0)
-  const grossScore = filledScores.reduce((a, b) => a + b, 0)
-  const allFilled = filledScores.length === 9
+  // Only use front 9; back 9 is tracking only and never counts toward calculations
+  const frontNine = holeScores.slice(0, 9)
+  const grossScore = frontNine.reduce((a, b) => a + b, 0)
+  const allFilled = frontNine.every((h) => h > 0)
   const netScore = allFilled ? Math.round((grossScore - handicap) * 10) / 10 : null
 
   const { error } = await supabase
@@ -211,9 +211,9 @@ export async function submitScoreForFoursome(
     handicap = handicapRow?.current_handicap ?? 0
   }
 
-  const filledScores = holeScores.filter((h) => h > 0)
-  const grossScore = filledScores.reduce((a, b) => a + b, 0)
-  const allFilled = filledScores.length === 9
+  const frontNine = holeScores.slice(0, 9)
+  const grossScore = frontNine.reduce((a, b) => a + b, 0)
+  const allFilled = frontNine.every((h) => h > 0)
   const netScore = allFilled ? Math.round((grossScore - handicap) * 10) / 10 : null
 
   const scoreData = {
@@ -270,9 +270,9 @@ export async function saveScore(
     handicap = handicapRow?.current_handicap ?? 0
   }
 
-  const filledScores = holeScores.filter((h) => h > 0)
-  const grossScore = filledScores.reduce((a, b) => a + b, 0)
-  const allFilled = filledScores.length === 9
+  const frontNine = holeScores.slice(0, 9)
+  const grossScore = frontNine.reduce((a, b) => a + b, 0)
+  const allFilled = frontNine.every((h) => h > 0)
   const netScore = allFilled ? Math.round((grossScore - handicap) * 10) / 10 : null
 
   const scoreData = {
