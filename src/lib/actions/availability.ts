@@ -72,6 +72,7 @@ export async function setDeclaredGolfer(roundId: string, teamId: string, golferI
     .eq('round_id', roundId)
     .eq('team_id', teamId)
 
+  const updatedUserIds = new Set<string>()
   if (teamAvailability) {
     for (const avail of teamAvailability) {
       await supabase
@@ -82,11 +83,25 @@ export async function setDeclaredGolfer(roundId: string, teamId: string, golferI
           declared_by: realUserId,
         })
         .eq('id', avail.id)
+      updatedUserIds.add(avail.user_id)
     }
+  }
+
+  // If the declared golfer has no availability record yet, create one marked 'in'
+  if (!updatedUserIds.has(golferId)) {
+    await supabase.from('round_availability').insert({
+      round_id: roundId,
+      team_id: teamId,
+      user_id: golferId,
+      status: 'in',
+      declared_at: new Date().toISOString(),
+      declared_by: realUserId,
+    })
   }
 
   revalidatePath(`/rounds/${roundId}`)
   revalidatePath('/dashboard')
+  revalidatePath('/leaderboard')
   revalidatePath(`/admin/rounds/${roundId}`)
   return { success: true }
 }

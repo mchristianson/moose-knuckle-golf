@@ -8,12 +8,25 @@ interface RoundSubInfo {
   roundSubId: string
 }
 
+interface TeamMemberInfo {
+  userId: string
+  fullName: string
+}
+
+interface TeamInfo {
+  teamId: string
+  teamNumber: number
+  teamName: string
+  members: TeamMemberInfo[]
+}
+
 interface AvailabilitySummaryProps {
   availability: any[]
   roundId?: string
   declarations?: Record<string, string> // teamId -> declared golfer userId
   isAdmin?: boolean
   roundSubs?: Record<string, RoundSubInfo> // teamId -> sub info
+  allTeams?: TeamInfo[] // all teams with members, used to show members without availability records
 }
 
 export function AvailabilitySummary({
@@ -22,22 +35,43 @@ export function AvailabilitySummary({
   declarations,
   isAdmin = false,
   roundSubs = {},
+  allTeams,
 }: AvailabilitySummaryProps) {
-  // Group by team_id (the FK on the availability row — team.id is not selected in the join)
-  const teamData = availability.reduce((acc: any, avail: any) => {
-    const teamId = avail.team_id
-    if (!acc[teamId]) {
-      acc[teamId] = {
-        teamId,
-        team: avail.team,
-        members: [],
-      }
-    }
-    acc[teamId].members.push(avail)
-    return acc
-  }, {})
+  // Build a lookup of availability records by user_id
+  const availByUserId: Record<string, any> = {}
+  for (const avail of availability) {
+    availByUserId[avail.user_id] = avail
+  }
 
-  const teams = Object.values(teamData).sort((a: any, b: any) => a.team.team_number - b.team.team_number)
+  // Build team list — prefer allTeams (authoritative) over availability-derived grouping
+  let teams: Array<{ teamId: string; team: { team_number: number; team_name: string }; members: any[] }>
+
+  if (allTeams && allTeams.length > 0) {
+    teams = allTeams.map((t) => ({
+      teamId: t.teamId,
+      team: { team_number: t.teamNumber, team_name: t.teamName },
+      members: t.members.map((m) => {
+        const avail = availByUserId[m.userId]
+        return {
+          id: avail?.id ?? null,
+          user_id: m.userId,
+          status: avail?.status ?? 'no-response',
+          user: { full_name: m.fullName, display_name: null },
+        }
+      }),
+    }))
+  } else {
+    // Fall back to grouping from availability records
+    const teamData = availability.reduce((acc: any, avail: any) => {
+      const teamId = avail.team_id
+      if (!acc[teamId]) {
+        acc[teamId] = { teamId, team: avail.team, members: [] }
+      }
+      acc[teamId].members.push(avail)
+      return acc
+    }, {})
+    teams = Object.values(teamData).sort((a: any, b: any) => a.team.team_number - b.team.team_number)
+  }
 
   return (
     <div>
@@ -48,18 +82,26 @@ export function AvailabilitySummary({
           const { teamId, team, members } = teamData
           const inCount = members.filter((m: any) => m.status === 'in').length
           const outCount = members.filter((m: any) => m.status === 'out').length
+          const totalWithResponse = members.filter((m: any) => m.status !== 'no-response').length
           const assignedSub = roundSubs[teamId] ?? null
 
           let teamStatus = 'undeclared'
           if (assignedSub) teamStatus = 'sub'
           else if (inCount > 0) teamStatus = 'in'
-          else if (outCount === members.length) teamStatus = 'out'
+          else if (totalWithResponse > 0 && outCount === totalWithResponse) teamStatus = 'out'
 
           const currentDeclaredGolferId = declarations?.[teamId] ?? null
-          const memberOptions = members.map((m: any) => ({
-            userId: m.user_id,
-            fullName: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
-          }))
+
+          // memberOptions for the declared golfer selector — all team members (from allTeams if available)
+          const memberOptions = allTeams
+            ? (allTeams.find((t) => t.teamId === teamId)?.members ?? []).map((m) => ({
+                userId: m.userId,
+                fullName: m.fullName,
+              }))
+            : members.map((m: any) => ({
+                userId: m.user_id,
+                fullName: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
+              }))
 
           return (
             <div key={teamId} className="bg-white p-4 rounded-lg shadow border">
@@ -86,9 +128,9 @@ export function AvailabilitySummary({
 
               <div className="space-y-2 mb-3">
                 {members.map((member: any) => (
-                  <div key={member.id} className="flex justify-between items-center text-sm">
+                  <div key={member.user_id} className="flex justify-between items-center text-sm">
                     <span className="text-gray-700">{member.user.full_name}</span>
-                    {isAdmin ? (
+                    {isAdmin && member.id ? (
                       <AdminAvailabilityOverride
                         availabilityId={member.id}
                         currentStatus={member.status}
@@ -103,7 +145,7 @@ export function AvailabilitySummary({
                       }`}>
                         {member.status === 'in' ? 'In' :
                          member.status === 'out' ? 'Out' :
-                         'Undeclared'}
+                         'No response'}
                       </span>
                     )}
                   </div>

@@ -93,13 +93,32 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
       ])
     );
 
-  // Get total number of teams to check if all have declared
+  // Get all teams with members to power the availability summary
   const { data: allTeams } = await supabase
     .from('teams')
-    .select('id')
+    .select(`
+      id,
+      team_number,
+      team_name,
+      team_members (
+        user_id,
+        user:user_id ( full_name, display_name )
+      )
+    `)
     .order('team_number');
 
   const totalTeams = allTeams?.length || 0;
+
+  const allTeamData = (allTeams ?? []).map((t: any) => ({
+    teamId: t.id,
+    teamNumber: t.team_number,
+    teamName: t.team_name,
+    members: (t.team_members ?? []).map((m: any) => ({
+      userId: m.user_id,
+      fullName: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
+    })),
+  }))
+
   const subTeamIds = new Set(Object.keys(roundSubs));
   const subTeamCount = subTeamIds.size;
   // Only count declarations for teams that don't also have a sub (avoid double-counting)
@@ -187,6 +206,7 @@ export default async function RoundDetailPage({ params }: { params: Promise<{ ro
           declarations={declarations}
           isAdmin={true}
           roundSubs={roundSubs}
+          allTeams={allTeamData}
         />
       </div>
     </div>
