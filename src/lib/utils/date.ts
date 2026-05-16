@@ -10,6 +10,21 @@ export function formatTeeTime(timeStr: string): string {
 }
 
 /**
+ * Get today's date as YYYY-MM-DD in America/Chicago timezone.
+ * Used for filtering rounds to avoid timezone offset issues.
+ */
+export function getTodayDateString(): string {
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  return formatter.format(now)
+}
+
+/**
  * Format a date string (YYYY-MM-DD) to a localized date format.
  * Handles date-only strings without timezone conversion issues.
  */

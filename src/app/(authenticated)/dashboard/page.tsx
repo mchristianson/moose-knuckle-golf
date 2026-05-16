@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getViewerContext } from '@/lib/viewer'
 import Link from "next/link";
-import { formatRoundDate } from '@/lib/utils/date'
+import { formatRoundDate, getTodayDateString } from '@/lib/utils/date'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { Icon } from '@/components/Icon'
@@ -26,7 +26,7 @@ export default async function DashboardPage({
   if (!ctx) redirect('/login');
   const { effectiveUserId: userId, effectiveProfile: profile, db: supabase } = ctx;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateString();
   const currentYear = new Date().getFullYear();
 
   // Group 2: independent queries run in parallel
