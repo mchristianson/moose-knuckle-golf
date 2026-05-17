@@ -70,7 +70,7 @@ export function AvailabilitySummary({
       acc[teamId].members.push(avail)
       return acc
     }, {})
-    teams = Object.values(teamData).sort((a: any, b: any) => a.team.team_number - b.team.team_number)
+    teams = (Object.values(teamData) as Array<{ teamId: string; team: { team_number: number; team_name: string }; members: any[] }>).sort((a: any, b: any) => a.team.team_number - b.team.team_number)
   }
 
   return (
