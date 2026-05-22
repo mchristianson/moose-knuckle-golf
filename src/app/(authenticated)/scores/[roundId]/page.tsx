@@ -7,14 +7,18 @@ import type { FoursomePlayer } from '@/components/scores/foursome-scorecard-swit
 
 export default async function MyScorePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ roundId: string }>
+  searchParams: Promise<{ hole?: string }>
 }) {
   const ctx = await getViewerContext()
   if (!ctx) redirect('/login')
   const { effectiveUserId: userId, db: supabase } = ctx
 
   const { roundId } = await params
+  const { hole } = await searchParams
+  const initialHole = hole ? parseInt(hole, 10) : undefined
 
   // Fetch round and foursome IDs in parallel — both only need roundId from params
   const [{ data: round }, { data: foursomeIds }] = await Promise.all([
@@ -146,6 +150,7 @@ export default async function MyScorePage({
           roundNumber={round.round_number}
           roundDate={roundDate}
           scoringOpen={scoringOpen}
+          initialHole={initialHole}
         />
       )}
     </div>

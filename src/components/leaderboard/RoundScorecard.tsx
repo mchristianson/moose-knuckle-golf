@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { HOLE_PARS, STROKE_INDEX } from '@/lib/constants/course'
 import { formatRoundDate } from '@/lib/utils/date'
@@ -116,11 +116,13 @@ function HoleTileRow({
   start,
   end,
   strokes,
+  scoringRoundId,
 }: {
   holeScores: number[]
   start: number
   end: number
   strokes: number[]
+  scoringRoundId?: string
 }) {
   return (
     <div className="flex gap-[3px]">
@@ -131,23 +133,8 @@ function HoleTileRow({
         const tone = played ? tileTone(score, HOLE_PARS[i]) : UNPLAYED_TONE
         const gotStroke = strokes[i] > 0 && played
 
-        return (
-          <div
-            key={i}
-            className="flex-1 min-w-0 relative flex flex-col items-center justify-center"
-            style={{
-              height: 38,
-              borderRadius: 6,
-              background: tone.bg,
-              border: `1px solid ${tone.border}`,
-            }}
-          >
-            <span
-              className="leading-none"
-              style={{ fontSize: 8, color: '#52525b', fontWeight: 600, letterSpacing: '0.05em', marginBottom: 1 }}
-            >
-              {i + 1}
-            </span>
+        const tileContent = (
+          <>
             <span
               className="tabular-nums leading-none"
               style={{ fontSize: 14, fontWeight: 800, color: tone.fg, letterSpacing: '-0.02em' }}
@@ -160,6 +147,36 @@ function HoleTileRow({
                 style={{ top: 2, right: 3, width: 3, height: 3, borderRadius: 2, background: '#4ade80' }}
               />
             )}
+          </>
+        )
+
+        const tileStyle: React.CSSProperties = {
+          height: 38,
+          borderRadius: 6,
+          background: tone.bg,
+          border: `1px solid ${tone.border}`,
+        }
+
+        if (scoringRoundId) {
+          return (
+            <Link
+              key={i}
+              href={`/scores/${scoringRoundId}?hole=${i + 1}`}
+              className="flex-1 min-w-0 relative flex flex-col items-center justify-center"
+              style={tileStyle}
+            >
+              {tileContent}
+            </Link>
+          )
+        }
+
+        return (
+          <div
+            key={i}
+            className="flex-1 min-w-0 relative flex flex-col items-center justify-center"
+            style={tileStyle}
+          >
+            {tileContent}
           </div>
         )
       })}
@@ -213,6 +230,9 @@ export function RoundScorecard({ round, scores, showScoreButton = false }: Round
 
   const visStart = holeView === 'back' ? 9 : 0
   const visEnd   = holeView === 'front' ? 9 : 18
+
+  const isActive = round.status === 'in_progress' || round.status === 'scoring'
+  const scoringRoundId = isActive ? round.id : undefined
 
   const ranked = useMemo(() => {
     return scores
@@ -388,7 +408,7 @@ export function RoundScorecard({ round, scores, showScoreButton = false }: Round
                   <div className="space-y-1.5">
                     {holeView === 'front' && (
                       <>
-                        <HoleTileRow holeScores={s.hole_scores} start={0} end={9} strokes={s._strokes} />
+                        <HoleTileRow holeScores={s.hole_scores} start={0} end={9} strokes={s._strokes} scoringRoundId={scoringRoundId} />
                         <div className="flex justify-end">
                           <Subtotal label="OUT" tally={t} />
                         </div>
@@ -397,7 +417,7 @@ export function RoundScorecard({ round, scores, showScoreButton = false }: Round
 
                     {holeView === 'back' && (
                       <>
-                        <HoleTileRow holeScores={s.hole_scores} start={9} end={18} strokes={s._strokes} />
+                        <HoleTileRow holeScores={s.hole_scores} start={9} end={18} strokes={s._strokes} scoringRoundId={scoringRoundId} />
                         <div className="flex justify-end">
                           <Subtotal label="IN" tally={t} />
                         </div>
@@ -406,11 +426,11 @@ export function RoundScorecard({ round, scores, showScoreButton = false }: Round
 
                     {holeView === 'full' && (
                       <>
-                        <HoleTileRow holeScores={s.hole_scores} start={0} end={9} strokes={s._strokes} />
+                        <HoleTileRow holeScores={s.hole_scores} start={0} end={9} strokes={s._strokes} scoringRoundId={scoringRoundId} />
                         <div className="flex justify-end">
                           <Subtotal label="OUT" tally={frontTally} />
                         </div>
-                        <HoleTileRow holeScores={s.hole_scores} start={9} end={18} strokes={s._strokes} />
+                        <HoleTileRow holeScores={s.hole_scores} start={9} end={18} strokes={s._strokes} scoringRoundId={scoringRoundId} />
                         <div className="flex justify-end">
                           <Subtotal label="IN" tally={backTally} />
                         </div>

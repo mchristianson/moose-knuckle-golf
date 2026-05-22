@@ -68,6 +68,7 @@ interface HoleByHoleScorecardProps {
   roundNumber: number
   roundDate: string
   scoringOpen: boolean
+  initialHole?: number
 }
 
 export function HoleByHoleScorecard({
@@ -77,8 +78,13 @@ export function HoleByHoleScorecard({
   roundNumber,
   roundDate,
   scoringOpen,
+  initialHole,
 }: HoleByHoleScorecardProps) {
   const [holeIdx, setHoleIdx] = useState(() => {
+    if (initialHole != null) {
+      const idx = initialHole - 1
+      if (idx >= 0 && idx < 18) return idx
+    }
     const currentPlayer = players.find((p) => p.userId === currentUserId)
     if (!currentPlayer) return 0
     const firstEmpty = currentPlayer.holeScores.findIndex((v) => v <= 0)
@@ -460,6 +466,7 @@ function StackLayout({ holeIdx, players, scores, touched, saveState, scoringOpen
   commitPar: (key: string, hi: number) => void
 }) {
   const hole = HOLES[holeIdx]
+  const minHandicap = Math.min(...players.map((p) => p.handicap))
 
   return (
     <div style={{
@@ -471,7 +478,7 @@ function StackLayout({ holeIdx, players, scores, touched, saveState, scoringOpen
         const key = playerKey(p)
         const value = (scores[key] ?? [])[holeIdx] ?? null
         const isTouched = (touched[key] ?? [])[holeIdx]
-        const getsStroke = p.handicap >= hole.hcp
+        const getsStroke = (p.handicap - minHandicap) >= hole.hcp
         const sv = saveState[key]
 
         return (
