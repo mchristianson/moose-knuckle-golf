@@ -2,16 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { HOLE_PARS, STROKE_INDEX } from '@/lib/constants/course'
 import { formatRoundDate, formatTeeTime } from '@/lib/utils/date'
 import { Icon } from '@/components/Icon'
 import {
   TrophyIcon,
   ClipboardDocumentListIcon,
-  PencilSquareIcon,
   ChevronUpIcon,
   ChevronDownIcon,
 } from '@heroicons/react/24/outline'
+import { RoundScorecard } from '@/components/leaderboard/RoundScorecard'
 
 interface StandingRow {
   team_id: string
@@ -122,53 +121,10 @@ interface LeaderboardTabsProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function strokesPerHoleForHandicap(handicap: number): number[] {
-  return HOLE_PARS.map((_, i) => {
-    const si = STROKE_INDEX[i]
-    if (handicap >= 9) return si <= (handicap - 9) ? 2 : 1
-    return si <= handicap ? 1 : 0
-  })
-}
-
-function scoreToPar(holeScores: number[], handicap: number): number | null {
-  const played = holeScores.map((s, i) => ({ score: s, hole: i })).filter(h => h.score > 0)
-  if (played.length === 0) return null
-  const strokes = strokesPerHoleForHandicap(handicap)
-  let total = 0
-  for (const { score, hole } of played) total += (score - strokes[hole]) - HOLE_PARS[hole]
-  return total
-}
-
-function grossToPar(holeScores: number[]): number | null {
-  const played = holeScores.map((s, i) => ({ score: s, hole: i })).filter(h => h.score > 0)
-  if (played.length === 0) return null
-  let total = 0
-  for (const { score, hole } of played) total += score - HOLE_PARS[hole]
-  return total
-}
-
-function fmt(score: number | null, holes: number): string {
-  if (score === null || holes === 0) return '—'
-  if (score === 0) return 'E'
-  return score > 0 ? `+${score}` : `${score}`
-}
-
 function addMinutes(timeStr: string, offset: number): string {
   const [h, m] = timeStr.split(':').map(Number)
   const total = h * 60 + m + offset
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-}
-
-function netColor(score: number | null): string {
-  if (score === null) return 'text-zinc-500'
-  if (score < 0) return 'text-red-500'
-  if (score === 0) return 'text-zinc-400'
-  return 'text-zinc-200'
-}
-
-function grossColor(score: number | null): string {
-  if (score === null) return 'text-zinc-500'
-  return 'text-zinc-400'
 }
 
 // ── Foursomes ─────────────────────────────────────────────────────────────────
@@ -276,22 +232,6 @@ export function LeaderboardTabs({
       {label}
     </button>
   )
-
-  const scoredPlayers = currentRoundScores
-    .map(s => {
-      const holesPlayed = s.hole_scores.filter(h => h > 0).length
-      const toPar = scoreToPar(s.hole_scores, s.handicap_at_time ?? 0)
-      const gross = grossToPar(s.hole_scores)
-      return { ...s, holesPlayed, toPar, gross }
-    })
-    .sort((a, b) => {
-      if (a.holesPlayed === 0 && b.holesPlayed > 0) return 1
-      if (b.holesPlayed === 0 && a.holesPlayed > 0) return -1
-      const as = a.toPar ?? Infinity
-      const bs = b.toPar ?? Infinity
-      if (as !== bs) return as - bs
-      return b.holesPlayed - a.holesPlayed
-    })
 
   return (
     <div className="max-w-4xl mx-auto pb-8">
@@ -418,153 +358,21 @@ export function LeaderboardTabs({
 
       {/* ── Current round tab ── */}
       {activeTab === 'current' && (
-        <div className="space-y-3">
+        <div>
           {!currentRound ? (
             <div className="mx-4 bg-zinc-800 rounded-xl px-4 py-12 text-center text-zinc-500">
               No round is currently in progress.
             </div>
           ) : (
             <>
-              {/* Round header card */}
-              <div
-                className="mx-4 rounded-xl px-4 py-4 flex items-center justify-between"
-                style={{ background: 'linear-gradient(135deg, #1b4d2e 0%, #1e6b3a 100%)' }}
-              >
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                    Round {currentRound.round_number}
-                  </p>
-                  <p className="text-white font-bold text-lg mt-0.5">
-                    {formatRoundDate(currentRound.round_date)}
-                  </p>
-                  <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    Legend&apos;s Golf Club · Front 9
-                  </p>
-                </div>
-                {currentRound.status === 'scoring' && (
-                  <Link
-                    href={`/scores/${currentRound.id}`}
-                    className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shrink-0"
-                    style={{ background: '#16a34a' }}
-                  >
-                    <Icon icon={PencilSquareIcon} size="sm" />
-                    Enter Scores
-                  </Link>
-                )}
-              </div>
-
-              {/* Course + par row */}
-              <div className="mx-4 bg-zinc-800 rounded-xl px-4 py-3">
-                <p className="text-zinc-400 text-xs mb-2">Par 36 · Legend&apos;s Golf Club · Front 9</p>
-                <div className="flex gap-1.5">
-                  {HOLE_PARS.map((par, i) => (
-                    <div
-                      key={i}
-                      className="w-7 h-7 rounded bg-zinc-700 flex items-center justify-center text-xs font-semibold text-zinc-300"
-                    >
-                      {par}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {scoredPlayers.length === 0 ? (
-                <div className="mx-4 bg-zinc-800 rounded-xl px-4 py-10 text-center text-zinc-500">
-                  No scores entered yet.
-                </div>
-              ) : (
-                <div>
-                  {/* Column headers */}
-                  <div className="flex items-center px-4 pb-1.5">
-                    <div className="w-9 mr-3 shrink-0" />
-                    <div className="flex-1">
-                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Golfer</span>
-                    </div>
-                    <div className="w-12 text-center">
-                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Score</span>
-                    </div>
-                    <div className="w-12 text-center">
-                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Gross</span>
-                    </div>
-                    <div className="w-14 text-center">
-                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Net</span>
-                    </div>
-                    <div className="w-10 text-center">
-                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Thru</span>
-                    </div>
-                  </div>
-
-                  {/* Player row cards */}
-                  <div className="space-y-2 px-4">
-                    {scoredPlayers.map((s, idx) => {
-                      const netStr = fmt(s.toPar, s.holesPlayed)
-                      const grossStr = fmt(s.gross, s.holesPlayed)
-                      const thruStr = s.holesPlayed === 0 ? '—' : s.holesPlayed === 9 ? 'F' : `${s.holesPlayed}`
-                      const isLeader = idx === 0 && s.holesPlayed > 0
-
-                      return (
-                        <div
-                          key={s.user_id}
-                          className="flex items-center bg-zinc-800 rounded-xl px-3 py-3"
-                        >
-                          {/* Avatar */}
-                          <div className={`w-9 h-9 rounded-full shrink-0 mr-3 overflow-hidden flex items-center justify-center ${
-                            isLeader ? 'ring-2 ring-yellow-400' : ''
-                          } ${s.avatar_url ? '' : 'bg-green-700'}`}>
-                            {s.avatar_url ? (
-                              <img src={s.avatar_url} alt={s.full_name} className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-white text-xs font-bold">
-                                {s.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Name + team */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white font-semibold truncate">{s.full_name}</p>
-                            <p className="text-green-500 text-xs truncate">{s.team_name}</p>
-                          </div>
-
-                          {/* Score (raw stroke count) */}
-                          <div className="w-12 text-center text-sm font-medium tabular-nums text-zinc-300">
-                            {s.holesPlayed > 0 ? (s.gross_score ?? '—') : '—'}
-                          </div>
-
-                          {/* Gross (relative to par) */}
-                          <div className={`w-12 text-center text-sm font-medium tabular-nums ${grossColor(s.gross)}`}>
-                            {grossStr}
-                          </div>
-
-                          {/* Net — large + colored */}
-                          <div className={`w-14 text-center font-black text-2xl tabular-nums leading-none ${netColor(s.toPar)}`}>
-                            {netStr}
-                          </div>
-
-                          {/* Thru */}
-                          <div className={`w-10 text-center text-sm font-semibold tabular-nums ${
-                            s.holesPlayed === 9 ? 'text-green-400' :
-                            s.holesPlayed > 0 ? 'text-zinc-300' : 'text-zinc-600'
-                          }`}>
-                            {thruStr}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Legend */}
-                  <div className="flex gap-x-4 flex-wrap px-4 pt-3 text-xs text-zinc-500">
-                    <span><span className="font-semibold text-red-500">−#</span> Under par</span>
-                    <span><span className="font-semibold text-zinc-400">E</span> Even</span>
-                    <span><span className="font-semibold text-zinc-300">+#</span> Over par</span>
-                  </div>
-                </div>
-              )}
-
+              <RoundScorecard
+                round={currentRound}
+                scores={currentRoundScores}
+                showScoreButton
+              />
               {/* Foursomes */}
               {currentRoundFoursomes.length > 0 && (
-                <div className="px-4 pt-2">
+                <div className="px-4 pt-4">
                   <h3 className="text-white text-lg font-bold mb-3">Foursomes</h3>
                   <FoursomesList foursomes={currentRoundFoursomes} roundTeeTime={currentRound.tee_time} />
                 </div>

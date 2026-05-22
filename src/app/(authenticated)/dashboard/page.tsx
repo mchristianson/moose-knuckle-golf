@@ -35,6 +35,7 @@ export default async function DashboardPage({
     { data: activeRounds },
     allTeams,
     { data: handicapRow },
+    { data: pastRoundsData },
   ] = await Promise.all([
     supabase
       .from('rounds')
@@ -52,6 +53,13 @@ export default async function DashboardPage({
       .select('current_handicap')
       .eq('user_id', userId)
       .maybeSingle(),
+    supabase
+      .from('rounds')
+      .select('id, round_number, round_date, status, round_type')
+      .eq('status', 'completed')
+      .lt('round_date', today)
+      .order('round_date', { ascending: false })
+      .limit(10),
   ]);
 
   const activeRoundIds = (activeRounds ?? []).map((r: { id: number | string }) => String(r.id))
@@ -157,7 +165,7 @@ export default async function DashboardPage({
   const futureUpcomingRounds = (upcomingRounds ?? []).filter(
     (r: { id: number | string; status?: string }) => !activeScoringSectionRounds.some((ar: { id: number | string }) => String(ar.id) === String(r.id))
   )
-  const pastRounds = (upcomingRounds ?? []).filter((r: { status?: string }) => r.status === 'completed')
+  const pastRounds = pastRoundsData ?? []
 
   const upcomingWeather = futureUpcomingRounds[0]
     ? await getWeatherForRound(futureUpcomingRounds[0].round_date)

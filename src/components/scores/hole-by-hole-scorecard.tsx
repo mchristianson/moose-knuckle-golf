@@ -72,12 +72,18 @@ interface HoleByHoleScorecardProps {
 
 export function HoleByHoleScorecard({
   roundId,
+  currentUserId,
   players,
   roundNumber,
   roundDate,
   scoringOpen,
 }: HoleByHoleScorecardProps) {
-  const [holeIdx, setHoleIdx] = useState(0)
+  const [holeIdx, setHoleIdx] = useState(() => {
+    const currentPlayer = players.find((p) => p.userId === currentUserId)
+    if (!currentPlayer) return 0
+    const firstEmpty = currentPlayer.holeScores.findIndex((v) => v <= 0)
+    return firstEmpty === -1 ? 17 : firstEmpty
+  })
 
   // scores[key][holeIdx] — null means not yet entered
   const [scores, setScores] = useState<Record<string, (number | null)[]>>(() => {

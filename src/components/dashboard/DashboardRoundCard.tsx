@@ -249,6 +249,11 @@ export function DashboardRoundCard({
                 <Link href={`/scores/${round.id}`}>Enter Score</Link>
               </Button>
             )}
+            {round.status === 'completed' && (
+              <Button variant="ghost" size="small" asChild className="w-full">
+                <Link href={`/leaderboard/${round.id}`}>View Results</Link>
+              </Button>
+            )}
           </div>
 
           {/* Team Availability Grid */}

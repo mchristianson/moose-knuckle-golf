@@ -9,6 +9,7 @@ import { linkGoogleAccount, unlinkGoogleAccount } from '@/lib/actions/auth'
 import { updateAvatar, removeAvatar } from '@/lib/actions/profile'
 import { HandicapBreakdown } from '@/components/handicaps/HandicapBreakdown'
 import { HandicapHistoryGraph } from '@/components/handicaps/HandicapHistoryGraph'
+import { CalendarSubscribe } from '@/components/leaderboard/CalendarSubscribe'
 
 function getInitials(name?: string | null): string {
   if (!name) return '?'
@@ -79,9 +80,11 @@ function Sparkline({ netScores }: { netScores: number[] }) {
 
 interface Props {
   isImpersonating: boolean
+  webcalUrl: string
+  calendarUrl: string
 }
 
-export function ProfileClient({ isImpersonating }: Props) {
+export function ProfileClient({ isImpersonating, webcalUrl, calendarUrl }: Props) {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
@@ -596,6 +599,15 @@ export function ProfileClient({ isImpersonating }: Props) {
               You can&apos;t unlink your only sign-in method.
             </p>
           )}
+
+          {/* Calendar subscription */}
+          <div className="bg-zinc-800 rounded-2xl px-4 py-4">
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Round Calendar</p>
+            <p className="text-zinc-400 text-xs mb-4">
+              Subscribe to get all scheduled rounds in your calendar app automatically.
+            </p>
+            <CalendarSubscribe webcalUrl={webcalUrl} calendarUrl={calendarUrl} />
+          </div>
         </div>
       )}
     </div>

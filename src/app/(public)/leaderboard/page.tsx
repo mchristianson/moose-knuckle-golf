@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { LeaderboardTabs } from '@/components/leaderboard/leaderboard-tabs'
-import { CalendarSubscribe } from '@/components/leaderboard/CalendarSubscribe'
 import { getSeasonStandings } from '@/lib/data/leaderboard'
 import { getAllTeams } from '@/lib/data/teams'
 
@@ -292,62 +291,40 @@ export default async function LeaderboardPage() {
         ? nextRoundFoursomes.some((f) => f.members.some((m: any) => m.user_id === currentUserId))
         : false
 
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
-      const calendarUrl = `${siteUrl}/api/calendar`
-      const webcalUrl = calendarUrl.replace(/^https?:\/\//, 'webcal://')
-
       return (
-        <div>
-          <div className="flex justify-end px-2 pt-2 pb-1">
-            <CalendarSubscribe webcalUrl={webcalUrl} calendarUrl={calendarUrl} />
-          </div>
-          <LeaderboardTabs
-            standings={standings as any}
-            recentRounds={recentRounds as any}
-            currentRound={null}
-            currentRoundScores={[]}
-            currentRoundFoursomes={[]}
-            nextRound={nextRound}
-            nextRoundAvailability={nextRoundAvailability}
-            nextRoundTeamMembers={nextRoundTeamMembers}
-            nextRoundFoursomes={nextRoundFoursomes}
-            currentYear={currentYear}
-            userHasDeclared={userHasDeclared || userInFoursome}
-            allHandicaps={allHandicaps}
-          />
-        </div>
+        <LeaderboardTabs
+          standings={standings as any}
+          recentRounds={recentRounds as any}
+          currentRound={null}
+          currentRoundScores={[]}
+          currentRoundFoursomes={[]}
+          nextRound={nextRound}
+          nextRoundAvailability={nextRoundAvailability}
+          nextRoundTeamMembers={nextRoundTeamMembers}
+          nextRoundFoursomes={nextRoundFoursomes}
+          currentYear={currentYear}
+          userHasDeclared={userHasDeclared || userInFoursome}
+          allHandicaps={allHandicaps}
+        />
       )
     }
   }
 
   // ── Default render (current round or no next round) ──────────────────────
-  const currentUserId = user?.id ?? null
-  const userHasDeclared = false
-  const userInFoursome = false
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
-  const calendarUrl = `${siteUrl}/api/calendar`
-  const webcalUrl = calendarUrl.replace(/^https?:\/\//, 'webcal://')
-
   return (
-    <div>
-      <div className="flex justify-end px-2 pt-2 pb-1">
-        <CalendarSubscribe webcalUrl={webcalUrl} calendarUrl={calendarUrl} />
-      </div>
-      <LeaderboardTabs
-        standings={standings as any}
-        recentRounds={recentRounds as any}
-        currentRound={currentRound ?? null}
-        currentRoundScores={currentRoundScores}
-        currentRoundFoursomes={currentRoundFoursomes}
-        nextRound={nextRound}
-        nextRoundAvailability={[]}
-        nextRoundTeamMembers={[]}
-        nextRoundFoursomes={[]}
-        currentYear={currentYear}
-        userHasDeclared={false}
-        allHandicaps={allHandicaps}
-      />
-    </div>
+    <LeaderboardTabs
+      standings={standings as any}
+      recentRounds={recentRounds as any}
+      currentRound={currentRound ?? null}
+      currentRoundScores={currentRoundScores}
+      currentRoundFoursomes={currentRoundFoursomes}
+      nextRound={nextRound}
+      nextRoundAvailability={[]}
+      nextRoundTeamMembers={[]}
+      nextRoundFoursomes={[]}
+      currentYear={currentYear}
+      userHasDeclared={false}
+      allHandicaps={allHandicaps}
+    />
   )
 }
