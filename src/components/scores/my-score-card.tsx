@@ -322,6 +322,9 @@ function HoleCell({ hole, par, value, touched, readOnly, onAdjust, onSetPar, onC
             <span className={`text-[15px] font-extrabold mt-1 uppercase tracking-widest ${rel.color}`}>
               {rel.text}
             </span>
+            {par === 3 && value === 2 && (
+              <span className="text-[18px] mt-0.5 leading-none">🎲</span>
+            )}
           </>
         ) : (
           <div className="w-6 h-0.5 rounded-full" style={{ background: '#333' }} />

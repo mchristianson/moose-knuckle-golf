@@ -450,8 +450,8 @@ export async function finalizeRound(roundId: string) {
 
   if (roundError) return { error: roundError.message }
 
-  // Update handicaps for all players who scored in this round
-  await updateHandicapsForRound(supabase, roundId, user.id)
+  // Recalculate handicaps for all active players so next week's handicaps are current
+  await recalculateAllActiveHandicaps(supabase, user.id)
 
   // Audit log
   await supabase.from('audit_log').insert({
@@ -575,23 +575,17 @@ export async function linkMakeupScore(
 }
 
 // Recalculate handicaps for all non-sub players who have scores in this round
-async function updateHandicapsForRound(supabase: any, roundId: string, adminUserId: string) {
-  const { data: roundScores } = await supabase
-    .from('scores')
-    .select('user_id')
-    .eq('round_id', roundId)
-    .eq('is_sub', false)
-    .not('net_score', 'is', null)
-
-  if (!roundScores) return
-
-  for (const { user_id } of roundScores) {
-    await recalculateHandicap(supabase, user_id, adminUserId)
-  }
-}
-
-// Calculate handicap for a single user from their last 10 locked scores
+// Calculate handicap for a single user from their last 10 eligible scores.
+// Skips players with a manual override — admin must clear the override explicitly.
 async function recalculateHandicap(supabase: any, userId: string, adminUserId: string) {
+  const { data: existing } = await supabase
+    .from('handicaps')
+    .select('id, current_handicap, is_manual_override')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (existing?.is_manual_override) return
+
   const { data: eligibleScores } = await supabase
     .rpc('get_eligible_scores_for_handicap', { p_user_id: userId, p_limit: 10 })
 
@@ -606,12 +600,6 @@ async function recalculateHandicap(supabase: any, userId: string, adminUserId: s
   const avgBest = best.reduce((a, b) => a + b, 0) / best.length
   // Simple handicap: average of best scores minus course par (36 for 9 holes)
   const newHandicap = Math.floor(Math.max(0, avgBest - 36))
-
-  const { data: existing } = await supabase
-    .from('handicaps')
-    .select('id, current_handicap')
-    .eq('user_id', userId)
-    .maybeSingle()
 
   if (existing) {
     await supabase
@@ -642,6 +630,21 @@ async function recalculateHandicap(supabase: any, userId: string, adminUserId: s
     changed_by: adminUserId,
     reason: 'Auto-calculated after round finalization',
   })
+}
+
+// Recalculate handicaps for all active players. Used after round finalization
+// so every player's handicap is current for the following week.
+async function recalculateAllActiveHandicaps(supabase: any, adminUserId: string) {
+  const { data: players } = await supabase
+    .from('users')
+    .select('id')
+    .eq('is_active', true)
+
+  if (!players) return
+
+  for (const { id } of players) {
+    await recalculateHandicap(supabase, id, adminUserId)
+  }
 }
 
 // Admin: manually set a player's handicap

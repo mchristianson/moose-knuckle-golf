@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { submitScoreForFoursome } from '@/lib/actions/scores'
 import type { FoursomePlayer } from './foursome-scorecard-switcher'
+import { BirdieCelebration } from './BirdieCelebration'
 
 // ─── Course data ──────────────────────────────────────────────────────────────
 
@@ -117,6 +118,8 @@ export function HoleByHoleScorecard({
     return init
   })
 
+  const [celebrating, setCelebrating] = useState<{ playerName: string; hole: number } | null>(null)
+
   // Track which players had user-driven changes (not just initial hydration)
   const userChanged = useRef<Record<string, boolean>>({})
   // Per-player debounce timers
@@ -145,11 +148,12 @@ export function HoleByHoleScorecard({
   }, [scores, touched])
 
   const setScore = useCallback((key: string, hi: number, value: number) => {
+    const clamped = Math.max(1, Math.min(20, value))
     userChanged.current[key] = true
     setScores((prev) => {
       const next = { ...prev }
       const arr = [...(next[key] ?? [])]
-      arr[hi] = Math.max(1, Math.min(20, value))
+      arr[hi] = clamped
       next[key] = arr
       return next
     })
@@ -161,7 +165,11 @@ export function HoleByHoleScorecard({
       return next
     })
     setSaveState((prev) => ({ ...prev, [key]: 'idle' }))
-  }, [])
+    if (HOLES[hi].par === 3 && clamped === 2) {
+      const player = players.find((p) => playerKey(p) === key)
+      if (player) setCelebrating({ playerName: player.displayName.split(' ')[0], hole: HOLES[hi].n })
+    }
+  }, [players])
 
   const commitPar = useCallback((key: string, hi: number) => {
     userChanged.current[key] = true
@@ -189,31 +197,41 @@ export function HoleByHoleScorecard({
   const hole = HOLES[holeIdx]
 
   return (
-    <div
-      style={{ background: '#000', color: '#fff', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
-      onTouchStart={(e) => { swipeStart.current = e.touches[0].clientX }}
-      onTouchEnd={(e) => {
-        if (swipeStart.current == null) return
-        const dx = e.changedTouches[0].clientX - swipeStart.current
-        if (Math.abs(dx) > 40) setHoleIdx((h) => dx < 0 ? Math.min(17, h + 1) : Math.max(0, h - 1))
-        swipeStart.current = null
-      }}
-    >
-      <ScreenHeader roundNumber={roundNumber} roundDate={roundDate} scoringOpen={scoringOpen} />
-      <TotalsStrip players={players} scores={scores} touched={touched} holeIdx={holeIdx} />
-      <HoleHeader holeIdx={holeIdx} setHoleIdx={setHoleIdx} />
-      <HoleStrip holeIdx={holeIdx} setHoleIdx={setHoleIdx} players={players} scores={scores} touched={touched} />
-      <StackLayout
-        holeIdx={holeIdx}
-        players={players}
-        scores={scores}
-        touched={touched}
-        saveState={saveState}
-        scoringOpen={scoringOpen}
-        setScore={setScore}
-        commitPar={commitPar}
-      />
-    </div>
+    <>
+      {celebrating && (
+        <BirdieCelebration
+          playerName={celebrating.playerName}
+          hole={celebrating.hole}
+          onDismiss={() => setCelebrating(null)}
+        />
+      )}
+      <div
+        style={{ background: '#000', color: '#fff', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+        onTouchStart={(e) => { swipeStart.current = e.touches[0].clientX }}
+        onTouchEnd={(e) => {
+          if (swipeStart.current == null) return
+          const dx = e.changedTouches[0].clientX - swipeStart.current
+          if (Math.abs(dx) > 40) setHoleIdx((h) => dx < 0 ? Math.min(17, h + 1) : Math.max(0, h - 1))
+          swipeStart.current = null
+        }}
+      >
+        <ScreenHeader roundNumber={roundNumber} roundDate={roundDate} scoringOpen={scoringOpen} />
+        <TotalsStrip players={players} scores={scores} touched={touched} holeIdx={holeIdx} />
+        <DiceRollStrip players={players} scores={scores} touched={touched} />
+        <HoleHeader holeIdx={holeIdx} setHoleIdx={setHoleIdx} />
+        <HoleStrip holeIdx={holeIdx} setHoleIdx={setHoleIdx} players={players} scores={scores} touched={touched} />
+        <StackLayout
+          holeIdx={holeIdx}
+          players={players}
+          scores={scores}
+          touched={touched}
+          saveState={saveState}
+          scoringOpen={scoringOpen}
+          setScore={setScore}
+          commitPar={commitPar}
+        />
+      </div>
+    </>
   )
 }
 
@@ -324,6 +342,53 @@ function TotalsStrip({ players, scores, touched, holeIdx }: {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ─── Dice Roll Strip ──────────────────────────────────────────────────────────
+
+function DiceRollStrip({ players, scores, touched }: {
+  players: FoursomePlayer[]
+  scores: Record<string, (number | null)[]>
+  touched: Record<string, boolean[]>
+}) {
+  const earners = players.flatMap((p) => {
+    const key = playerKey(p)
+    const sc = scores[key] ?? []
+    const td = touched[key] ?? []
+    let count = 0
+    for (let i = 0; i < 18; i++) {
+      if (HOLES[i].par === 3 && td[i] && sc[i] === 2) count++
+    }
+    if (count === 0) return []
+    return [{ name: p.displayName.split(' ')[0], count }]
+  })
+
+  if (earners.length === 0) return null
+
+  return (
+    <div style={{
+      padding: '5px 14px',
+      background: 'rgba(217,119,6,0.1)',
+      borderBottom: '1px solid rgba(217,119,6,0.2)',
+      display: 'flex', alignItems: 'center', gap: 8,
+      flexShrink: 0,
+    }}>
+      <span style={{ fontSize: 13, lineHeight: 1 }}>🎲</span>
+      <span style={{
+        fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 0.8,
+        color: '#d97706',
+      }}>
+        DICE ROLLS:{' '}
+        {earners.map((e, i) => (
+          <span key={e.name}>
+            {i > 0 && <span style={{ color: 'rgba(217,119,6,0.5)' }}>  ·  </span>}
+            <span style={{ color: '#fbbf24' }}>{e.name}</span>
+            {e.count > 1 && <span> ×{e.count}</span>}
+          </span>
+        ))}
+      </span>
     </div>
   )
 }
@@ -481,6 +546,8 @@ function StackLayout({ holeIdx, players, scores, touched, saveState, scoringOpen
         const getsStroke = (p.handicap - minHandicap) >= hole.hcp
         const sv = saveState[key]
 
+        const isPar3Birdie = hole.par === 3 && isTouched && value === 2
+
         return (
           <div key={key} style={{
             background: '#161816', borderRadius: 14,
@@ -514,6 +581,7 @@ function StackLayout({ holeIdx, players, scores, touched, saveState, scoringOpen
               defaultValue={hole.par}
               par={hole.par}
               disabled={!scoringOpen}
+              isPar3Birdie={isPar3Birdie}
               onDecrement={() => setScore(key, holeIdx, Math.max(1, (isTouched && value != null ? value : hole.par) - 1))}
               onIncrement={() => setScore(key, holeIdx, (isTouched && value != null ? value : hole.par) + 1)}
               onCommit={() => commitPar(key, holeIdx)}
@@ -529,11 +597,12 @@ function StackLayout({ holeIdx, players, scores, touched, saveState, scoringOpen
 
 // ─── Score Control ────────────────────────────────────────────────────────────
 
-function ScoreControl({ value, defaultValue, par, disabled, onDecrement, onIncrement, onCommit }: {
+function ScoreControl({ value, defaultValue, par, disabled, isPar3Birdie, onDecrement, onIncrement, onCommit }: {
   value: number | null       // null = not yet entered
   defaultValue: number       // par (shown as placeholder)
   par: number
   disabled: boolean
+  isPar3Birdie?: boolean
   onDecrement: () => void
   onIncrement: () => void
   onCommit: () => void
@@ -541,6 +610,7 @@ function ScoreControl({ value, defaultValue, par, disabled, onDecrement, onIncre
   const isDefault = value == null
   const display = value ?? defaultValue
   const meta = scoreMeta(value, par)
+  const borderColor = isPar3Birdie ? '#d97706' : isDefault ? 'rgba(255,255,255,0.12)' : meta.color
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -556,12 +626,13 @@ function ScoreControl({ value, defaultValue, par, disabled, onDecrement, onIncre
         disabled={disabled}
         style={{
           flex: '0 0 auto', minWidth: 58,
-          background: '#0A0B0A',
-          border: `1.5px solid ${isDefault ? 'rgba(255,255,255,0.12)' : meta.color}`,
+          background: isPar3Birdie ? 'rgba(217,119,6,0.08)' : '#0A0B0A',
+          border: `1.5px solid ${borderColor}`,
           borderRadius: 10,
           padding: '5px 8px', cursor: disabled ? 'default' : 'pointer',
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           opacity: disabled && !isDefault ? 1 : undefined,
+          position: 'relative',
         }}
         aria-label={isDefault ? 'Tap to log score' : `Score: ${display}`}
       >
@@ -573,8 +644,15 @@ function ScoreControl({ value, defaultValue, par, disabled, onDecrement, onIncre
         }}>{display}</span>
         <span style={{
           fontFamily: FONT_MONO, fontSize: 10,
-          color: meta.color, letterSpacing: 1.5, marginTop: 2,
+          color: isPar3Birdie ? '#d97706' : meta.color,
+          letterSpacing: 1.5, marginTop: 2,
         }}>{isDefault ? 'TAP TO LOG' : meta.label}</span>
+        {isPar3Birdie && (
+          <span style={{
+            position: 'absolute', top: 2, right: 3,
+            fontSize: 11, lineHeight: 1,
+          }}>🎲</span>
+        )}
       </button>
 
       <button
