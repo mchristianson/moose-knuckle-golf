@@ -10,12 +10,13 @@ interface Props {
   scores: Score[]
   scoresToUse: number
   currentHandicap?: number | null
+  teeAdjustment?: number
   dark?: boolean
 }
 
 const PAR = 36
 
-export function HandicapBreakdown({ scores, scoresToUse, currentHandicap, dark = false }: Props) {
+export function HandicapBreakdown({ scores, scoresToUse, currentHandicap, teeAdjustment = 0, dark = false }: Props) {
   if (scores.length === 0) {
     return (
       <p className={`text-sm text-center py-4 ${dark ? 'text-zinc-500' : 'text-gray-400'}`}>
@@ -32,7 +33,8 @@ export function HandicapBreakdown({ scores, scoresToUse, currentHandicap, dark =
   const avgUsed = usedScores.length > 0
     ? usedScores.reduce((sum, s) => sum + s.gross_score, 0) / usedScores.length
     : 0
-  const computed = Math.round(Math.max(0, avgUsed - PAR) * 10) / 10
+  const baseComputed = Math.round(Math.max(0, avgUsed - PAR) * 10) / 10
+  const computed = Math.round((baseComputed + teeAdjustment) * 10) / 10
 
   const th = dark
     ? 'px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-zinc-500'
@@ -92,7 +94,21 @@ export function HandicapBreakdown({ scores, scoresToUse, currentHandicap, dark =
         Best <span className={`font-bold ${dark ? 'text-zinc-200' : 'text-gray-700'}`}>{scoresToUse}</span> of{' '}
         <span className={`font-bold ${dark ? 'text-zinc-200' : 'text-gray-700'}`}>{scores.length}</span> scores
         {' → '} avg <span className={`font-bold ${dark ? 'text-zinc-200' : 'text-gray-700'}`}>{avgUsed.toFixed(1)}</span>
-        {' → '} {avgUsed.toFixed(1)} − {PAR} = <span className={`font-bold ${dark ? 'text-green-400' : 'text-green-700'}`}>{computed}</span>
+        {' → '} {avgUsed.toFixed(1)} − {PAR} = <span className={`font-bold ${dark ? 'text-zinc-200' : 'text-gray-700'}`}>{baseComputed.toFixed(1)}</span>
+        {teeAdjustment > 0 && (
+          <>
+            {' + '}
+            <span className={`font-bold ${dark ? 'text-amber-400' : 'text-amber-600'}`}>{teeAdjustment.toFixed(1)}</span>
+            <span className={`ml-0.5 ${dark ? 'text-zinc-500' : 'text-gray-400'}`}>(tee adj)</span>
+            {' = '}
+          </>
+        )}
+        {teeAdjustment > 0 && (
+          <span className={`font-bold ${dark ? 'text-green-400' : 'text-green-700'}`}>{computed}</span>
+        )}
+        {teeAdjustment === 0 && (
+          <span className={`font-bold ${dark ? 'text-green-400' : 'text-green-700'}`}>{baseComputed.toFixed(1)}</span>
+        )}
         {currentHandicap !== null && currentHandicap !== undefined && Math.abs(computed - currentHandicap) > 0.15 && (
           <span className={`ml-2 ${dark ? 'text-zinc-500' : 'text-gray-400'}`}>(current: {currentHandicap})</span>
         )}

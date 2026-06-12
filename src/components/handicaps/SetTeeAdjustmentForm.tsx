@@ -1,17 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { setHandicap } from '@/lib/actions/scores'
+import { setTeeAdjustment } from '@/lib/actions/scores'
 
-interface SetHandicapFormProps {
+interface Props {
   userId: string
-  currentHandicap: number
+  currentAdjustment: number
 }
 
-export function SetHandicapForm({ userId, currentHandicap }: SetHandicapFormProps) {
+export function SetTeeAdjustmentForm({ userId, currentAdjustment }: Props) {
   const [open, setOpen] = useState(false)
-  const [value, setValue] = useState(currentHandicap.toString())
-  const [reason, setReason] = useState('')
+  const [value, setValue] = useState(currentAdjustment.toFixed(1))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -19,18 +18,17 @@ export function SetHandicapForm({ userId, currentHandicap }: SetHandicapFormProp
     e.preventDefault()
     const num = parseFloat(value)
     if (isNaN(num) || num < 0) {
-      setError('Enter a valid handicap (0 or greater)')
+      setError('Enter a valid adjustment (0 or greater)')
       return
     }
     setLoading(true)
     setError(null)
-    const result = await setHandicap(userId, num, reason) as any
+    const result = await setTeeAdjustment(userId, num) as any
     setLoading(false)
     if (result?.error) {
       setError(result.error)
     } else {
       setOpen(false)
-      setReason('')
     }
   }
 
@@ -38,38 +36,32 @@ export function SetHandicapForm({ userId, currentHandicap }: SetHandicapFormProp
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-blue-600 hover:text-blue-800 underline"
+        className={`text-xs underline ${currentAdjustment > 0 ? 'text-amber-600 hover:text-amber-800 font-semibold' : 'text-gray-400 hover:text-gray-600'}`}
       >
-        Set
+        {currentAdjustment > 0 ? `+${currentAdjustment} tee adj` : 'Tee adj'}
       </button>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-1 min-w-[160px]">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-1 min-w-[140px]">
+      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Tee Adjustment (strokes)</label>
       <input
         type="number"
-        step="0.1"
+        step="0.5"
         min="0"
-        max="54"
+        max="10"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="w-20 border rounded px-1.5 py-1 text-sm bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-20 border rounded px-1.5 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
         autoFocus
-      />
-      <input
-        type="text"
-        placeholder="Reason (optional)"
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        className="border rounded px-1.5 py-1 text-xs bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-1">
         <button
           type="submit"
           disabled={loading}
-          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          className="px-2 py-1 text-xs bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50"
         >
           {loading ? '…' : 'Save'}
         </button>

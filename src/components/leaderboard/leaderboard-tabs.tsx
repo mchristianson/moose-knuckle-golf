@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { formatRoundDate, formatTeeTime } from '@/lib/utils/date'
 import { Icon } from '@/components/Icon'
@@ -255,9 +255,8 @@ function HandicapsTab({
                 const isLoading = loading.has(row.user_id)
                 const breakdown = breakdowns[row.user_id]
                 return (
-                  <>
+                  <React.Fragment key={row.user_id}>
                     <tr
-                      key={row.user_id}
                       className="border-t border-zinc-700/50 hover:bg-zinc-700/30 cursor-pointer"
                       onClick={() => togglePlayer(row.user_id)}
                     >
@@ -295,13 +294,14 @@ function HandicapsTab({
                               scores={breakdown.scores}
                               scoresToUse={breakdown.scoresToUse}
                               currentHandicap={row.current_handicap}
+                              teeAdjustment={breakdown.teeAdjustment}
                               dark
                             />
                           ) : null}
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 )
               })}
             </tbody>

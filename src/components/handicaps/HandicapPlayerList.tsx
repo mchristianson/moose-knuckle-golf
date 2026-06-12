@@ -5,11 +5,12 @@ import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import { getHandicapBreakdown } from '@/lib/actions/scores'
 import { HandicapBreakdown } from './HandicapBreakdown'
 import { SetHandicapForm } from './set-handicap-form'
+import { SetTeeAdjustmentForm } from './SetTeeAdjustmentForm'
 
 interface Player {
   id: string
   full_name: string
-  handicaps: { current_handicap: number; rounds_played: number; last_calculated_at: string; is_manual_override: boolean } | null
+  handicaps: { current_handicap: number; rounds_played: number; last_calculated_at: string; is_manual_override: boolean; tee_adjustment: number } | null
 }
 
 type Breakdown = Awaited<ReturnType<typeof getHandicapBreakdown>>
@@ -81,7 +82,10 @@ export function HandicapPlayerList({ players }: { players: Player[] }) {
                     className="px-4 py-3"
                     onClick={e => e.stopPropagation()}
                   >
-                    <SetHandicapForm userId={p.id} currentHandicap={h?.current_handicap ?? 0} />
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <SetHandicapForm userId={p.id} currentHandicap={h?.current_handicap ?? 0} />
+                      <SetTeeAdjustmentForm userId={p.id} currentAdjustment={h?.tee_adjustment ?? 0} />
+                    </div>
                   </td>
                 </tr>
 
@@ -101,6 +105,7 @@ export function HandicapPlayerList({ players }: { players: Player[] }) {
                           scores={breakdown.scores}
                           scoresToUse={breakdown.scoresToUse}
                           currentHandicap={h?.current_handicap}
+                          teeAdjustment={breakdown.teeAdjustment}
                         />
                       ) : null}
                     </td>

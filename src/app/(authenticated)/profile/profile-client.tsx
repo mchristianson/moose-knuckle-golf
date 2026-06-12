@@ -104,6 +104,7 @@ export function ProfileClient({ isImpersonating, webcalUrl, calendarUrl }: Props
   const [activeTab, setActiveTab] = useState<'history' | 'settings'>('history')
   const [eligibleScores, setEligibleScores] = useState<any[]>([])
   const [scoresToUse, setScoresToUse] = useState(0)
+  const [teeAdjustment, setTeeAdjustment] = useState(0)
   const [handicapHistory, setHandicapHistory] = useState<any[]>([])
 
   useEffect(() => {
@@ -131,7 +132,7 @@ export function ProfileClient({ isImpersonating, webcalUrl, calendarUrl }: Props
           .single(),
         supabase
           .from('handicaps')
-          .select('current_handicap')
+          .select('current_handicap, tee_adjustment')
           .eq('user_id', user.id)
           .maybeSingle(),
         supabase
@@ -150,6 +151,7 @@ export function ProfileClient({ isImpersonating, webcalUrl, calendarUrl }: Props
       setProfile(profileData)
       setAvatarUrl(profileData?.avatar_url ?? null)
       setHandicap(handicapData?.current_handicap ?? null)
+      setTeeAdjustment((handicapData as any)?.tee_adjustment ?? 0)
 
       const team = (teamMemberData as any)?.teams
       if (team) {
@@ -489,6 +491,7 @@ export function ProfileClient({ isImpersonating, webcalUrl, calendarUrl }: Props
                   scores={eligibleScores}
                   scoresToUse={scoresToUse}
                   currentHandicap={handicap}
+                  teeAdjustment={teeAdjustment}
                   dark
                 />
               </div>

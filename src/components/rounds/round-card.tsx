@@ -1,6 +1,7 @@
 'use client'
 
 import { updateRoundStatus, deleteRound } from '@/lib/actions/rounds'
+import { finalizeRound } from '@/lib/actions/scores'
 import { formatRoundDate, formatTeeTime } from '@/lib/utils/date'
 import { useState } from 'react'
 import Link from 'next/link'
@@ -47,9 +48,22 @@ interface RoundCardProps {
 
 export function RoundCard({ round, allDeclared = false, declarationDetails }: RoundCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
+  const [completeError, setCompleteError] = useState<string | null>(null)
 
   const handleStatusChange = async (newStatus: string) => {
     await updateRoundStatus(round.id, newStatus)
+  }
+
+  const handleCompleteRound = async () => {
+    if (!confirm('Complete this round? This will calculate points and update handicaps.')) return
+    setIsCompleting(true)
+    setCompleteError(null)
+    const result = await finalizeRound(round.id)
+    if (result?.error) {
+      setCompleteError(result.error)
+      setIsCompleting(false)
+    }
   }
 
   const handleDelete = async () => {
@@ -181,12 +195,18 @@ export function RoundCard({ round, allDeclared = false, declarationDetails }: Ro
           </button>
         )}
         {round.status === 'scoring' && (
-          <button
-            onClick={() => handleStatusChange('completed')}
-            className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded hover:bg-green-200"
-          >
-            Complete Round
-          </button>
+          <div className="flex flex-col items-start gap-1">
+            <button
+              onClick={handleCompleteRound}
+              disabled={isCompleting}
+              className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCompleting ? 'Completing…' : 'Complete Round'}
+            </button>
+            {completeError && (
+              <span className="text-xs text-red-600">{completeError}</span>
+            )}
+          </div>
         )}
 
         <Link

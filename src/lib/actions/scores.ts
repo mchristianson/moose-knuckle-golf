@@ -580,7 +580,7 @@ export async function linkMakeupScore(
 async function recalculateHandicap(supabase: any, userId: string, adminUserId: string) {
   const { data: existing } = await supabase
     .from('handicaps')
-    .select('id, current_handicap, is_manual_override')
+    .select('id, current_handicap, is_manual_override, tee_adjustment')
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -598,8 +598,10 @@ async function recalculateHandicap(supabase: any, userId: string, adminUserId: s
   const sorted = [...grossScores].sort((a, b) => a - b)
   const best = sorted.slice(0, scoresToUse)
   const avgBest = best.reduce((a, b) => a + b, 0) / best.length
-  // Simple handicap: average of best scores minus course par (36 for 9 holes)
-  const newHandicap = Math.floor(Math.max(0, avgBest - 36))
+  // Base handicap + per-player tee adjustment (e.g. +1 for White tees vs Blue)
+  const baseHandicap = Math.floor(Math.max(0, avgBest - 36))
+  const teeAdj = existing?.tee_adjustment ?? 0
+  const newHandicap = baseHandicap + teeAdj
 
   if (existing) {
     await supabase
@@ -713,8 +715,16 @@ export async function recalculateAllHandicaps() {
 export async function getHandicapBreakdown(userId: string) {
   const supabase = await createClient()
 
-  const { data: eligible } = await supabase
-    .rpc('get_eligible_scores_for_handicap', { p_user_id: userId, p_limit: 10 })
+  const [{ data: eligible }, { data: handicapRow }, { data: history }] = await Promise.all([
+    supabase.rpc('get_eligible_scores_for_handicap', { p_user_id: userId, p_limit: 10 }),
+    supabase.from('handicaps').select('current_handicap, tee_adjustment').eq('user_id', userId).maybeSingle(),
+    supabase
+      .from('handicap_history')
+      .select('handicap_value, created_at, calculation_method')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(30),
+  ])
 
   const scores = (eligible ?? []) as Array<{
     score_id: string
@@ -730,16 +740,43 @@ export async function getHandicapBreakdown(userId: string) {
     [...scores].sort((a, b) => a.gross_score - b.gross_score).slice(0, scoresToUse).map(s => s.score_id)
   )
 
-  const { data: history } = await supabase
-    .from('handicap_history')
-    .select('handicap_value, created_at, calculation_method')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(30)
-
   return {
     scores: scores.map(s => ({ ...s, used_for_handicap: usedIds.has(s.score_id) })),
     scoresToUse,
+    teeAdjustment: (handicapRow?.tee_adjustment ?? 0) as number,
     history: (history ?? []) as Array<{ handicap_value: number; created_at: string; calculation_method: string }>,
   }
+}
+
+// Admin: set per-player tee adjustment and immediately recalculate their handicap
+export async function setTeeAdjustment(userId: string, adjustment: number) {
+  const { supabase, user } = await getAdminUser()
+
+  const rounded = Math.round(Math.max(0, adjustment) * 10) / 10
+
+  const { data: existing } = await supabase
+    .from('handicaps')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (existing) {
+    await supabase
+      .from('handicaps')
+      .update({ tee_adjustment: rounded })
+      .eq('user_id', userId)
+  } else {
+    await supabase.from('handicaps').insert({
+      user_id: userId,
+      current_handicap: 0,
+      rounds_played: 0,
+      tee_adjustment: rounded,
+    })
+  }
+
+  // Re-run calculation so current_handicap reflects the new adjustment immediately
+  await recalculateHandicap(supabase, userId, user.id)
+
+  revalidatePath('/admin/handicaps')
+  return { success: true }
 }

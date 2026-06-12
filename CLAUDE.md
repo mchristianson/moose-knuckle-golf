@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Rules
+
+- Never use `<>` shorthand fragments. Always use `<React.Fragment key={...}>` (keyed lists) or `<React.Fragment>` (unkeyed). This prevents the "key prop" warning when fragments are used in `.map()`.
+
 ## Commands
 
 ```bash
