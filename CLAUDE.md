@@ -20,10 +20,10 @@ This is a **Next.js 15 App Router** application for managing a competitive golf 
 
 ### Route Groups
 
-- `(public)/` — Unauthenticated pages: leaderboard, foursomes, handicaps
+- `(public)/` — Unauthenticated pages: leaderboard, foursomes, manual, admin-manual
 - `(auth)/` — Login, register, OAuth callback
 - `(authenticated)/` — Dashboard, availability, scoring, profile
-- `(admin)/` — Admin-only: rounds, teams, foursomes, users, subs, audit log
+- `(admin)/` — Admin-only: rounds, teams, foursomes, users, subs, audit log, handicaps
 
 Route protection is enforced in `middleware.ts`, which reads the Supabase session and checks `users.is_admin` for admin routes.
 
@@ -62,6 +62,10 @@ Scorecards support 18 holes. `hole_scores` is an 18-element integer array; holes
 
 Makeup scores: a player who missed a prior round can submit a makeup scorecard during any later round. The admin links it to the missed round via the makeup assignment panel (`src/components/scores/makeup-assignment-panel.tsx`). Makeup scores count toward handicap but not round points.
 
+Birdie celebration: `src/components/scores/BirdieCelebration.tsx` renders a full-screen overlay when a player scores a birdie on a par-3 hole during score entry. Auto-dismisses after 3.5 seconds.
+
+The leaderboard (`/leaderboard`) shows season standings plus per-round scorecards. `src/components/leaderboard/RoundScorecard.tsx` renders hole-by-hole scores with net score calculation (handicap strokes distributed via `STROKE_INDEX`). Individual round leaderboards are accessible at `/leaderboard/[roundId]`.
+
 ### Admin Impersonation
 
 Admins can impersonate any active player via `/admin/users`. The session is stored in the `mgk_impersonate` cookie. `src/lib/viewer.ts` exports `getViewerContext()`, which all authenticated pages should use instead of reading the Supabase user directly — it returns the effective user (real or impersonated) and the appropriate DB client. Impersonation events are written to `audit_log`.
@@ -79,6 +83,10 @@ Admins can impersonate any active player via `/admin/users`. The session is stor
 ### Calendar Feed
 
 `GET /api/calendar` returns an iCal feed of all non-cancelled rounds. Players can subscribe to this URL in their calendar app. Tee times are rendered in `America/Chicago` timezone; rounds without a tee time are all-day events.
+
+### User Manual
+
+`/manual` (public) is a player-facing guide explaining league rules and app usage. `/admin-manual` (public) is admin-specific guidance. Both are static pages with no data fetching.
 
 ### PWA
 

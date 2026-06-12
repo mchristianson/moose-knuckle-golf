@@ -11,6 +11,10 @@ import {
   ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 import { RoundScorecard } from '@/components/leaderboard/RoundScorecard'
+import { HandicapBreakdown } from '@/components/handicaps/HandicapBreakdown'
+import { getHandicapBreakdown } from '@/lib/actions/scores'
+
+type HandicapBreakdownData = Awaited<ReturnType<typeof getHandicapBreakdown>>
 
 interface StandingRow {
   team_id: string
@@ -200,6 +204,114 @@ function FoursomesList({
   )
 }
 
+// ── Handicaps tab ────────────────────────────────────────────────────────────
+
+function HandicapsTab({
+  allHandicaps,
+  currentYear,
+}: {
+  allHandicaps: AllHandicapRow[]
+  currentYear: number
+}) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [breakdowns, setBreakdowns] = useState<Record<string, HandicapBreakdownData>>({})
+  const [loading, setLoading] = useState<Set<string>>(new Set())
+
+  async function togglePlayer(userId: string) {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      next.has(userId) ? next.delete(userId) : next.add(userId)
+      return next
+    })
+    if (!breakdowns[userId]) {
+      setLoading(prev => new Set(prev).add(userId))
+      const data = await getHandicapBreakdown(userId)
+      setBreakdowns(prev => ({ ...prev, [userId]: data }))
+      setLoading(prev => { const s = new Set(prev); s.delete(userId); return s })
+    }
+  }
+
+  return (
+    <div className="mx-4">
+      <div className="bg-zinc-800 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-zinc-700">
+          <h2 className="text-white font-semibold">Golfer Handicaps</h2>
+          <p className="text-zinc-500 text-xs mt-0.5">{currentYear} Season</p>
+        </div>
+        {allHandicaps.length === 0 ? (
+          <div className="px-4 py-8 text-center text-zinc-500">No handicap data available.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-700">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide w-10">Rank</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Golfer</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Hdcp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allHandicaps.map((row, idx) => {
+                const isExpanded = expandedIds.has(row.user_id)
+                const isLoading = loading.has(row.user_id)
+                const breakdown = breakdowns[row.user_id]
+                return (
+                  <>
+                    <tr
+                      key={row.user_id}
+                      className="border-t border-zinc-700/50 hover:bg-zinc-700/30 cursor-pointer"
+                      onClick={() => togglePlayer(row.user_id)}
+                    >
+                      <td className="px-4 py-3 text-center text-zinc-400 font-semibold">{idx + 1}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Icon
+                            icon={isExpanded ? ChevronUpIcon : ChevronDownIcon}
+                            size="sm"
+                            className="text-zinc-500 shrink-0"
+                          />
+                          <div>
+                            <p className="text-white font-medium">{row.full_name}</p>
+                            <p className="text-green-500 text-xs">Team {row.team_number} · {row.team_name}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center font-bold text-green-400 text-lg">
+                        {row.current_handicap ?? '—'}
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr key={`${row.user_id}-breakdown`}>
+                        <td colSpan={3} className="px-4 py-3 bg-zinc-900/60 border-t border-zinc-700/50">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
+                            Handicap Calculation — {row.full_name}
+                          </p>
+                          {isLoading ? (
+                            <div className="flex items-center gap-2 py-3 text-zinc-500 text-sm">
+                              <div className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+                              Loading…
+                            </div>
+                          ) : breakdown ? (
+                            <HandicapBreakdown
+                              scores={breakdown.scores}
+                              scoresToUse={breakdown.scoresToUse}
+                              currentHandicap={row.current_handicap}
+                              dark
+                            />
+                          ) : null}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function LeaderboardTabs({
@@ -384,41 +496,7 @@ export function LeaderboardTabs({
 
       {/* ── Handicaps tab ── */}
       {activeTab === 'handicaps' && (
-        <div className="mx-4">
-          <div className="bg-zinc-800 rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-zinc-700">
-              <h2 className="text-white font-semibold">Golfer Handicaps</h2>
-              <p className="text-zinc-500 text-xs mt-0.5">{currentYear} Season</p>
-            </div>
-            {allHandicaps.length === 0 ? (
-              <div className="px-4 py-8 text-center text-zinc-500">No handicap data available.</div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-700">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide w-10">Rank</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Golfer</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Hdcp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-700/50">
-                  {allHandicaps.map((row, idx) => (
-                    <tr key={row.user_id} className="hover:bg-zinc-700/30">
-                      <td className="px-4 py-3 text-center text-zinc-400 font-semibold">{idx + 1}</td>
-                      <td className="px-4 py-3">
-                        <p className="text-white font-medium">{row.full_name}</p>
-                        <p className="text-green-500 text-xs">Team {row.team_number} · {row.team_name}</p>
-                      </td>
-                      <td className="px-4 py-3 text-center font-bold text-green-400 text-lg">
-                        {row.current_handicap ?? '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+        <HandicapsTab allHandicaps={allHandicaps} currentYear={currentYear} />
       )}
 
       {/* ── Next round tab ── */}

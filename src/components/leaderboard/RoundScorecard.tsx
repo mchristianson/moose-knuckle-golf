@@ -79,9 +79,9 @@ function tallyRange(holeScores: number[], handicap: number, start: number, end: 
   const strokes = strokesForHandicap(handicap)
   let gross = 0, net = 0, parSum = 0, played = 0
   for (let i = start; i < end; i++) {
-    parSum += HOLE_PARS[i]
     const s = holeScores[i]
     if (s > 0) {
+      parSum += HOLE_PARS[i]
       gross += s
       net += s - strokes[i]
       played++

@@ -124,6 +124,8 @@ export function HoleByHoleScorecard({
   const userChanged = useRef<Record<string, boolean>>({})
   // Per-player debounce timers
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  // Latest unsaved payload per player — flushed on unmount if timer hasn't fired yet
+  const pendingPayloads = useRef<Record<string, { sc: (number | null)[]; td: boolean[] }>>({})
 
   // Single effect watches all scores/touched — dispatches per-player saves with 800ms debounce
   useEffect(() => {
@@ -134,7 +136,9 @@ export function HoleByHoleScorecard({
       clearTimeout(timers.current[key])
       const sc = scores[key] ?? []
       const td = touched[key] ?? []
+      pendingPayloads.current[key] = { sc, td }
       timers.current[key] = setTimeout(async () => {
+        delete pendingPayloads.current[key]
         setSaveState((prev) => ({ ...prev, [key]: 'saving' }))
         const payload = sc.map((v, i) => (td[i] ? (v ?? 0) : 0))
         const result = await submitScoreForFoursome(roundId, player.userId ?? null, player.subId ?? null, payload) as any
@@ -146,6 +150,19 @@ export function HoleByHoleScorecard({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scores, touched])
+
+  // Flush any pending (debounced) saves immediately on unmount so navigation doesn't lose scores
+  useEffect(() => {
+    return () => {
+      for (const [key, { sc, td }] of Object.entries(pendingPayloads.current)) {
+        const player = players.find((p) => playerKey(p) === key)
+        if (!player) continue
+        const payload = sc.map((v, i) => (td[i] ? (v ?? 0) : 0))
+        submitScoreForFoursome(roundId, player.userId ?? null, player.subId ?? null, payload)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const setScore = useCallback((key: string, hi: number, value: number) => {
     const clamped = Math.max(1, Math.min(20, value))
