@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { LeaderboardTabs } from '@/components/leaderboard/leaderboard-tabs'
 import { getSeasonStandings } from '@/lib/data/leaderboard'
 import { getAllTeams } from '@/lib/data/teams'
+import { getPendingMakeups } from '@/lib/data/makeups'
 
 export default async function LeaderboardPage() {
   const supabase = await createClient()
@@ -32,7 +33,6 @@ export default async function LeaderboardPage() {
       .eq('status', 'completed')
       .in('round_type', ['regular', 'practice'])
       .order('round_date', { ascending: false })
-      .limit(5)
       .then((r) => r.data ?? []),
     supabase
       .from('rounds')
@@ -45,6 +45,8 @@ export default async function LeaderboardPage() {
     getAllTeams(currentYear),
     supabase.from('handicaps').select('user_id, current_handicap').then((r) => r.data ?? []),
   ])
+
+  const pendingMakeups = await getPendingMakeups(supabase, currentYear)
 
   // ── Group 2: depends on group 1 results ──────────────────────────────────
   const recentRoundIds = recentRoundsData.map((r: any) => r.id)
@@ -106,6 +108,7 @@ export default async function LeaderboardPage() {
           team:team_id ( team_name, team_number )
         `)
         .eq('round_id', currentRound.id)
+        .eq('is_sub', false)
         .then((r) => r.data ?? []),
       recentRoundIds.length
         ? supabase
@@ -305,6 +308,7 @@ export default async function LeaderboardPage() {
           currentYear={currentYear}
           userHasDeclared={userHasDeclared || userInFoursome}
           allHandicaps={allHandicaps}
+          pendingMakeups={pendingMakeups}
         />
       )
     }
@@ -325,6 +329,7 @@ export default async function LeaderboardPage() {
       currentYear={currentYear}
       userHasDeclared={false}
       allHandicaps={allHandicaps}
+      pendingMakeups={pendingMakeups}
     />
   )
 }

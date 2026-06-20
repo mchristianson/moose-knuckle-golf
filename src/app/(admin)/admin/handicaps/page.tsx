@@ -10,7 +10,8 @@ export default async function HandicapsPage() {
     .select(`
       id,
       full_name,
-      handicaps ( current_handicap, rounds_played, last_calculated_at, is_manual_override, tee_adjustment )
+      tee_box,
+      handicaps ( current_handicap, rounds_played, last_calculated_at, is_manual_override )
     `)
     .eq('is_active', true)
     .order('full_name')

@@ -19,6 +19,7 @@ export function FinalizeRoundButton({ roundId, enteredCount, totalCount }: Final
   const [confirmed, setConfirmed] = useState(false)
 
   const allEntered = enteredCount === totalCount && totalCount > 0
+  const canFinalize = totalCount > 0
 
   const handleFinalize = async () => {
     if (!confirmed) {
@@ -44,8 +45,14 @@ export function FinalizeRoundButton({ roundId, enteredCount, totalCount }: Final
         {enteredCount} of {totalCount} scores entered.
         {allEntered
           ? ' All scores are complete — ready to finalize.'
-          : ' Enter all scores before finalizing.'}
+          : ' Players with missing scores will need to submit makeup rounds.'}
       </p>
+      {!allEntered && !confirmed && (
+        <p className="text-sm text-amber-700 mb-2 font-medium flex items-center gap-2">
+          <Icon icon={ExclamationTriangleIcon} size="sm" className="text-amber-700" />
+          {totalCount - enteredCount} score(s) missing. Missing players must submit makeup scores separately.
+        </p>
+      )}
       {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
       {confirmed && !loading && (
         <p className="text-sm text-amber-700 mb-2 font-medium flex items-center gap-2">
@@ -55,7 +62,7 @@ export function FinalizeRoundButton({ roundId, enteredCount, totalCount }: Final
       )}
       <button
         onClick={handleFinalize}
-        disabled={!allEntered || loading}
+        disabled={!canFinalize || loading}
         className={`px-4 py-2 rounded text-sm font-medium text-white transition-colors disabled:opacity-40 ${
           confirmed ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
         }`}

@@ -17,6 +17,7 @@ export interface ScorecardScore {
   net_score: number | null
   handicap_at_time: number | null
   hole_scores: number[]
+  makeup_pending?: boolean
 }
 
 export interface ScorecardRound {
@@ -35,7 +36,7 @@ interface RoundScorecardProps {
 
 type HoleView = 'front' | 'back' | 'full'
 
-// Distribute handicap strokes across holes using stroke index (STROKE_INDEX lower = harder)
+// Allocate handicap strokes per hole for tile dot display only (not used for net totals)
 function strokesForHandicap(handicap: number): number[] {
   const hcp = Math.floor(handicap)
   return STROKE_INDEX.map((si) => {
@@ -75,21 +76,24 @@ interface TallyResult {
   played: number
 }
 
+// Net = gross − handicap (simple subtraction). Handicap is a 9-hole number, applied once.
+// Only subtract handicap for the front 9 range (start=0, end≤9); back 9 and full-round
+// views show gross-only for net so the leaderboard rank is still driven by front-9 net.
 function tallyRange(holeScores: number[], handicap: number, start: number, end: number): TallyResult {
-  const strokes = strokesForHandicap(handicap)
-  let gross = 0, net = 0, parSum = 0, played = 0
+  let gross = 0, parSum = 0, played = 0
   for (let i = start; i < end; i++) {
     const s = holeScores[i]
     if (s > 0) {
       parSum += HOLE_PARS[i]
       gross += s
-      net += s - strokes[i]
       played++
     }
   }
+  const applyHandicap = start === 0 && end <= 9
+  const net = played > 0 ? (applyHandicap ? gross - Math.floor(handicap) : gross) : null
   return {
     gross: played > 0 ? gross : null,
-    net:   played > 0 ? net   : null,
+    net,
     parSum,
     played,
   }
@@ -346,6 +350,33 @@ export function RoundScorecard({ round, scores, showScoreButton = false }: Round
 
               const frontTally = tallyRange(s.hole_scores, s._hcp, 0, 9)
               const backTally  = tallyRange(s.hole_scores, s._hcp, 9, 18)
+
+              if (s.makeup_pending) {
+                return (
+                  <div
+                    key={s.user_id}
+                    className="bg-zinc-800/60 rounded-2xl p-3 flex items-center"
+                    style={{ border: '1px dashed rgba(202,138,4,0.5)' }}
+                  >
+                    <div
+                      className="shrink-0 rounded-full flex items-center justify-center"
+                      style={{ width: 36, height: 36, marginRight: 10, background: '#27272a' }}
+                    >
+                      <span className="text-zinc-400 font-bold" style={{ fontSize: 12 }}>{initials}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-zinc-300 font-bold truncate" style={{ fontSize: 14 }}>{s.full_name}</p>
+                      <p className="text-green-500 truncate mt-0.5" style={{ fontSize: 11 }}>{s.team_name}</p>
+                    </div>
+                    <span
+                      className="shrink-0 rounded-full px-2.5 py-1 font-semibold"
+                      style={{ fontSize: 11, color: '#fbbf24', background: 'rgba(202,138,4,0.15)', border: '1px solid rgba(202,138,4,0.4)' }}
+                    >
+                      Makeup pending
+                    </span>
+                  </div>
+                )
+              }
 
               return (
                 <div key={s.user_id} className="bg-zinc-800 rounded-2xl p-3 space-y-2.5">

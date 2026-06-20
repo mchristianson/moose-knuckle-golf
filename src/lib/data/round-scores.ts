@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
+import { getPendingMakeups } from '@/lib/data/makeups'
 
 function getSupabaseClient() {
   return createClient(
@@ -18,6 +19,7 @@ export interface RoundScoreRecord {
   net_score: number | null
   handicap_at_time: number | null
   hole_scores: number[]
+  makeup_pending?: boolean
 }
 
 export interface RoundInfo {
@@ -35,7 +37,7 @@ export const getRoundScores = unstable_cache(
     const [roundResult, scoresResult] = await Promise.all([
       supabase
         .from('rounds')
-        .select('id, round_number, round_date, status, tee_time')
+        .select('id, round_number, round_date, status, tee_time, season_year')
         .eq('id', roundId)
         .maybeSingle(),
       supabase
@@ -53,7 +55,8 @@ export const getRoundScores = unstable_cache(
         .eq('is_sub', false),
     ])
 
-    const round = roundResult.data as RoundInfo | null
+    const roundRaw = roundResult.data as (RoundInfo & { season_year: number }) | null
+    const round = roundRaw as RoundInfo | null
     const scoresRaw = scoresResult.data ?? []
 
     const scores: RoundScoreRecord[] = scoresRaw.map((s: any) => ({
@@ -67,6 +70,26 @@ export const getRoundScores = unstable_cache(
       handicap_at_time: s.handicap_at_time,
       hole_scores: s.hole_scores ?? [],
     }))
+
+    // Append placeholder rows for teams that owe a makeup for this round
+    if (roundRaw) {
+      const pending = (await getPendingMakeups(supabase, roundRaw.season_year))
+        .filter((p) => p.round_id === roundId)
+      for (const p of pending) {
+        scores.push({
+          user_id: p.golfer_id ?? `makeup:${p.team_id}`,
+          full_name: p.golfer_name ?? p.team_name,
+          avatar_url: null,
+          team_name: p.team_name,
+          team_number: p.team_number,
+          gross_score: null,
+          net_score: null,
+          handicap_at_time: null,
+          hole_scores: [],
+          makeup_pending: true,
+        })
+      }
+    }
 
     return { round, scores }
   },

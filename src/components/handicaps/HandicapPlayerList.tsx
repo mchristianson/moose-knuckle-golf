@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
-import { getHandicapBreakdown } from '@/lib/actions/scores'
+import { getHandicapBreakdown, clearManualOverride } from '@/lib/actions/scores'
 import { HandicapBreakdown } from './HandicapBreakdown'
 import { SetHandicapForm } from './set-handicap-form'
-import { SetTeeAdjustmentForm } from './SetTeeAdjustmentForm'
+import { SetTeeBoxForm } from './SetTeeBoxForm'
+import type { TeeBox } from '@/lib/constants/course'
 
 interface Player {
   id: string
   full_name: string
-  handicaps: { current_handicap: number; rounds_played: number; last_calculated_at: string; is_manual_override: boolean; tee_adjustment: number } | null
+  tee_box: TeeBox
+  handicaps: { current_handicap: number; rounds_played: number; last_calculated_at: string; is_manual_override: boolean } | null
 }
 
 type Breakdown = Awaited<ReturnType<typeof getHandicapBreakdown>>
@@ -54,9 +56,8 @@ export function HandicapPlayerList({ players }: { players: Player[] }) {
             const isLoading = loading === p.id
 
             return (
-              <>
+              <React.Fragment key={p.id}>
                 <tr
-                  key={p.id}
                   className="border-t hover:bg-gray-50 cursor-pointer"
                   onClick={() => togglePlayer(p.id)}
                 >
@@ -84,7 +85,15 @@ export function HandicapPlayerList({ players }: { players: Player[] }) {
                   >
                     <div className="flex items-center gap-3 flex-wrap">
                       <SetHandicapForm userId={p.id} currentHandicap={h?.current_handicap ?? 0} />
-                      <SetTeeAdjustmentForm userId={p.id} currentAdjustment={h?.tee_adjustment ?? 0} />
+                      <SetTeeBoxForm userId={p.id} currentTeeBox={p.tee_box ?? 'blue'} />
+                      {h?.is_manual_override && (
+                        <button
+                          onClick={() => clearManualOverride(p.id)}
+                          className="text-xs text-amber-700 underline hover:text-amber-900"
+                        >
+                          Clear manual
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -106,12 +115,13 @@ export function HandicapPlayerList({ players }: { players: Player[] }) {
                           scoresToUse={breakdown.scoresToUse}
                           currentHandicap={h?.current_handicap}
                           teeAdjustment={breakdown.teeAdjustment}
+                          teeBox={breakdown.teeBox}
                         />
                       ) : null}
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             )
           })}
         </tbody>

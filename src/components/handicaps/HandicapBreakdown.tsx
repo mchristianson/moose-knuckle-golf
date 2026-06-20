@@ -11,12 +11,13 @@ interface Props {
   scoresToUse: number
   currentHandicap?: number | null
   teeAdjustment?: number
+  teeBox?: string
   dark?: boolean
 }
 
 const PAR = 36
 
-export function HandicapBreakdown({ scores, scoresToUse, currentHandicap, teeAdjustment = 0, dark = false }: Props) {
+export function HandicapBreakdown({ scores, scoresToUse, currentHandicap, teeAdjustment = 0, teeBox = 'blue', dark = false }: Props) {
   if (scores.length === 0) {
     return (
       <p className={`text-sm text-center py-4 ${dark ? 'text-zinc-500' : 'text-gray-400'}`}>
@@ -34,7 +35,7 @@ export function HandicapBreakdown({ scores, scoresToUse, currentHandicap, teeAdj
     ? usedScores.reduce((sum, s) => sum + s.gross_score, 0) / usedScores.length
     : 0
   const baseComputed = Math.round(Math.max(0, avgUsed - PAR) * 10) / 10
-  const computed = Math.round((baseComputed + teeAdjustment) * 10) / 10
+  const computed = Math.floor(Math.max(0, avgUsed - PAR - teeAdjustment))
 
   const th = dark
     ? 'px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-zinc-500'
@@ -97,9 +98,9 @@ export function HandicapBreakdown({ scores, scoresToUse, currentHandicap, teeAdj
         {' → '} {avgUsed.toFixed(1)} − {PAR} = <span className={`font-bold ${dark ? 'text-zinc-200' : 'text-gray-700'}`}>{baseComputed.toFixed(1)}</span>
         {teeAdjustment > 0 && (
           <>
-            {' + '}
+            {' − '}
             <span className={`font-bold ${dark ? 'text-amber-400' : 'text-amber-600'}`}>{teeAdjustment.toFixed(1)}</span>
-            <span className={`ml-0.5 ${dark ? 'text-zinc-500' : 'text-gray-400'}`}>(tee adj)</span>
+            <span className={`ml-0.5 ${dark ? 'text-zinc-500' : 'text-gray-400'}`}>({teeBox} tees)</span>
             {' = '}
           </>
         )}

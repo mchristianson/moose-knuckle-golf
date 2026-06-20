@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getViewerContext } from '@/lib/viewer'
+import { TEE_RATINGS, BASELINE_TEE, type TeeBox } from '@/lib/constants/course'
 
 // Returns the effective user (impersonated if applicable) for user-facing mutations.
 // realUserId is preserved for audit fields like submitted_by.
@@ -331,10 +332,11 @@ async function calculateRoundPoints(supabase: any, roundId: string) {
   const allScores = [...(scores ?? []), ...(makeupScores ?? [])]
   if (allScores.length === 0) return { error: 'No complete scores found', points: null }
 
-  // One net score per team — three-tier priority:
+  // One net score per team — two-tier priority. Sub scores NEVER count:
+  // a team that played with a sub earns no points until the regular golfer's
+  // makeup score is entered into this round (or linked via covers_missed_round_id).
   // 1. Non-sub direct score (regular golfer played that night)
   // 2. Non-sub makeup score (player made up the round later/earlier)
-  // 3. Sub score (fallback if neither direct nor makeup exists)
   const teamScores: Record<string, number> = {}
   for (const s of scores ?? []) {
     if (!s.is_sub && s.net_score !== null) {
@@ -343,11 +345,6 @@ async function calculateRoundPoints(supabase: any, roundId: string) {
   }
   for (const s of makeupScores ?? []) {
     if (!(s.team_id in teamScores) && !s.is_sub && s.net_score !== null) {
-      teamScores[s.team_id] = s.net_score
-    }
-  }
-  for (const s of scores ?? []) {
-    if (!(s.team_id in teamScores) && s.net_score !== null) {
       teamScores[s.team_id] = s.net_score
     }
   }
@@ -578,11 +575,18 @@ export async function linkMakeupScore(
 // Calculate handicap for a single user from their last 10 eligible scores.
 // Skips players with a manual override — admin must clear the override explicitly.
 async function recalculateHandicap(supabase: any, userId: string, adminUserId: string) {
-  const { data: existing } = await supabase
-    .from('handicaps')
-    .select('id, current_handicap, is_manual_override, tee_adjustment')
-    .eq('user_id', userId)
-    .maybeSingle()
+  const [{ data: existing }, { data: userRow }] = await Promise.all([
+    supabase
+      .from('handicaps')
+      .select('id, current_handicap, is_manual_override')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    supabase
+      .from('users')
+      .select('tee_box')
+      .eq('id', userId)
+      .single(),
+  ])
 
   if (existing?.is_manual_override) return
 
@@ -593,15 +597,18 @@ async function recalculateHandicap(supabase: any, userId: string, adminUserId: s
 
   const grossScores: number[] = eligibleScores.map((s: any) => s.gross_score)
 
-  // LeagueGolfer formula: best 5 of last 10
+  // Best 5 of last 10
   const scoresToUse = Math.min(grossScores.length, 5)
   const sorted = [...grossScores].sort((a, b) => a - b)
   const best = sorted.slice(0, scoresToUse)
   const avgBest = best.reduce((a, b) => a + b, 0) / best.length
-  // Base handicap + per-player tee adjustment (e.g. +1 for White tees vs Blue)
-  const baseHandicap = Math.floor(Math.max(0, avgBest - 36))
-  const teeAdj = existing?.tee_adjustment ?? 0
-  const newHandicap = baseHandicap + teeAdj
+
+  // Tee adjustment: easier tees reduce strokes granted
+  // (baselineRating − playerRating) / 2 for 9-hole play
+  const teeBox = ((userRow?.tee_box ?? 'blue') as TeeBox)
+  const teeAdjustment = (TEE_RATINGS[BASELINE_TEE].men - TEE_RATINGS[teeBox].men) / 2
+  const rawHandicap = avgBest - 36
+  const newHandicap = Math.floor(Math.max(0, rawHandicap - teeAdjustment))
 
   if (existing) {
     await supabase
@@ -692,6 +699,36 @@ export async function setHandicap(userId: string, handicap: number, reason: stri
   return { success: true }
 }
 
+// Admin: clear manual override so auto-calculation resumes
+export async function clearManualOverride(userId: string) {
+  const { supabase, user } = await getAdminUser()
+
+  await supabase
+    .from('handicaps')
+    .update({ is_manual_override: false })
+    .eq('user_id', userId)
+
+  const { data: current } = await supabase
+    .from('handicaps')
+    .select('current_handicap')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  await supabase.from('handicap_history').insert({
+    user_id: userId,
+    handicap_value: current?.current_handicap ?? 0,
+    calculation_method: 'calculated',
+    changed_by: user.id,
+    reason: 'Manual override cleared by admin — reverting to auto-calculation',
+  })
+
+  // Recalculate immediately for this player
+  await recalculateHandicap(supabase, userId, user.id)
+
+  revalidatePath('/admin/handicaps')
+  return { success: true }
+}
+
 // Admin: recalculate handicaps for every active player
 export async function recalculateAllHandicaps() {
   const { supabase, user } = await getAdminUser()
@@ -715,9 +752,10 @@ export async function recalculateAllHandicaps() {
 export async function getHandicapBreakdown(userId: string) {
   const supabase = await createClient()
 
-  const [{ data: eligible }, { data: handicapRow }, { data: history }] = await Promise.all([
+  const [{ data: eligible }, { data: handicapRow }, { data: userRow }, { data: history }] = await Promise.all([
     supabase.rpc('get_eligible_scores_for_handicap', { p_user_id: userId, p_limit: 10 }),
-    supabase.from('handicaps').select('current_handicap, tee_adjustment').eq('user_id', userId).maybeSingle(),
+    supabase.from('handicaps').select('current_handicap').eq('user_id', userId).maybeSingle(),
+    supabase.from('users').select('tee_box').eq('id', userId).single(),
     supabase
       .from('handicap_history')
       .select('handicap_value, created_at, calculation_method')
@@ -740,41 +778,31 @@ export async function getHandicapBreakdown(userId: string) {
     [...scores].sort((a, b) => a.gross_score - b.gross_score).slice(0, scoresToUse).map(s => s.score_id)
   )
 
+  const teeBox = ((userRow?.tee_box ?? 'blue') as TeeBox)
+  const teeAdjustment = (TEE_RATINGS[BASELINE_TEE].men - TEE_RATINGS[teeBox].men) / 2
+
   return {
     scores: scores.map(s => ({ ...s, used_for_handicap: usedIds.has(s.score_id) })),
     scoresToUse,
-    teeAdjustment: (handicapRow?.tee_adjustment ?? 0) as number,
+    teeBox,
+    teeAdjustment,
     history: (history ?? []) as Array<{ handicap_value: number; created_at: string; calculation_method: string }>,
   }
 }
 
-// Admin: set per-player tee adjustment and immediately recalculate their handicap
-export async function setTeeAdjustment(userId: string, adjustment: number) {
+// Admin: set per-player tee box and immediately recalculate their handicap
+export async function setTeeBox(userId: string, teeBox: TeeBox) {
   const { supabase, user } = await getAdminUser()
 
-  const rounded = Math.round(Math.max(0, adjustment) * 10) / 10
-
-  const { data: existing } = await supabase
-    .from('handicaps')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (existing) {
-    await supabase
-      .from('handicaps')
-      .update({ tee_adjustment: rounded })
-      .eq('user_id', userId)
-  } else {
-    await supabase.from('handicaps').insert({
-      user_id: userId,
-      current_handicap: 0,
-      rounds_played: 0,
-      tee_adjustment: rounded,
-    })
+  if (teeBox !== 'blue' && teeBox !== 'white') {
+    return { error: 'Invalid tee box' }
   }
 
-  // Re-run calculation so current_handicap reflects the new adjustment immediately
+  await supabase
+    .from('users')
+    .update({ tee_box: teeBox })
+    .eq('id', userId)
+
   await recalculateHandicap(supabase, userId, user.id)
 
   revalidatePath('/admin/handicaps')

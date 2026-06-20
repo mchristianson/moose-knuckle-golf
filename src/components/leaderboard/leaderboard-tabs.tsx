@@ -121,6 +121,14 @@ interface LeaderboardTabsProps {
   currentYear: number
   userHasDeclared: boolean
   allHandicaps: AllHandicapRow[]
+  pendingMakeups: PendingMakeupRow[]
+}
+
+interface PendingMakeupRow {
+  round_id: string
+  round_number: number
+  team_id: string
+  golfer_name: string | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -327,10 +335,18 @@ export function LeaderboardTabs({
   currentYear,
   userHasDeclared,
   allHandicaps,
+  pendingMakeups,
 }: LeaderboardTabsProps) {
   const [activeTab, setActiveTab] = useState<'season' | 'current' | 'next' | 'handicaps'>(
     currentRound ? 'current' : nextRound ? 'next' : 'season'
   )
+
+  const pendingByTeam = new Map<string, PendingMakeupRow[]>()
+  for (const p of pendingMakeups) {
+    const list = pendingByTeam.get(p.team_id) ?? []
+    list.push(p)
+    pendingByTeam.set(p.team_id, list)
+  }
 
   const tabBtn = (tab: 'season' | 'current' | 'next' | 'handicaps', label: React.ReactNode) => (
     <button
@@ -402,7 +418,23 @@ export function LeaderboardTabs({
                           : <span className="text-zinc-400 font-semibold">{idx + 1}</span>
                         }
                       </td>
-                      <td className="px-4 py-3 text-white font-semibold">{row.team_name}</td>
+                      <td className="px-4 py-3 text-white font-semibold">
+                        <span>{row.team_name}</span>
+                        {(() => {
+                          const pm = pendingByTeam.get(row.team_id)
+                          if (!pm || pm.length === 0) return null
+                          const rounds = pm.map(p => `R${p.round_number}`).join(', ')
+                          return (
+                            <span
+                              title={`Makeup pending: ${rounds}`}
+                              className="ml-2 inline-block rounded-full px-2 py-0.5 align-middle"
+                              style={{ fontSize: 10, fontWeight: 600, color: '#fbbf24', background: 'rgba(202,138,4,0.15)', border: '1px solid rgba(202,138,4,0.4)' }}
+                            >
+                              ⏳ {pm.length === 1 ? 'Makeup' : `${pm.length} makeups`}
+                            </span>
+                          )
+                        })()}
+                      </td>
                       <td className="px-4 py-3 text-center text-zinc-400">{row.rounds_played}</td>
                       <td className="px-4 py-3 text-center text-zinc-400">
                         {row.avg_net_score != null ? row.avg_net_score : '—'}

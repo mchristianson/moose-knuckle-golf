@@ -18,26 +18,44 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
 
   if (!round) return <div>Round not found</div>
 
-  // Get golfers playing this round — from foursome_members
-  const { data: foursomeMembers } = await supabase
-    .from('foursome_members')
+  // Get golfers from foursomes (if any exist)
+  const { data: foursomeIds } = await supabase
+    .from('foursomes')
+    .select('id')
+    .eq('round_id', roundId)
+
+  const { data: foursomeMembers } = foursomeIds && foursomeIds.length > 0
+    ? await supabase
+        .from('foursome_members')
+        .select(`
+          user_id,
+          sub_id,
+          team_id,
+          is_sub,
+          user:user_id ( id, full_name, display_name ),
+          sub:sub_id ( id, full_name ),
+          team:team_id ( id, team_name, team_number )
+        `)
+        .in('foursome_id', foursomeIds.map((f) => f.id))
+    : { data: [] }
+
+  // Also fetch all team members for this season (allow admin to manually enter scores for anyone)
+  const { data: allTeamMembers } = await supabase
+    .from('team_members')
     .select(`
       user_id,
-      sub_id,
       team_id,
-      is_sub,
       user:user_id ( id, full_name, display_name ),
-      sub:sub_id ( id, full_name ),
       team:team_id ( id, team_name, team_number )
     `)
     .in(
-      'foursome_id',
+      'team_id',
       (
         await supabase
-          .from('foursomes')
+          .from('teams')
           .select('id')
-          .eq('round_id', roundId)
-      ).data?.map((f) => f.id) ?? []
+          .eq('season_year', round.season_year)
+      ).data?.map((t) => t.id) ?? []
     )
 
   // Get existing scores for this round
@@ -60,14 +78,19 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
     .eq('covers_missed_round_id', roundId)
     .not('net_score', 'is', null)
 
-  // Get handicaps for all players (filter nulls — external subs have no user_id)
-  const playerIds = (foursomeMembers ?? [])
-    .map((m) => m.user_id)
-    .filter((id): id is string => id !== null)
-  const { data: handicaps } = await supabase
-    .from('handicaps')
-    .select('user_id, current_handicap')
-    .in('user_id', playerIds)
+  // Get handicaps for all potential players
+  const allPlayerIds = [
+    ...(allTeamMembers ?? []).map((m) => m.user_id).filter((id): id is string => id !== null),
+    ...(foursomeMembers ?? []).map((m) => m.user_id).filter((id): id is string => id !== null),
+  ]
+  const uniquePlayerIds = [...new Set(allPlayerIds)]
+
+  const { data: handicaps } = uniquePlayerIds.length > 0
+    ? await supabase
+        .from('handicaps')
+        .select('user_id, current_handicap')
+        .in('user_id', uniquePlayerIds)
+    : { data: [] }
 
   const handicapMap: Record<string, number> = Object.fromEntries(
     (handicaps ?? []).map((h) => [h.user_id, h.current_handicap])
@@ -80,33 +103,70 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
     else if (s.sub_id) scoreMap[`sub:${s.sub_id}`] = s
   }
 
-  // Build rows
-  const rows = (foursomeMembers ?? []).map((m: any) => {
-    const mapKey = m.user_id ? `user:${m.user_id}` : `sub:${m.sub_id}`
+  // Build rows from all team members + add subs from foursomes
+  const seenKeys = new Set<string>()
+  const rows: any[] = []
+
+  // Add all team members
+  for (const m of allTeamMembers ?? []) {
+    const mapKey = `user:${m.user_id}`
+    seenKeys.add(mapKey)
     const existing = scoreMap[mapKey]
-    const handicap = handicapMap[m.user_id] ?? 0
+    const handicap = existing?.handicap_at_time ?? handicapMap[m.user_id] ?? 0
     const holeScores: number[] = existing?.hole_scores ?? Array(9).fill(0)
     const gross = holeScores.reduce((a: number, b: number) => a + b, 0)
-    const net = existing?.net_score ?? (gross > 0 ? Math.round((gross - handicap) * 10) / 10 : null)
+    const frontNineGross = holeScores.slice(0, 9).reduce((a: number, b: number) => a + b, 0)
+    const net = existing?.net_score ?? (frontNineGross > 0 ? Math.round((frontNineGross - handicap) * 10) / 10 : null)
 
-    return {
+    rows.push({
       scoreId: existing?.id ?? null,
-      userId: (m.user_id as string | null) ?? null,
-      subId: (m.sub_id as string | null) ?? null,
+      userId: m.user_id,
+      subId: null,
       teamId: m.team_id,
-      fullName: m.user?.display_name ?? m.user?.full_name ?? m.sub?.full_name ?? 'Unknown',
+      fullName: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
       teamName: m.team?.team_name ?? '',
       teamNumber: m.team?.team_number ?? 0,
       handicap,
       holeScores,
       grossScore: gross,
       netScore: net,
-      isSub: m.is_sub,
+      isSub: false,
       coversMissedRoundId: existing?.covers_missed_round_id ?? null,
-    }
-  })
+    })
+  }
 
-  const enteredCount = rows.filter((r) => r.holeScores.length === 9 && r.holeScores.every((h: number) => h > 0)).length
+  // Add any subs from foursomes that aren't already in team members
+  for (const m of foursomeMembers ?? []) {
+    if (m.is_sub && m.sub_id) {
+      const mapKey = `sub:${m.sub_id}`
+      if (!seenKeys.has(mapKey)) {
+        seenKeys.add(mapKey)
+        const existing = scoreMap[mapKey]
+        const holeScores: number[] = existing?.hole_scores ?? Array(9).fill(0)
+        const gross = holeScores.reduce((a: number, b: number) => a + b, 0)
+        const frontNineGross = holeScores.slice(0, 9).reduce((a: number, b: number) => a + b, 0)
+        const net = existing?.net_score ?? (frontNineGross > 0 ? Math.round((frontNineGross - 0) * 10) / 10 : null)
+
+        rows.push({
+          scoreId: existing?.id ?? null,
+          userId: null,
+          subId: m.sub_id,
+          teamId: m.team_id,
+          fullName: m.sub?.full_name ?? 'Unknown Sub',
+          teamName: m.team?.team_name ?? '',
+          teamNumber: m.team?.team_number ?? 0,
+          handicap: 0,
+          holeScores,
+          grossScore: gross,
+          netScore: net,
+          isSub: true,
+          coversMissedRoundId: existing?.covers_missed_round_id ?? null,
+        })
+      }
+    }
+  }
+
+  const enteredCount = rows.filter((r) => r.holeScores.slice(0, 9).every((h: number) => h > 0)).length
   const totalCount = rows.length
 
   const roundDate = formatRoundDate(round.round_date)
@@ -176,6 +236,24 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
                   <li key={s.id}>
                     {s.user?.display_name ?? s.user?.full_name ?? 'Unknown'} — makeup score
                     from Round {s.round?.round_number} (net {s.net_score})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {rows.some((r) => r.isSub) && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <h3 className="font-semibold text-amber-900 mb-2">Makeup Owed — Sub Played</h3>
+              <p className="text-sm text-amber-800 mb-2">
+                A sub&apos;s score never counts toward league points or handicap. The team&apos;s
+                regular golfer owes a makeup. Enter their real score into this round later (then
+                click Recalculate) — points for this round will update automatically.
+              </p>
+              <ul className="text-sm text-amber-800 space-y-1">
+                {rows.filter((r) => r.isSub).map((r) => (
+                  <li key={r.subId ?? r.scoreId ?? r.fullName}>
+                    {r.fullName} subbed for Team {r.teamNumber} — {r.teamName}
                   </li>
                 ))}
               </ul>
