@@ -418,22 +418,24 @@ export function LeaderboardTabs({
                           : <span className="text-zinc-400 font-semibold">{idx + 1}</span>
                         }
                       </td>
-                      <td className="px-4 py-3 text-white font-semibold">
-                        <span>{row.team_name}</span>
-                        {(() => {
-                          const pm = pendingByTeam.get(row.team_id)
-                          if (!pm || pm.length === 0) return null
-                          const rounds = pm.map(p => `R${p.round_number}`).join(', ')
-                          return (
-                            <span
-                              title={`Makeup pending: ${rounds}`}
-                              className="ml-2 inline-block rounded-full px-2 py-0.5 align-middle"
-                              style={{ fontSize: 10, fontWeight: 600, color: '#fbbf24', background: 'rgba(202,138,4,0.15)', border: '1px solid rgba(202,138,4,0.4)' }}
-                            >
-                              ⏳ {pm.length === 1 ? 'Makeup' : `${pm.length} makeups`}
-                            </span>
-                          )
-                        })()}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-white font-semibold">{row.team_name}</span>
+                          {(() => {
+                            const pm = pendingByTeam.get(row.team_id)
+                            if (!pm || pm.length === 0) return null
+                            const rounds = pm.map(p => `R${p.round_number}`).join(', ')
+                            return (
+                              <span
+                                title={`Makeup pending: ${rounds}`}
+                                className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold w-fit"
+                                style={{ color: '#fbbf24', background: 'rgba(202,138,4,0.15)', border: '1px solid rgba(202,138,4,0.4)' }}
+                              >
+                                ⏳ {pm.length === 1 ? 'Makeup' : `${pm.length} makeups`}
+                              </span>
+                            )
+                          })()}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center text-zinc-400">{row.rounds_played}</td>
                       <td className="px-4 py-3 text-center text-zinc-400">
