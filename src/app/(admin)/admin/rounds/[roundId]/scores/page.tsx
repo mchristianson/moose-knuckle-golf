@@ -118,14 +118,17 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
     const frontNineGross = holeScores.slice(0, 9).reduce((a: number, b: number) => a + b, 0)
     const net = existing?.net_score ?? (frontNineGross > 0 ? Math.round((frontNineGross - handicap) * 10) / 10 : null)
 
+    const userObj = Array.isArray(m.user) ? m.user[0] : m.user
+    const teamObj = Array.isArray(m.team) ? m.team[0] : m.team
+
     rows.push({
       scoreId: existing?.id ?? null,
       userId: m.user_id,
       subId: null,
       teamId: m.team_id,
-      fullName: m.user?.display_name ?? m.user?.full_name ?? 'Unknown',
-      teamName: m.team?.team_name ?? '',
-      teamNumber: m.team?.team_number ?? 0,
+      fullName: userObj?.display_name ?? userObj?.full_name ?? 'Unknown',
+      teamName: teamObj?.team_name ?? '',
+      teamNumber: teamObj?.team_number ?? 0,
       handicap,
       holeScores,
       grossScore: gross,
@@ -147,14 +150,17 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
         const frontNineGross = holeScores.slice(0, 9).reduce((a: number, b: number) => a + b, 0)
         const net = existing?.net_score ?? (frontNineGross > 0 ? Math.round((frontNineGross - 0) * 10) / 10 : null)
 
+        const subObj = Array.isArray(m.sub) ? m.sub[0] : m.sub
+        const teamObj = Array.isArray(m.team) ? m.team[0] : m.team
+
         rows.push({
           scoreId: existing?.id ?? null,
           userId: null,
           subId: m.sub_id,
           teamId: m.team_id,
-          fullName: m.sub?.full_name ?? 'Unknown Sub',
-          teamName: m.team?.team_name ?? '',
-          teamNumber: m.team?.team_number ?? 0,
+          fullName: subObj?.full_name ?? 'Unknown Sub',
+          teamName: teamObj?.team_name ?? '',
+          teamNumber: teamObj?.team_number ?? 0,
           handicap: 0,
           holeScores,
           grossScore: gross,
