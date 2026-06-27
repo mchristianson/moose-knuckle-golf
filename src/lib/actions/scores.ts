@@ -82,6 +82,9 @@ export async function submitMyScore(roundId: string, holeScores: number[]) {
   if (holeScores.length < 9 || holeScores.length > 18) {
     return { error: 'Expected 9 to 18 hole scores' }
   }
+  if (holeScores.length < 18) {
+    holeScores = [...holeScores, ...Array(18 - holeScores.length).fill(0)]
+  }
   if (holeScores.some((h) => h < 0)) {
     return { error: 'Hole scores cannot be negative' }
   }
@@ -197,6 +200,9 @@ export async function submitScoreForFoursome(
   if (holeScores.length < 9 || holeScores.length > 18) {
     return { error: 'Expected 9 to 18 hole scores' }
   }
+  if (holeScores.length < 18) {
+    holeScores = [...holeScores, ...Array(18 - holeScores.length).fill(0)]
+  }
   if (holeScores.some((h) => h < 0)) {
     return { error: 'Hole scores cannot be negative' }
   }
@@ -254,6 +260,9 @@ export async function saveScore(
 
   if (holeScores.length < 9 || holeScores.length > 18) {
     return { error: 'Expected 9 to 18 hole scores' }
+  }
+  if (holeScores.length < 18) {
+    holeScores = [...holeScores, ...Array(18 - holeScores.length).fill(0)]
   }
 
   if (!userId && !subId) {
@@ -316,6 +325,7 @@ async function calculateRoundPoints(supabase: any, roundId: string) {
     .from('scores')
     .select('id, user_id, sub_id, team_id, net_score, is_sub')
     .eq('round_id', roundId)
+    .is('covers_missed_round_id', null)
     .not('net_score', 'is', null)
 
   if (scoresError) return { error: scoresError.message, points: null }

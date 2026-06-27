@@ -113,7 +113,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
     seenKeys.add(mapKey)
     const existing = scoreMap[mapKey]
     const handicap = existing?.handicap_at_time ?? handicapMap[m.user_id] ?? 0
-    const holeScores: number[] = existing?.hole_scores ?? Array(9).fill(0)
+    const holeScores: number[] = existing?.hole_scores ?? Array(18).fill(0)
     const gross = holeScores.reduce((a: number, b: number) => a + b, 0)
     const frontNineGross = holeScores.slice(0, 9).reduce((a: number, b: number) => a + b, 0)
     const net = existing?.net_score ?? (frontNineGross > 0 ? Math.round((frontNineGross - handicap) * 10) / 10 : null)
@@ -145,7 +145,7 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
       if (!seenKeys.has(mapKey)) {
         seenKeys.add(mapKey)
         const existing = scoreMap[mapKey]
-        const holeScores: number[] = existing?.hole_scores ?? Array(9).fill(0)
+        const holeScores: number[] = existing?.hole_scores ?? Array(18).fill(0)
         const gross = holeScores.reduce((a: number, b: number) => a + b, 0)
         const frontNineGross = holeScores.slice(0, 9).reduce((a: number, b: number) => a + b, 0)
         const net = existing?.net_score ?? (frontNineGross > 0 ? Math.round((frontNineGross - 0) * 10) / 10 : null)
@@ -268,12 +268,12 @@ export default async function ScoringPage({ params }: { params: Promise<{ roundI
 
           <ScoreEntryTable roundId={roundId} rows={rows} />
 
-          {round.round_type === 'makeup' && (
+          {rows.some(r => r.netScore !== null && !r.subId) && (
             <div className="mt-8">
               <MakeupAssignmentPanel
                 makeupRoundId={roundId}
                 scores={rows
-                  .filter(r => r.netScore !== null)
+                  .filter(r => r.netScore !== null && !r.subId)
                   .map(r => ({
                     scoreId: r.scoreId!,
                     userId: r.userId,
