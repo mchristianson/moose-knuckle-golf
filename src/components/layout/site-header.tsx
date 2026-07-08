@@ -51,8 +51,8 @@ export function SiteHeader({ navItems, isLoggedIn, isAdmin, avatarUrl, currentRo
         {/* Outer row — relative so the absolute logo can centre within it */}
         <div className="relative flex items-center justify-between">
 
-          {/* Mobile left: spacer (matches right-button width so logo stays centred) */}
-          <div className="w-10 shrink-0 md:hidden" />
+          {/* Mobile left: flex-1 spacer so logo stays centred regardless of right-side width */}
+          <div className="flex-1 md:hidden" />
 
           {/* Logo — absolute centre on mobile, normal flow left on desktop */}
           <Link
@@ -131,23 +131,34 @@ export function SiteHeader({ navItems, isLoggedIn, isAdmin, avatarUrl, currentRo
 
           {/* Mobile right: avatar button (auth'd) or login CTA (public) */}
           {isLoggedIn ? (
-            <Link
-              href="/profile"
-              className="flex items-center justify-center w-10 h-10 rounded-full md:hidden shrink-0"
-              aria-label="Profile"
-            >
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Profile"
-                  className="w-8 h-8 rounded-full object-cover ring-2 ring-zinc-700"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
-                  <Icon icon={UserCircleIcon} size="sm" className="text-zinc-400" />
-                </div>
+            <div className="flex items-center gap-2 md:hidden shrink-0">
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                  style={{ background: 'rgba(27,77,46,0.85)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}
+                >
+                  Admin
+                </Link>
               )}
-            </Link>
+              <Link
+                href="/profile"
+                className="flex items-center justify-center w-10 h-10 rounded-full"
+                aria-label="Profile"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    className="w-8 h-8 rounded-full object-cover ring-2 ring-zinc-700"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+                    <Icon icon={UserCircleIcon} size="sm" className="text-zinc-400" />
+                  </div>
+                )}
+              </Link>
+            </div>
           ) : (
             <Link
               href="/login"

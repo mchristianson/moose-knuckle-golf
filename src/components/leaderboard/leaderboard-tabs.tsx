@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { formatRoundDate, formatTeeTime } from '@/lib/utils/date'
 import { Icon } from '@/components/Icon'
@@ -9,10 +9,12 @@ import {
   ClipboardDocumentListIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  PlayIcon,
 } from '@heroicons/react/24/outline'
 import { RoundScorecard } from '@/components/leaderboard/RoundScorecard'
 import { HandicapBreakdown } from '@/components/handicaps/HandicapBreakdown'
 import { getHandicapBreakdown } from '@/lib/actions/scores'
+import { updateRoundStatus } from '@/lib/actions/rounds'
 
 type HandicapBreakdownData = Awaited<ReturnType<typeof getHandicapBreakdown>>
 
@@ -122,6 +124,7 @@ interface LeaderboardTabsProps {
   userHasDeclared: boolean
   allHandicaps: AllHandicapRow[]
   pendingMakeups: PendingMakeupRow[]
+  isAdmin?: boolean
 }
 
 interface PendingMakeupRow {
@@ -336,10 +339,18 @@ export function LeaderboardTabs({
   userHasDeclared,
   allHandicaps,
   pendingMakeups,
+  isAdmin = false,
 }: LeaderboardTabsProps) {
   const [activeTab, setActiveTab] = useState<'season' | 'current' | 'next' | 'handicaps'>(
     currentRound ? 'current' : nextRound ? 'next' : 'season'
   )
+  const [isPending, startTransition] = useTransition()
+
+  function handleStartRound(roundId: string) {
+    startTransition(async () => {
+      await updateRoundStatus(roundId, 'in_progress')
+    })
+  }
 
   const pendingByTeam = new Map<string, PendingMakeupRow[]>()
   for (const p of pendingMakeups) {
@@ -567,6 +578,19 @@ export function LeaderboardTabs({
                   </Link>
                 )}
               </div>
+
+              {/* Admin: Start Round */}
+              {isAdmin && nextRound.status === 'foursomes_set' && (
+                <button
+                  onClick={() => handleStartRound(nextRound.id)}
+                  disabled={isPending}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                  style={{ background: '#16a34a', color: 'white' }}
+                >
+                  <Icon icon={PlayIcon} size="sm" />
+                  {isPending ? 'Starting…' : 'Start Round'}
+                </button>
+              )}
 
               {/* Foursomes */}
               {nextRoundFoursomes.length > 0 ? (

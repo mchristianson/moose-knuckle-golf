@@ -10,6 +10,12 @@ export default async function LeaderboardPage() {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  let isAdmin = false
+  if (user) {
+    const { data: userData } = await supabase.from('users').select('is_admin').eq('id', user.id).single()
+    isAdmin = userData?.is_admin ?? false
+  }
+
   // ── Group 1: independent queries run in parallel ──────────────────────────
   // standings comes from cache; recentRoundsData and currentRound are fetched concurrently
   const [standings, recentRoundsData, currentRound, allTeamsData, allHandicapsRaw] = await Promise.all([
@@ -309,6 +315,7 @@ export default async function LeaderboardPage() {
           userHasDeclared={userHasDeclared || userInFoursome}
           allHandicaps={allHandicaps}
           pendingMakeups={pendingMakeups}
+          isAdmin={isAdmin}
         />
       )
     }
@@ -330,6 +337,7 @@ export default async function LeaderboardPage() {
       userHasDeclared={false}
       allHandicaps={allHandicaps}
       pendingMakeups={pendingMakeups}
+      isAdmin={isAdmin}
     />
   )
 }

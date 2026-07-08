@@ -131,6 +131,7 @@ export async function updateRoundStatus(roundId: string, newStatus: string) {
 
   revalidatePath('/admin/rounds')
   revalidatePath(`/admin/rounds/${roundId}`)
+  revalidatePath('/leaderboard')
   return { success: true }
 }
 
