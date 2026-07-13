@@ -430,11 +430,11 @@ export async function finalizeRound(roundId: string) {
 
   if (allScores) {
     for (const score of allScores) {
+      if (!score.user_id) continue // sub scores never generate points; don't block finalization
       const firstNine = score.hole_scores.slice(0, 9)
       const allFilled = firstNine.every((h: number) => h > 0)
       if (!allFilled) {
-        const playerName = score.user_id ? 'A player' : 'A sub'
-        return { error: `${playerName} has not completed all 9 holes` }
+        return { error: `A player has not completed all 9 holes` }
       }
     }
   }
