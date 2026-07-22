@@ -422,6 +422,12 @@ async function calculateRoundPoints(supabase: any, roundId: string) {
 export async function finalizeRound(roundId: string) {
   const { supabase, user } = await getAdminUser()
 
+  const { data: round } = await supabase
+    .from('rounds')
+    .select('round_type')
+    .eq('id', roundId)
+    .single()
+
   // Validate: all scores must have at least first 9 holes filled (non-zero)
   const { data: allScores } = await supabase
     .from('scores')
@@ -439,15 +445,20 @@ export async function finalizeRound(roundId: string) {
     }
   }
 
-  const { error, points: pointsRecords } = await calculateRoundPoints(supabase, roundId)
-  if (error || !pointsRecords) return { error: error || 'Failed to calculate points' }
+  // Makeup rounds carry no round_points of their own (excluded from the leaderboard);
+  // scores entered here are meant to be linked via covers_missed_round_id instead.
+  let pointsRecords: Awaited<ReturnType<typeof calculateRoundPoints>>['points'] = null
+  if (round?.round_type !== 'makeup') {
+    const { error, points } = await calculateRoundPoints(supabase, roundId)
+    if (error || !points) return { error: error || 'Failed to calculate points' }
+    pointsRecords = points
 
-  // Upsert round_points
-  const { error: pointsError } = await supabase
-    .from('round_points')
-    .upsert(pointsRecords, { onConflict: 'round_id,team_id' })
+    const { error: pointsError } = await supabase
+      .from('round_points')
+      .upsert(pointsRecords, { onConflict: 'round_id,team_id' })
 
-  if (pointsError) return { error: pointsError.message }
+    if (pointsError) return { error: pointsError.message }
+  }
 
   // Mark round as completed
   const { error: roundError } = await supabase
