@@ -28,24 +28,36 @@ Shared helper: `src/lib/supabase/mobile.ts` exports `getBearerUser(request)`, us
 
 **Remaining before iOS can rely on it**: manual verification against a real player's Supabase access token (see Verification section below) hasn't been run yet — do this first when picking the work back up, ideally before or alongside Phase 2.
 
-## Phase 2 — iOS app scaffold + auth
+## Phase 2 — iOS app scaffold + auth — ✅ SCAFFOLDED (unverified — see below)
 
-- New SwiftUI project (separate repo or `/ios` folder in this repo — your call; nothing in Xcode requires monorepo layout, but keeping it alongside the backend keeps the API contract easy to cross-reference).
-- Integrate `supabase-swift` for auth only: Google OAuth sign-in, phone OTP sign-in (send + verify), Keychain-backed session persistence, auto-refresh.
-- App config holds `NEXT_PUBLIC_SUPABASE_URL`/anon key (safe to embed, same as the web client) and the deployed site's base URL for hitting `/api/mobile/*`.
-- Build a thin networking layer (`URLSession` + `Bearer` header) mirroring the existing mobile-availability call pattern.
+- SwiftUI project lives at `ios/` in this repo (xcodegen-generated from `ios/project.yml`; regenerate with `xcodegen generate` after editing `project.yml`, e.g. after adding new source files/groups).
+- `ios/MooseKnuckleGolf/Auth/AuthManager.swift` wraps `supabase-swift`'s `SupabaseClient.auth`: Google OAuth via `signInWithOAuth(provider: .google, ...)` (uses `ASWebAuthenticationSession` internally on iOS — no manual web-auth-session code needed), phone OTP via `signInWithOTP`/`verifyOTP(type: .sms)`, mirroring `auth.ts`'s `+1<10-digit>` E.164 format. Session persistence + auto-refresh + Keychain storage are handled by the SDK's defaults, not custom code.
+- `ios/MooseKnuckleGolf/Auth/SignInView.swift` — Google button + two-step phone flow (send code → enter code), matching the web's 10-digit/6-digit validation shape.
+- `ios/MooseKnuckleGolf/Config/AppConfig.swift` — placeholder Supabase URL/anon key/API base URL/OAuth redirect scheme; **fill in real values before running**.
+- `ios/MooseKnuckleGolf/Networking/APIClient.swift` — thin generic `URLSession` + `Bearer` client (get/post + JSON decode), ready for Phase 3/4 endpoint calls; doesn't yet implement the leaderboard/scores methods themselves.
 
-## Phase 3 — Leaderboard screens (read)
+**Build verified**: full Debug build (compile + link, real `Supabase` SDK, not just syntax check) succeeds under Xcode-beta 27.0 — the only Xcode currently on this Mac; plain Xcode 26.6 previously installed here was missing the iOS 26.5 simulator runtime and its `xcodebuild` couldn't resolve any Simulator destination. Build command: `xcodebuild -project ios/MooseKnuckleGolf.xcodeproj -scheme MooseKnuckleGolf -destination 'platform=iOS Simulator,name=iPhone 17' build` with `xcode-select` pointed at `/Applications/Xcode-beta.app/Contents/Developer`.
 
-- Season standings list, sourced from `GET /api/mobile/leaderboard`.
-- Round detail/scorecard view, sourced from `GET /api/mobile/rounds/[id]/scores` — renders the pre-computed net scores/rankings from Phase 1 (no business logic in Swift).
-- Uses `HOLE_PARS` (`src/lib/constants/course.ts`) only for display of par per hole, not for any scoring math (that stays server-side).
+**Not yet verified**: actually running/screenshotting the app. Xcode-beta 27.0 ships `DeviceHub.app` instead of the classic `Simulator.app` in `Contents/Applications`, and Claude Code's iOS Simulator tool only knows how to drive `Simulator.app` — it can't attach, launch, or screenshot against DeviceHub. User opted to skip visual verification for now rather than install a stable (non-beta) Xcode or drive DeviceHub via generic screen-control tools. Revisit before Phase 5 (real-device/TestFlight testing) — either a stable Xcode release ships by then, or the sim tool adds DeviceHub support.
 
-## Phase 4 — Scoring entry (write)
+## Phase 3 — Leaderboard screens (read) — ✅ DONE (build verified, unrun in Simulator)
 
-- Hole-by-hole score entry screen mirroring `src/components/scores/hole-by-hole-scorecard.tsx`'s UX (enter own score, or a teammate's score if in the same foursome).
-- Submits to `POST /api/mobile/scores`; server enforces round-status and foursome-membership exactly as today.
-- Optional: port the birdie celebration (`src/components/scores/BirdieCelebration.tsx`) as a native equivalent — nice-to-have, not required for parity.
+- `LeaderboardView.swift`: season standings + rounds list, sourced from `GET /api/mobile/leaderboard`. Pull-to-refresh via `.refreshable`.
+- `RoundDetailView.swift`: round detail/scorecard, sourced from `GET /api/mobile/rounds/[id]/scores` — front/back/full segmented control renders the pre-computed net scores/rankings from Phase 1, no client-side ranking math.
+- **Backend addition beyond the original Phase 1 scope**: `GET /api/mobile/leaderboard` now also returns a `rounds` array (id/round_number/round_date/status/tee_time, non-cancelled, current season, newest first) — the original three routes had no way to discover round IDs to navigate into, so this was needed for the detail screen to be reachable at all.
+- **Scope-narrowed from the original plan text**: no hole-by-hole tile grid. `buildSection` in `src/app/api/mobile/rounds/[id]/scores/route.ts` only returns per-player summary fields (gross/net/parSum/played/netToPar), not `hole_scores` — so a hole grid isn't actually buildable from this response today, and `HOLE_PARS` ends up unused on the Swift side. Revisit if hole-by-hole becomes a real requirement (would mean adding `hole_scores` to the API response).
+- New files: `ios/MooseKnuckleGolf/Models/{LeaderboardModels,RoundScoresModels}.swift`, `ios/MooseKnuckleGolf/Support/Formatting.swift`, `ios/MooseKnuckleGolf/Leaderboard/{LeaderboardView,RoundDetailView}.swift`. `RootView.swift` now routes signed-in users straight to `LeaderboardView` instead of the placeholder.
+- Build verified the same way as Phase 2 (`xcodebuild ... build`, Xcode-beta 27.0) — succeeds. Not yet run/screenshotted in Simulator, same DeviceHub blocker noted in Phase 2.
+
+## Phase 4 — Scoring entry (write) — ✅ DONE (build verified, unrun in Simulator)
+
+- `ScoreEntryView.swift`: one-hole-at-a-time entry (hole nav + tappable 18-hole strip), stepper per player, 700ms debounced autosave per player (`Task` cancel/reschedule, mirrors the web's per-player debounce), save-state indicator (saving/saved/error). Reachable from `RoundDetailView`'s toolbar ("Enter Scores") when `round.status` is `in_progress` or `scoring`.
+- **Backend addition beyond the original Phase 1 scope**: new `GET /api/mobile/rounds/[id]/foursome` route — none of the existing mobile routes exposed foursome membership or raw per-hole `hole_scores`, both required for entry (self + teammate). Mirrors the query in `src/app/(authenticated)/scores/[roundId]/page.tsx`. Handicap is `NUMERIC(4,1)` in the DB, decoded as `Double` (same class of bug hit and fixed in Phase 3's `total_points`).
+- Submits to `POST /api/mobile/scores` (`SubmitScoreBody`: `roundId`, `holeScores` [18, untouched holes = 0], `targetUserId`/`targetSubId` — omitted for the caller's own score, set for a foursome teammate) — server enforces round-status and foursome-membership exactly as today, no duplicated logic client-side.
+- `Course.holePars`/`Course.strokeIndex` ported to Swift (`ios/MooseKnuckleGolf/Support/Course.swift`) for display only (par/HCP header, "stroke" tag) — confirmed safe since `computeNetScore` in `src/lib/scores/netScore.ts` doesn't use per-hole stroke index either, it's cosmetic on the web too.
+- Skipped: birdie celebration (explicitly optional in this plan), the web's dice-roll strip and per-hole color grading — functional parity, not visual parity.
+- New files: `ios/MooseKnuckleGolf/Models/FoursomeModels.swift`, `ios/MooseKnuckleGolf/Support/Course.swift`, `ios/MooseKnuckleGolf/Scoring/ScoreEntryView.swift`.
+- Build verified via `xcodebuild`, not run in Simulator (DeviceHub blocker, confirmed still active as of Phase 3).
 
 ## Phase 5 — TestFlight distribution
 
