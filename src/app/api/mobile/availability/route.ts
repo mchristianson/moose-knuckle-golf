@@ -1,27 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
-
-function createSupabaseWithToken(token: string) {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    }
-  )
-}
+import { getBearerUser } from '@/lib/supabase/mobile'
 
 export async function POST(request: NextRequest) {
-  const token = request.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!token) {
-    return Response.json({ error: 'Missing authorization token' }, { status: 401 })
-  }
-
-  const supabase = createSupabaseWithToken(token)
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const { supabase, user, error: authError } = await getBearerUser(request)
+  if (authError) return authError
 
   let body: { roundId?: string; status?: string }
   try {

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getViewerContext } from '@/lib/viewer'
 import { TEE_RATINGS, BASELINE_TEE, type TeeBox } from '@/lib/constants/course'
+import { submitOwnScore, submitFoursomeScore } from '@/lib/scores/submit'
 
 // Returns the effective user (impersonated if applicable) for user-facing mutations.
 // realUserId is preserved for audit fields like submitted_by.
@@ -44,87 +45,7 @@ async function getAdminUser() {
 // Golfer submits their own score — allowed when round is in_progress or scoring
 export async function submitMyScore(roundId: string, holeScores: number[]) {
   const { supabase, userId, realUserId } = await getEffectiveUser()
-
-  // Verify the round is in a state that allows scoring
-  const { data: round } = await supabase
-    .from('rounds')
-    .select('status')
-    .eq('id', roundId)
-    .single()
-
-  if (!round) return { error: 'Round not found' }
-  if (!['in_progress', 'scoring'].includes(round.status)) {
-    return { error: 'Scoring is not open for this round' }
-  }
-
-  // Verify this user is actually in the foursome for this round
-  const { data: foursomeIds } = await supabase
-    .from('foursomes')
-    .select('id')
-    .eq('round_id', roundId)
-
-  if (!foursomeIds || foursomeIds.length === 0) {
-    return { error: 'No foursomes found for this round' }
-  }
-
-  const { data: membership } = await supabase
-    .from('foursome_members')
-    .select('team_id, is_sub')
-    .in('foursome_id', foursomeIds.map((f: { id: number | string }) => f.id))
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (!membership) {
-    return { error: 'You are not listed as a player in this round' }
-  }
-
-
-  if (holeScores.length < 9 || holeScores.length > 18) {
-    return { error: 'Expected 9 to 18 hole scores' }
-  }
-  if (holeScores.length < 18) {
-    holeScores = [...holeScores, ...Array(18 - holeScores.length).fill(0)]
-  }
-  if (holeScores.some((h) => h < 0)) {
-    return { error: 'Hole scores cannot be negative' }
-  }
-
-  // Fetch current handicap
-  const { data: handicapRow } = await supabase
-    .from('handicaps')
-    .select('current_handicap')
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  const handicap = handicapRow?.current_handicap ?? 0
-  // Only use front 9; back 9 is tracking only and never counts toward calculations
-  const frontNine = holeScores.slice(0, 9)
-  const grossScore = frontNine.reduce((a, b) => a + b, 0)
-  const allFilled = frontNine.every((h) => h > 0)
-  const netScore = allFilled ? Math.round((grossScore - handicap) * 10) / 10 : null
-
-  const { error } = await supabase
-    .from('scores')
-    .upsert(
-      {
-        round_id: roundId,
-        user_id: userId,
-        team_id: membership.team_id,
-        hole_scores: holeScores,
-        handicap_at_time: handicap,
-        net_score: netScore,
-        is_sub: membership.is_sub,
-        submitted_at: new Date().toISOString(),
-        submitted_by: realUserId,
-      },
-      { onConflict: 'round_id,user_id' }
-    )
-
-  if (error) return { error: error.message }
-
-  revalidatePath(`/scores/${roundId}`)
-  revalidatePath('/dashboard')
-  return { success: true }
+  return submitOwnScore(supabase, userId, realUserId, roundId, holeScores)
 }
 
 // Any golfer in the same foursome can submit a score for another player in their group
@@ -135,116 +56,7 @@ export async function submitScoreForFoursome(
   holeScores: number[]
 ) {
   const { supabase, userId, realUserId } = await getEffectiveUser()
-
-  // Verify the round is open for scoring
-  const { data: round } = await supabase
-    .from('rounds')
-    .select('status')
-    .eq('id', roundId)
-    .single()
-
-  if (!round) return { error: 'Round not found' }
-  if (!['in_progress', 'scoring'].includes(round.status)) {
-    return { error: 'Scoring is not open for this round' }
-  }
-
-  const { data: foursomeIds } = await supabase
-    .from('foursomes')
-    .select('id')
-    .eq('round_id', roundId)
-
-  if (!foursomeIds || foursomeIds.length === 0) {
-    return { error: 'No foursomes found for this round' }
-  }
-
-  // Verify calling user is in a foursome for this round and get their foursome_id
-  const { data: callerMembership } = await supabase
-    .from('foursome_members')
-    .select('foursome_id')
-    .in('foursome_id', foursomeIds.map((f: { id: number | string }) => f.id))
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (!callerMembership) {
-    return { error: 'You are not listed as a player in this round' }
-  }
-
-  // Verify the target is in the SAME foursome as the calling user
-  const targetQuery = targetSubId
-    ? supabase
-        .from('foursome_members')
-        .select('team_id, is_sub')
-        .eq('foursome_id', callerMembership.foursome_id)
-        .eq('sub_id', targetSubId)
-        .maybeSingle()
-    : supabase
-        .from('foursome_members')
-        .select('team_id, is_sub')
-        .eq('foursome_id', callerMembership.foursome_id)
-        .eq('user_id', targetUserId!)
-        .maybeSingle()
-
-  const { data: targetMembership } = await targetQuery
-
-  if (!targetMembership) {
-    return { error: 'That player is not in your foursome' }
-  }
-
-  // Check if score already exists to decide insert vs update
-  const existingQuery = targetSubId
-    ? supabase.from('scores').select('id').eq('round_id', roundId).eq('sub_id', targetSubId).maybeSingle()
-    : supabase.from('scores').select('id').eq('round_id', roundId).eq('user_id', targetUserId!).maybeSingle()
-
-  const { data: existing } = await existingQuery
-
-  if (holeScores.length < 9 || holeScores.length > 18) {
-    return { error: 'Expected 9 to 18 hole scores' }
-  }
-  if (holeScores.length < 18) {
-    holeScores = [...holeScores, ...Array(18 - holeScores.length).fill(0)]
-  }
-  if (holeScores.some((h) => h < 0)) {
-    return { error: 'Hole scores cannot be negative' }
-  }
-
-  // Subs don't have handicap records — default to 0
-  let handicap = 0
-  if (targetUserId) {
-    const { data: handicapRow } = await supabase
-      .from('handicaps')
-      .select('current_handicap')
-      .eq('user_id', targetUserId)
-      .maybeSingle()
-    handicap = handicapRow?.current_handicap ?? 0
-  }
-
-  const frontNine = holeScores.slice(0, 9)
-  const grossScore = frontNine.reduce((a, b) => a + b, 0)
-  const allFilled = frontNine.every((h) => h > 0)
-  const netScore = allFilled ? Math.round((grossScore - handicap) * 10) / 10 : null
-
-  const scoreData = {
-    round_id: roundId,
-    user_id: targetSubId ? null : targetUserId,
-    sub_id: targetSubId ?? null,
-    team_id: targetMembership.team_id,
-    hole_scores: holeScores,
-    handicap_at_time: handicap,
-    net_score: netScore,
-    is_sub: targetMembership.is_sub,
-    submitted_at: new Date().toISOString(),
-    submitted_by: realUserId,
-  }
-
-  const { error } = existing
-    ? await supabase.from('scores').update(scoreData).eq('id', existing.id)
-    : await supabase.from('scores').insert(scoreData)
-
-  if (error) return { error: error.message }
-
-  revalidatePath(`/scores/${roundId}`)
-  revalidatePath('/dashboard')
-  return { success: true }
+  return submitFoursomeScore(supabase, userId, realUserId, roundId, targetUserId, targetSubId, holeScores)
 }
 
 // Save hole-by-hole scores for a golfer in a round (does not lock)
